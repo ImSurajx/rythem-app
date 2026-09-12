@@ -12,18 +12,22 @@ import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
 
-/// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2:
+/// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
 /// - Today's date & streak indicator
-/// - Today's beat checklist: one row per pending beat across active roadmaps
+/// - Shows the WHOLE todo list for each track at once (no waiting or step-by-step trickling)
+/// - Highlights beats assigned to Today's Mission with specular glass badge
+/// - Direct interactive checkboxes like a real todo app
 /// - Evening unlock indicator (flips when daily mission quota is met)
-/// - Single "flag something confusing" action
-/// - Clean, glanceable - no clutter or complex charts
-class FlowScreen extends StatelessWidget {
+/// - Tap any beat for distraction-free Focus Mode (Session Detail)
+class FlowScreen extends StatefulWidget {
   final RoadmapEntity? activeRoadmap;
   final List<RoadmapEntity> allRoadmaps;
   final List<ChapterEntity> chapters;
   final List<BeatEntity> allBeats;
   final PacingBudget? pacingBudget;
+  final Map<String, List<ChapterEntity>>? chaptersByRoadmap;
+  final Map<String, List<BeatEntity>>? beatsByRoadmap;
+  final Map<String, PacingBudget>? budgetsByRoadmap;
   final int streakDays;
   final VoidCallback onSwitchRoadmap;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
@@ -36,11 +40,21 @@ class FlowScreen extends StatelessWidget {
     required this.chapters,
     required this.allBeats,
     required this.pacingBudget,
+    this.chaptersByRoadmap,
+    this.beatsByRoadmap,
+    this.budgetsByRoadmap,
     required this.streakDays,
     required this.onSwitchRoadmap,
     required this.onBeatToggled,
     this.onExploreTracks,
   });
+
+  @override
+  State<FlowScreen> createState() => _FlowScreenState();
+}
+
+class _FlowScreenState extends State<FlowScreen> {
+  String _selectedTrackFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -75,17 +89,33 @@ class FlowScreen extends StatelessWidget {
     final formattedDate =
         '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
 
-    // Determine today's mission beats from the pacing budget
-    final todaysMissionBeats = pacingBudget?.todaysBeats ?? [];
-    final hasMission = todaysMissionBeats.isNotEmpty;
+    // Roadmaps to display
+    final roadmaps = widget.allRoadmaps.isNotEmpty
+        ? widget.allRoadmaps
+        : (widget.activeRoadmap != null ? [widget.activeRoadmap!] : <RoadmapEntity>[]);
 
-    final completedMissionCount =
-        todaysMissionBeats.where((b) => b.isCompleted).length;
-    final totalMissionCount = todaysMissionBeats.length;
-    final isEveningUnlocked =
-        hasMission && completedMissionCount == totalMissionCount;
+    // Compute mission totals across all tracks
+    int totalMissionBeats = 0;
+    int completedMissionBeats = 0;
 
-    final progressRatio = hasMission ? completedMissionCount / totalMissionCount : 0.0;
+    for (final rm in roadmaps) {
+      final budget = widget.budgetsByRoadmap?[rm.id] ??
+          (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
+      final mission = budget?.todaysBeats ?? [];
+      totalMissionBeats += mission.length;
+      completedMissionBeats += mission.where((b) => b.isCompleted).length;
+    }
+
+    final bool hasMission = totalMissionBeats > 0;
+    final bool isEveningUnlocked =
+        hasMission && completedMissionBeats == totalMissionBeats;
+    final double missionProgressRatio =
+        hasMission ? (completedMissionBeats / totalMissionBeats) : 0.0;
+
+    // Filter roadmaps based on selection pill
+    final displayedRoadmaps = _selectedTrackFilter == 'all'
+        ? roadmaps
+        : roadmaps.where((r) => r.id == _selectedTrackFilter).toList();
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -93,7 +123,7 @@ class FlowScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Date & Active Roadmap Selector
+          // Header: Date & Roadmap Selector
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -107,9 +137,9 @@ class FlowScreen extends StatelessWidget {
                   letterSpacing: 1.2,
                 ),
               ),
-              if (allRoadmaps.length > 1)
+              if (roadmaps.length > 1)
                 GestureDetector(
-                  onTap: onSwitchRoadmap,
+                  onTap: widget.onSwitchRoadmap,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -127,7 +157,7 @@ class FlowScreen extends StatelessWidget {
                         Icon(Icons.swap_horiz, size: 14, color: themeColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
-                          'Switch Track (${allRoadmaps.length})',
+                          'Tracks (${roadmaps.length})',
                           style: RythemTypography.labelSmall.copyWith(
                             fontSize: 10,
                             color: themeColors.textSecondary,
@@ -151,7 +181,7 @@ class FlowScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      activeRoadmap?.title ?? 'Daily Flow',
+                      widget.activeRoadmap?.title ?? 'Daily Flow',
                       style: RythemTypography.headlineMedium.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -162,9 +192,7 @@ class FlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      activeRoadmap != null
-                          ? '${activeRoadmap!.status.toUpperCase()} • $totalMissionCount beats queued today'
-                          : 'No active track',
+                      '${roadmaps.length} track${roadmaps.length == 1 ? '' : 's'} in progress • felt, not measured',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textTertiary,
                         fontSize: 11.5,
@@ -174,7 +202,7 @@ class FlowScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Flow Streak Pill (Felt, not clock-measured)
+              // Flow Streak Pill (Zero clock counting)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -196,7 +224,7 @@ class FlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Streak: $streakDays Day${streakDays == 1 ? '' : 's'}',
+                      'Streak: ${widget.streakDays} Day${widget.streakDays == 1 ? '' : 's'}',
                       style: RythemTypography.labelSmall.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -208,82 +236,332 @@ class FlowScreen extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // Evening Unlock Indicator (flips when daily mission quota is met)
+          // Evening Unlock Indicator Banner
           _EveningUnlockBanner(
             isUnlocked: isEveningUnlocked,
-            completedCount: completedMissionCount,
-            totalCount: totalMissionCount,
-            progressRatio: progressRatio,
+            completedCount: completedMissionBeats,
+            totalCount: totalMissionBeats,
+            progressRatio: missionProgressRatio,
             themeColors: themeColors,
             isDark: isDark,
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
 
-          // Section Header with Focus Mode Action
+          // Multi-Track Filter Pill Bar (if multiple tracks exist)
+          if (roadmaps.length > 1) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  _buildTrackFilterPill(
+                    id: 'all',
+                    label: 'All Tracks (${roadmaps.length})',
+                    isSelected: _selectedTrackFilter == 'all',
+                    themeColors: themeColors,
+                    isDark: isDark,
+                  ),
+                  ...roadmaps.map((rm) {
+                    return _buildTrackFilterPill(
+                      id: rm.id,
+                      label: rm.title,
+                      isSelected: _selectedTrackFilter == rm.id,
+                      themeColors: themeColors,
+                      isDark: isDark,
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Section Title
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "TODAY'S MISSION",
+                "TODAY'S MISSION & TRACK TODO LISTS",
                 style: RythemTypography.labelSmall.copyWith(
                   color: themeColors.textTertiary,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
                 ),
               ),
-              if (hasMission)
-                GestureDetector(
-                  onTap: () => _openFocusSession(context, todaysMissionBeats.first),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.fullscreen_rounded,
-                        size: 16,
-                        color: themeColors.textPrimary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Start Focus Mode',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10.5,
-                        ),
-                      ),
-                    ],
-                  ),
+              Text(
+                'Full Checklist',
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textTertiary,
+                  fontSize: 10,
                 ),
+              ),
             ],
           ),
 
           const SizedBox(height: 12),
 
-          // Today's Beat Checklist
-          if (!hasMission)
+          // Render Whole Todo List for Each Track
+          if (displayedRoadmaps.isEmpty)
             _EmptyMissionState(
               themeColors: themeColors,
               isDark: isDark,
-              onExplore: onExploreTracks,
+              onExplore: widget.onExploreTracks,
             )
           else
-            ListView.builder(
+            ...displayedRoadmaps.map((rm) {
+              final rmChapters = widget.chaptersByRoadmap?[rm.id] ??
+                  (rm.id == widget.activeRoadmap?.id ? widget.chapters : <ChapterEntity>[]);
+              final rmBeats = widget.beatsByRoadmap?[rm.id] ??
+                  (rm.id == widget.activeRoadmap?.id ? widget.allBeats : <BeatEntity>[]);
+              final rmBudget = widget.budgetsByRoadmap?[rm.id] ??
+                  (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
+
+              final todaysBeats = rmBudget?.todaysBeats ?? [];
+              final todaysBeatIds = todaysBeats.map((b) => b.id).toSet();
+
+              return _TrackTodoListCard(
+                roadmap: rm,
+                chapters: rmChapters,
+                allBeats: rmBeats,
+                todaysBeatIds: todaysBeatIds,
+                pacingBudget: rmBudget,
+                themeColors: themeColors,
+                isDark: isDark,
+                onBeatToggled: widget.onBeatToggled,
+                onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrackFilterPill({
+    required String id,
+    required String label,
+    required bool isSelected,
+    required RythemColorTokens themeColors,
+    required bool isDark,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedTrackFilter = id);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.09))
+              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
+                : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+            width: isSelected ? 1.2 : 0.8,
+          ),
+        ),
+        child: Text(
+          label,
+          style: RythemTypography.labelSmall.copyWith(
+            color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            fontSize: 11,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
+  void _openFocusSession(
+    BuildContext context,
+    RoadmapEntity roadmap,
+    List<ChapterEntity> chapters,
+    List<BeatEntity> beats,
+    BeatEntity targetBeat,
+  ) {
+    HapticFeedback.lightImpact();
+    final chapter = chapters.where((c) => c.id == targetBeat.chapterId).firstOrNull;
+    final chapterBeats = beats.where((b) => b.chapterId == targetBeat.chapterId).toList();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => SessionDetailScreen(
+          roadmapTitle: roadmap.title,
+          chapterTitle: chapter?.title ?? 'Current Chapter',
+          beats: chapterBeats.isNotEmpty ? chapterBeats : [targetBeat],
+          initialBeatId: targetBeat.id,
+          onBeatToggled: widget.onBeatToggled,
+        ),
+      ),
+    );
+  }
+}
+
+/// Renders the complete, unabridged todo list for a single track
+class _TrackTodoListCard extends StatelessWidget {
+  final RoadmapEntity roadmap;
+  final List<ChapterEntity> chapters;
+  final List<BeatEntity> allBeats;
+  final Set<String> todaysBeatIds;
+  final PacingBudget? pacingBudget;
+  final RythemColorTokens themeColors;
+  final bool isDark;
+  final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
+  final void Function(BeatEntity beat) onOpenFocusSession;
+
+  const _TrackTodoListCard({
+    required this.roadmap,
+    required this.chapters,
+    required this.allBeats,
+    required this.todaysBeatIds,
+    required this.pacingBudget,
+    required this.themeColors,
+    required this.isDark,
+    required this.onBeatToggled,
+    required this.onOpenFocusSession,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final completedCount = allBeats.where((b) => b.isCompleted).length;
+    final totalCount = allBeats.length;
+    final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
+
+    // Group beats by chapter
+    final chapterMap = {for (final c in chapters) c.id: c};
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+          width: 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Track Header with title, progress, and focus launcher
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        roadmap.title,
+                        style: RythemTypography.titleMedium.copyWith(
+                          color: themeColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.black.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$completedCount/$totalCount Beats',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progressRatio,
+                          backgroundColor: isDark
+                              ? Colors.white.withOpacity(0.06)
+                              : Colors.black.withOpacity(0.04),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            themeColors.textPrimary.withOpacity(0.7),
+                          ),
+                          minHeight: 4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${(progressRatio * 100).toInt()}%',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          Divider(
+            height: 1,
+            color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+          ),
+
+          // Whole Todo List of Beats
+          if (allBeats.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Text(
+                  'No beats in this track yet.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: todaysMissionBeats.length,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              itemCount: allBeats.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
-                final beat = todaysMissionBeats[index];
-                final chapter = chapters.where((c) => c.id == beat.chapterId).firstOrNull;
+                final beat = allBeats[index];
+                final chapter = chapterMap[beat.chapterId];
+                final isTodayMission = todaysBeatIds.contains(beat.id) && !beat.isCompleted;
 
                 return _FlowBeatChecklistTile(
                   beat: beat,
-                  chapterTitle: chapter?.title ?? 'Active Chapter',
+                  chapterTitle: chapter?.title ?? 'Chapter ${beat.sortOrder + 1}',
+                  isTodayMission: isTodayMission,
                   themeColors: themeColors,
                   isDark: isDark,
                   onToggle: (val) => onBeatToggled(beat, val),
-                  onTap: () => _openFocusSession(context, beat),
+                  onTap: () => onOpenFocusSession(beat),
                   onFlag: () {
                     ConfusingBeatDialog.show(context, beat: beat);
                   },
@@ -294,29 +572,9 @@ class FlowScreen extends StatelessWidget {
       ),
     );
   }
-
-  void _openFocusSession(BuildContext context, BeatEntity targetBeat) {
-    HapticFeedback.lightImpact();
-    final chapter = chapters.where((c) => c.id == targetBeat.chapterId).firstOrNull;
-    final chapterBeats = allBeats.where((b) => b.chapterId == targetBeat.chapterId).toList();
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => SessionDetailScreen(
-          roadmapTitle: activeRoadmap?.title ?? 'Active Track',
-          chapterTitle: chapter?.title ?? 'Current Chapter',
-          beats: chapterBeats.isNotEmpty ? chapterBeats : [targetBeat],
-          initialBeatId: targetBeat.id,
-          onBeatToggled: onBeatToggled,
-        ),
-      ),
-    );
-  }
 }
 
-/// Evening Unlock Indicator Banner per `docs/design.md` §2:
-/// - State A (In progress): shows remaining beats in mission
-/// - State B (Unlocked): celebratory serene state when daily quota is met
+/// Evening Unlock Indicator Banner per `docs/design.md` §2
 class _EveningUnlockBanner extends StatelessWidget {
   final bool isUnlocked;
   final int completedCount;
@@ -420,7 +678,9 @@ class _EveningUnlockBanner extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    totalCount == 0 ? 'MISSION CLEARED' : '$completedCount OF $totalCount BEATS DONE',
+                    totalCount == 0
+                        ? 'MISSION CLEARED'
+                        : '$completedCount OF $totalCount TODAY\'S MISSION BEATS DONE',
                     style: RythemTypography.labelSmall.copyWith(
                       color: themeColors.textPrimary,
                       fontWeight: FontWeight.w600,
@@ -449,10 +709,11 @@ class _EveningUnlockBanner extends StatelessWidget {
   }
 }
 
-/// Single beat tile in today's checklist
+/// Single beat checklist tile in the whole todo list
 class _FlowBeatChecklistTile extends StatelessWidget {
   final BeatEntity beat;
   final String chapterTitle;
+  final bool isTodayMission;
   final RythemColorTokens themeColors;
   final bool isDark;
   final ValueChanged<bool> onToggle;
@@ -462,6 +723,7 @@ class _FlowBeatChecklistTile extends StatelessWidget {
   const _FlowBeatChecklistTile({
     required this.beat,
     required this.chapterTitle,
+    required this.isTodayMission,
     required this.themeColors,
     required this.isDark,
     required this.onToggle,
@@ -471,112 +733,158 @@ class _FlowBeatChecklistTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: GlassCard(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Checkbox
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onToggle(!beat.isCompleted);
-                },
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isTodayMission
+              ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
+              : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.015)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isTodayMission
+                ? (isDark ? themeColors.glassBorderHighlight : Colors.black45)
+                : (isDark ? themeColors.glassBorder : const Color(0x10000000)),
+            width: isTodayMission ? 1.1 : 0.7,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Interactive Todo Checkbox
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onToggle(!beat.isCompleted);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  width: 24,
-                  height: 24,
+                  width: 22,
+                  height: 22,
                   decoration: BoxDecoration(
                     color: beat.isCompleted
                         ? themeColors.textPrimary
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: beat.isCompleted
                           ? themeColors.textPrimary
-                          : themeColors.textTertiary,
+                          : (isTodayMission
+                              ? themeColors.textPrimary
+                              : themeColors.textTertiary),
                       width: 1.5,
                     ),
                   ),
                   child: beat.isCompleted
                       ? Icon(
                           Icons.check,
-                          size: 16,
+                          size: 15,
                           color: isDark ? Colors.black : Colors.white,
                         )
                       : null,
                 ),
               ),
-              const SizedBox(width: 14),
+            ),
+            const SizedBox(width: 10),
 
-              // Title and Chapter Subtitle
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      beat.title,
-                      style: RythemTypography.bodyMedium.copyWith(
-                        color: beat.isCompleted
-                            ? themeColors.textTertiary
-                            : themeColors.textPrimary,
-                        decoration:
-                            beat.isCompleted ? TextDecoration.lineThrough : null,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(
-                          chapterTitle,
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            fontSize: 9.5,
+            // Title and Chapter Subtitle
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (isTodayMission) ...[
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.15)
+                                : Colors.black.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark ? themeColors.glassBorderHighlight : Colors.black26,
+                              width: 0.6,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '• ${beat.effortWeight.toStringAsFixed(1)} effort',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            fontSize: 9.5,
+                          child: Text(
+                            "TODAY'S MISSION",
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                              color: themeColors.textPrimary,
+                              letterSpacing: 0.4,
+                            ),
                           ),
                         ),
                       ],
-                    ),
-                  ],
-                ),
+                      Expanded(
+                        child: Text(
+                          beat.title,
+                          style: RythemTypography.bodyMedium.copyWith(
+                            color: beat.isCompleted
+                                ? themeColors.textTertiary
+                                : themeColors.textPrimary,
+                            decoration:
+                                beat.isCompleted ? TextDecoration.lineThrough : null,
+                            fontWeight: isTodayMission ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Text(
+                        chapterTitle,
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 9.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '• ${beat.effortWeight.toStringAsFixed(1)} effort',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
+            ),
 
-              // Focus Arrow & Flag Button
-              IconButton(
-                icon: Icon(
-                  Icons.help_outline_rounded,
-                  size: 16,
-                  color: themeColors.textTertiary,
-                ),
-                onPressed: onFlag,
-                tooltip: 'Flag Confusion',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
+            // Friction Action & Focus Indicator
+            IconButton(
+              icon: Icon(
+                Icons.help_outline_rounded,
+                size: 16,
                 color: themeColors.textTertiary,
               ),
-            ],
-          ),
+              onPressed: onFlag,
+              tooltip: 'Flag Confusion',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: themeColors.textTertiary,
+            ),
+          ],
         ),
       ),
     );
@@ -608,7 +916,7 @@ class _EmptyMissionState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'No Pending Beats Today',
+              'No Targets Found in SQLite',
               style: RythemTypography.titleMedium.copyWith(
                 color: themeColors.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -616,7 +924,7 @@ class _EmptyMissionState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Your queue is clear. Relax, review previous beats, or explore new tracks.',
+              'Your learning queue is clear. Explore curricula and ingest a YouTube track to get started.',
               style: RythemTypography.bodySmall.copyWith(
                 color: themeColors.textTertiary,
                 height: 1.4,

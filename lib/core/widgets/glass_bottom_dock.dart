@@ -44,33 +44,33 @@ class GlassBottomDock extends StatelessWidget {
     final themeColors = isDark ? RythemColors.dark : RythemColors.light;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       height: 68,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(34),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.45) : Colors.black.withOpacity(0.08),
+            color: isDark ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.08),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(34),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
           child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xB2141414) : const Color(0xCCFFFFFF),
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(34),
               border: Border.all(
                 color: isDark ? themeColors.glassBorder : const Color(0x28000000),
                 width: 1.0,
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(_items.length, (index) {
                 final item = _items[index];
                 final isSelected = selectedIndex == index;
@@ -125,23 +125,32 @@ class _DockButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            border: isSelected
-                ? Border.all(
-                    color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
-                    width: 0.8,
-                  )
-                : null,
-          ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.08))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(26),
+          border: isSelected
+              ? Border.all(
+                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
+                  width: 1.0,
+                )
+              : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -116,8 +116,8 @@ void main() {
       // Streak indicator
       expect(find.text('Streak: 5 Days'), findsOneWidget);
 
-      // Roadmap title
-      expect(find.text('Test Engineering Track'), findsOneWidget);
+      // Roadmap title (in header and track todo card)
+      expect(find.text('Test Engineering Track'), findsWidgets);
 
       // Today's beats
       expect(find.text('First Beat Title'), findsOneWidget);
