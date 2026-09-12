@@ -28,6 +28,16 @@ class BeatLogRepository {
     return results.map(BeatLogEntity.fromMap).toList();
   }
 
+  Future<List<BeatLogEntity>> getLogsForRoadmapOnDate(String roadmapId, String dateStr) async {
+    final db = await _db;
+    final results = await db.query(
+      DatabaseTables.beatLogs,
+      where: '${BeatLogColumns.roadmapId} = ? AND ${BeatLogColumns.completedDate} = ?',
+      whereArgs: [roadmapId, dateStr],
+    );
+    return results.map(BeatLogEntity.fromMap).toList();
+  }
+
   Future<int> getBeatsCompletedToday() async {
     final today = DateTime.now().toIso8601String().substring(0, 10);
     final logs = await getLogsForDate(today);
