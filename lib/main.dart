@@ -975,7 +975,7 @@ class _DesignSystemShowcaseScreenState
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'SQLITE [rythem.db] • PERSISTENT',
+                        'SQLITE READY • PACING ENGINE ACTIVE',
                         style: RythemTypography.labelSmall.copyWith(
                           color: themeColors.textTertiary,
                           fontSize: 10,
@@ -1117,9 +1117,11 @@ class _DesignSystemShowcaseScreenState
 
                     const SizedBox(height: 16),
 
-                    // Flow Streak Metrics (Felt, Not Clock-Measured) & Target Management Actions
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    // Flow Streak Metrics (Felt, Not Clock-Measured) & Today's Budget Pill
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1135,6 +1137,7 @@ class _DesignSystemShowcaseScreenState
                             ),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.offline_bolt_outlined,
@@ -1152,10 +1155,43 @@ class _DesignSystemShowcaseScreenState
                             ],
                           ),
                         ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isDark
+                                  ? themeColors.glassBorder
+                                  : const Color(0x14000000),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.tune_outlined,
+                                size: 13,
+                                color: themeColors.textPrimary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Today's Budget: ${_pacingBudget?.formattedBudget ?? '0.0'} effort",
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         if (_allRoadmaps.length > 1)
                           GestureDetector(
                             onTap: _deleteCurrentRoadmap,
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.delete_outline, size: 14, color: themeColors.textTertiary),
                                 const SizedBox(width: 4),
