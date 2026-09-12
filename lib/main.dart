@@ -92,6 +92,9 @@ class _DesignSystemShowcaseScreenState
   List<ChapterEntity> _chapters = [];
   List<BeatEntity> _beats = [];
   Map<String, List<BeatEntity>> _beatsByChapter = {};
+  Map<String, List<ChapterEntity>> _chaptersByRoadmap = {};
+  Map<String, List<BeatEntity>> _beatsByRoadmap = {};
+  Map<String, PacingBudget> _budgetsByRoadmap = {};
   List<RoadmapEntity> _allRoadmaps = [];
   bool _isIngesting = false;
   String? _lastIngestionSummary;
@@ -277,8 +280,30 @@ class _DesignSystemShowcaseScreenState
       _roadmapTitle = cur.title;
     }
 
-    final chapters = await _chapterRepo.getChaptersByRoadmapId(_roadmapId);
-    final beats = await _beatRepo.getBeatsByRoadmapId(_roadmapId);
+    // Fetch chapters, beats, and budgets for ALL roadmaps
+    final chaptersByRoadmap = <String, List<ChapterEntity>>{};
+    final beatsByRoadmap = <String, List<BeatEntity>>{};
+    final budgetsByRoadmap = <String, PacingBudget>{};
+
+    for (final rm in allRoadmaps) {
+      final chs = await _chapterRepo.getChaptersByRoadmapId(rm.id);
+      final bts = await _beatRepo.getBeatsByRoadmapId(rm.id);
+      chaptersByRoadmap[rm.id] = chs;
+      beatsByRoadmap[rm.id] = bts;
+
+      try {
+        final b = await _pacingService.computePacingBudget(
+          rm.id,
+          simulatedNow: _simulatedNow,
+        );
+        budgetsByRoadmap[rm.id] = b;
+      } catch (e) {
+        debugPrint('Notice: Pacing budget for ${rm.id}: $e');
+      }
+    }
+
+    final chapters = chaptersByRoadmap[_roadmapId] ?? [];
+    final beats = beatsByRoadmap[_roadmapId] ?? [];
     final progress = await _roadmapRepo.getRoadmapProgress(_roadmapId);
     final streak = await _beatLogRepo.getCurrentStreak();
 
@@ -294,16 +319,7 @@ class _DesignSystemShowcaseScreenState
       beatsByChapter[b.chapterId]!.add(b);
     }
 
-    // Compute live deterministic pacing budget
-    PacingBudget? budget;
-    try {
-      budget = await _pacingService.computePacingBudget(
-        _roadmapId,
-        simulatedNow: _simulatedNow,
-      );
-    } catch (e) {
-      debugPrint('Notice: Pacing budget calculation: $e');
-    }
+    final budget = budgetsByRoadmap[_roadmapId];
 
     if (mounted) {
       setState(() {
@@ -311,6 +327,9 @@ class _DesignSystemShowcaseScreenState
         _chapters = chapters;
         _beats = beats;
         _beatsByChapter = beatsByChapter;
+        _chaptersByRoadmap = chaptersByRoadmap;
+        _beatsByRoadmap = beatsByRoadmap;
+        _budgetsByRoadmap = budgetsByRoadmap;
         _completedBeats = progress.completedBeats;
         _totalBeats = progress.totalBeats > 0 ? progress.totalBeats : beats.length;
         _progressRatio = _totalBeats > 0 ? (_completedBeats / _totalBeats) : 0.0;
@@ -1001,6 +1020,9 @@ class _DesignSystemShowcaseScreenState
       chapters: _chapters,
       allBeats: _beats,
       pacingBudget: _pacingBudget,
+      chaptersByRoadmap: _chaptersByRoadmap,
+      beatsByRoadmap: _beatsByRoadmap,
+      budgetsByRoadmap: _budgetsByRoadmap,
       streakDays: _currentStreak,
       onSwitchRoadmap: _showRoadmapSelector,
       onBeatToggled: _setBeatCompletion,
