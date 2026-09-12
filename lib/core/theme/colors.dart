@@ -57,6 +57,9 @@ class RythemColors {
     return isDark ? darkThemeColors : lightThemeColors;
   }
 
+  static const RythemThemeColors dark = darkThemeColors;
+  static const RythemThemeColors light = lightThemeColors;
+
   static const RythemThemeColors darkThemeColors = RythemThemeColors(
     isDark: true,
     background: darkBackground,
@@ -129,3 +132,5 @@ class RythemThemeColors {
     required this.progressFill,
   });
 }
+
+typedef RythemColorTokens = RythemThemeColors;

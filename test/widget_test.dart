@@ -107,15 +107,20 @@ void main() {
       }
     }
 
-    // Verify brand typography
+    // Verify brand typography & persistent dock
     expect(find.text('RYTHEM'), findsOneWidget);
     expect(find.text('beats over clocks • felt, not measured'), findsOneWidget);
+    expect(find.byType(GlassBottomDock), findsOneWidget);
+
+    // Switch to Explore tab
+    await tester.tap(find.text('Explore'));
+    await tester.pumpAndSettle();
 
     // Verify glass components
     expect(find.byType(GlassContainer), findsWidgets);
     expect(find.byType(GlassCard), findsWidgets);
     expect(find.byType(GlassButton), findsWidgets);
-    expect(find.byType(GlassProgressBar), findsOneWidget);
+    expect(find.byType(GlassProgressBar), findsWidgets);
 
     // Verify theme toggle from Dark to Light Apple Control Center Glass
     expect(find.text('MONOCHROME LIQUID GLASS (DARK)'), findsOneWidget);
