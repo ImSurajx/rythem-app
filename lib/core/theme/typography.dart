@@ -56,6 +56,28 @@ class RythemTypography {
     height: 1.35,
   );
 
+  static TextStyle headlineMedium = GoogleFonts.poppins(
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.3,
+    color: RythemColors.textPrimary,
+  );
+
+  static TextStyle titleSmall = GoogleFonts.poppins(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    color: RythemColors.textPrimary,
+  );
+
+  static TextStyle bodySmall = GoogleFonts.poppins(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.1,
+    color: RythemColors.textSecondary,
+    height: 1.35,
+  );
+
   static TextStyle labelSmall = GoogleFonts.poppins(
     fontSize: 11,
     fontWeight: FontWeight.w500,
