@@ -19,3 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Interactive design system showcase demonstrating beat progression, cards, and liquid buttons.
 - Apple Control Center style light frosted glass theme on soft ambient platinum canvas with diffuse depth and specular highlights.
 - Interactive Dark/Light glass theme switcher toggle with tactile haptic feedback.
+- Official 3D metallic liquid glass pulse logo and native Android adaptive launcher icons across all screen densities.
+- On-device embedded SQLite database engine (`DatabaseService`) with Write-Ahead Logging (WAL) and foreign key cascades.
+- Normalized relational schema contracts (`roadmaps`, `chapters`, `beats`, `beat_logs`, `app_settings`).
+- Type-safe immutable domain entity models (`RoadmapEntity`, `ChapterEntity`, `BeatEntity`, `BeatLogEntity`, `AppSettingsEntity`).
+- Reactive data repositories (`RoadmapRepository`, `ChapterRepository`, `BeatRepository`, `BeatLogRepository`) with instantaneous `DatabaseEventBus` change stream.
+- Unit and integration test suite verifying mentor chronological order, effort weighting, cascading deletes, and streak analytics.
