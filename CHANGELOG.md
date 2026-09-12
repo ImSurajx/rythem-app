@@ -12,4 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core local dependencies: `sqflite` (local on-device DBMS), `path_provider`, `google_fonts`, `youtube_explode_dart`.
 - Native Android configuration targeting modern SDKs with `INTERNET` and `ACCESS_NETWORK_STATE` permissions.
 - Automated GitHub Actions CI pipeline building and releasing `rythem.apk`.
-- Smoke test verifying the monochrome liquid glass baseline screen.
+- Monochrome liquid glass design system tokens (pure pitch black `#000000`, translucent glass whites, hairline borders).
+- Reusable liquid glass component library (`GlassContainer`, `GlassCard`, `GlassButton`, `GlassProgressBar`).
+- Fluid typography system utilizing Inter with rhythmic hierarchy and beat-oriented semantics.
+- Tactile micro-interactions (press-scale dynamics, smooth specular highlights, and system haptics).
+- Interactive design system showcase demonstrating beat progression, cards, and liquid buttons.
