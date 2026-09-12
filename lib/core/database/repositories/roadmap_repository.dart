@@ -62,6 +62,24 @@ class RoadmapRepository {
     ));
   }
 
+  Future<void> updateRoadmapTargetDate(String id, DateTime newTarget) async {
+    final db = await _db;
+    await db.update(
+      DatabaseTables.roadmaps,
+      {
+        RoadmapColumns.targetCompletionDate: newTarget.toIso8601String(),
+        RoadmapColumns.updatedAt: DateTime.now().toIso8601String(),
+      },
+      where: '${RoadmapColumns.id} = ?',
+      whereArgs: [id],
+    );
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.roadmapUpdated,
+      entityId: id,
+      roadmapId: id,
+    ));
+  }
+
   Future<RoadmapEntity?> getRoadmapById(String id) async {
     final db = await _db;
     final results = await db.query(
