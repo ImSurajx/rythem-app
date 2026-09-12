@@ -5,42 +5,42 @@ import 'colors.dart';
 class RythemTypography {
   RythemTypography._();
 
-  static TextStyle displayLarge = GoogleFonts.outfit(
+  static TextStyle displayLarge = GoogleFonts.poppins(
     fontSize: 32,
-    fontWeight: FontWeight.w300,
+    fontWeight: FontWeight.w400,
     letterSpacing: -0.5,
     color: RythemColors.textPrimary,
   );
 
-  static TextStyle displayMedium = GoogleFonts.outfit(
+  static TextStyle displayMedium = GoogleFonts.poppins(
     fontSize: 24,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w500,
     letterSpacing: 0,
     color: RythemColors.textPrimary,
   );
 
-  static TextStyle brandLogo = GoogleFonts.outfit(
+  static TextStyle brandLogo = GoogleFonts.poppins(
     fontSize: 20,
-    fontWeight: FontWeight.w300,
+    fontWeight: FontWeight.w400,
     letterSpacing: 8.0,
     color: RythemColors.textPrimary,
   );
 
-  static TextStyle titleLarge = GoogleFonts.inter(
+  static TextStyle titleLarge = GoogleFonts.poppins(
     fontSize: 18,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
     letterSpacing: -0.2,
     color: RythemColors.textPrimary,
   );
 
-  static TextStyle titleMedium = GoogleFonts.inter(
+  static TextStyle titleMedium = GoogleFonts.poppins(
     fontSize: 16,
     fontWeight: FontWeight.w500,
     letterSpacing: -0.1,
     color: RythemColors.textPrimary,
   );
 
-  static TextStyle bodyLarge = GoogleFonts.inter(
+  static TextStyle bodyLarge = GoogleFonts.poppins(
     fontSize: 15,
     fontWeight: FontWeight.w400,
     letterSpacing: 0,
@@ -48,7 +48,7 @@ class RythemTypography {
     height: 1.4,
   );
 
-  static TextStyle bodyMedium = GoogleFonts.inter(
+  static TextStyle bodyMedium = GoogleFonts.poppins(
     fontSize: 13,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.1,
@@ -56,14 +56,14 @@ class RythemTypography {
     height: 1.35,
   );
 
-  static TextStyle labelSmall = GoogleFonts.inter(
+  static TextStyle labelSmall = GoogleFonts.poppins(
     fontSize: 11,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.6,
     color: RythemColors.textTertiary,
   );
 
-  static TextStyle button = GoogleFonts.inter(
+  static TextStyle button = GoogleFonts.poppins(
     fontSize: 14,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.2,

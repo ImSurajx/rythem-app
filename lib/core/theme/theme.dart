@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'colors.dart';
 
 class RythemTheme {
@@ -23,6 +24,7 @@ class RythemTheme {
         systemOverlayStyle: SystemUiOverlayStyle.light,
         centerTitle: false,
       ),
+      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
     );
