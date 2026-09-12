@@ -73,6 +73,7 @@ class _DesignSystemShowcaseScreenState
     beatRepo: _beatRepo,
   );
 
+  final _urlInputController = TextEditingController();
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
   String _roadmapTitle = 'Deep Learning & Neural Flow';
@@ -81,7 +82,9 @@ class _DesignSystemShowcaseScreenState
   int _totalBeats = 7;
   double _progressRatio = 3 / 7;
   int _currentStreak = 1;
+  List<ChapterEntity> _chapters = [];
   List<BeatEntity> _beats = [];
+  Map<String, List<BeatEntity>> _beatsByChapter = {};
   List<RoadmapEntity> _allRoadmaps = [];
   bool _isIngesting = false;
   String? _lastIngestionSummary;
@@ -98,6 +101,7 @@ class _DesignSystemShowcaseScreenState
   @override
   void dispose() {
     _eventSubscription?.cancel();
+    _urlInputController.dispose();
     super.dispose();
   }
 
@@ -229,19 +233,59 @@ class _DesignSystemShowcaseScreenState
   }
 
   Future<void> _loadDatabaseState() async {
+    final allRoadmaps = await _roadmapRepo.getActiveRoadmaps();
+    if (allRoadmaps.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _allRoadmaps = [];
+          _roadmapId = '';
+          _roadmapTitle = 'No Active Target';
+          _chapters = [];
+          _beats = [];
+          _beatsByChapter = {};
+          _completedBeats = 0;
+          _totalBeats = 0;
+          _progressRatio = 0.0;
+        });
+      }
+      return;
+    }
+
+    if (_roadmapId.isEmpty || !allRoadmaps.any((r) => r.id == _roadmapId)) {
+      _roadmapId = allRoadmaps.first.id;
+      _roadmapTitle = allRoadmaps.first.title;
+    } else {
+      final cur = allRoadmaps.firstWhere((r) => r.id == _roadmapId);
+      _roadmapTitle = cur.title;
+    }
+
+    final chapters = await _chapterRepo.getChaptersByRoadmapId(_roadmapId);
     final beats = await _beatRepo.getBeatsByRoadmapId(_roadmapId);
     final progress = await _roadmapRepo.getRoadmapProgress(_roadmapId);
     final streak = await _beatLogRepo.getCurrentStreak();
-    final allRoadmaps = await _roadmapRepo.getActiveRoadmaps();
+
+    // Group beats by their chapter
+    final beatsByChapter = <String, List<BeatEntity>>{};
+    for (final ch in chapters) {
+      beatsByChapter[ch.id] = [];
+    }
+    for (final b in beats) {
+      if (!beatsByChapter.containsKey(b.chapterId)) {
+        beatsByChapter[b.chapterId] = [];
+      }
+      beatsByChapter[b.chapterId]!.add(b);
+    }
 
     if (mounted) {
       setState(() {
-        _beats = beats;
-        _completedBeats = progress.completedBeats;
-        _totalBeats = progress.totalBeats > 0 ? progress.totalBeats : 7;
-        _progressRatio = progress.beatRatio;
-        _currentStreak = streak > 0 ? streak : 1;
         _allRoadmaps = allRoadmaps;
+        _chapters = chapters;
+        _beats = beats;
+        _beatsByChapter = beatsByChapter;
+        _completedBeats = progress.completedBeats;
+        _totalBeats = progress.totalBeats > 0 ? progress.totalBeats : beats.length;
+        _progressRatio = _totalBeats > 0 ? (_completedBeats / _totalBeats) : 0.0;
+        _currentStreak = streak > 0 ? streak : 1;
       });
     }
   }
@@ -270,6 +314,23 @@ class _DesignSystemShowcaseScreenState
     await _seedSampleData();
     await _loadDatabaseState();
     HapticFeedback.mediumImpact();
+    _showToast('Reset database to demo starter track');
+  }
+
+  Future<void> _deleteCurrentRoadmap() async {
+    if (_roadmapId.isEmpty) return;
+    await _roadmapRepo.deleteRoadmap(_roadmapId);
+    final remaining = await _roadmapRepo.getActiveRoadmaps();
+    if (remaining.isNotEmpty) {
+      _roadmapId = remaining.first.id;
+      _roadmapTitle = remaining.first.title;
+    } else {
+      _roadmapId = '';
+      _roadmapTitle = 'No Active Target';
+    }
+    await _loadDatabaseState();
+    HapticFeedback.mediumImpact();
+    _showToast('Target deleted from SQLite');
   }
 
   void _switchRoadmap(RoadmapEntity rm) {
@@ -281,7 +342,7 @@ class _DesignSystemShowcaseScreenState
     HapticFeedback.selectionClick();
   }
 
-  // --- Ingestion Test Cases ---
+  // --- Ingestion Test Cases & Live URL Processing ---
 
   /// Test Condition 1: Blank Roadmap + YouTube Playlist (Zero-Drop Guarantee & Chapter Clustering)
   Future<void> _testCondition1() async {
@@ -289,7 +350,6 @@ class _DesignSystemShowcaseScreenState
     HapticFeedback.lightImpact();
 
     try {
-      // 16-item mock playlist to verify 100% video coverage into 3-4 balanced chapters
       final items = List.generate(
         16,
         (i) => RawResourceItem(
@@ -301,7 +361,7 @@ class _DesignSystemShowcaseScreenState
       );
 
       final resource = ExtractedResource(
-        title: 'Neural Networks Masterclass (C1 Test)',
+        title: 'Neural Networks Masterclass (Condition 1)',
         author: 'AI Research Mentor',
         description: 'Condition 1 Test: 16 flat videos clustered with zero drop.',
         sourceUrl: 'https://youtube.com/playlist?list=PL_c1_demo',
@@ -347,7 +407,7 @@ class _DesignSystemShowcaseScreenState
           index: 1,
         ),
         const RawResourceItem(
-          title: 'Mentor Special: Vim & NeoVim Mastery for AI Engineers', // Extra!
+          title: 'Mentor Special: Vim & NeoVim Mastery for AI Engineers',
           sourceUrl: 'https://youtube.com/watch?v=m3',
           durationSeconds: 1500,
           index: 2,
@@ -359,7 +419,7 @@ class _DesignSystemShowcaseScreenState
           index: 3,
         ),
         const RawResourceItem(
-          title: 'Mentor Special: Profiling PyTorch CUDA Memory Spikes', // Extra!
+          title: 'Mentor Special: Profiling PyTorch CUDA Memory Spikes',
           sourceUrl: 'https://youtube.com/watch?v=m5',
           durationSeconds: 1400,
           index: 4,
@@ -373,7 +433,7 @@ class _DesignSystemShowcaseScreenState
       ];
 
       final resource = ExtractedResource(
-        title: 'Deep Learning with Syllabus (C2 Test)',
+        title: 'Deep Learning with Syllabus (Condition 2)',
         author: 'Mentor Lab',
         description: 'Condition 2 Test: Aligns syllabus and flags mentor extras in place.',
         sourceUrl: 'https://youtube.com/playlist?list=PL_c2_demo',
@@ -407,235 +467,31 @@ class _DesignSystemShowcaseScreenState
     }
   }
 
-  /// Test Condition 3: Single Long Video Description with Chapter Timestamps
-  Future<void> _testCondition3() async {
-    setState(() => _isIngesting = true);
-    HapticFeedback.lightImpact();
-
-    try {
-      const longVideoDescription = '''
-Complete 3-Hour Crash Course on Large Language Models from Scratch.
-00:00 Introduction to Tokenization & Vocabulary
-08:30 Byte-Pair Encoding (BPE) Algorithm
-24:15 Embeddings & Positional Vectors
-[48:00] Multi-Head Attention Block Implementation
-(01:15:30) Residual Connections & Pre-LayerNorm
-01:42:10 Feed-Forward SwiGLU Networks
-02:10:45 Training Dynamics & Cross-Entropy Loss
-02:45:00 Sampling & Nucleus Temperature Generation
-      ''';
-
-      final segments = TimestampParser.parseDescription(
-        longVideoDescription,
-        totalVideoDurationSeconds: 10800, // 3 hours
-      );
-
-      final items = segments.asMap().entries.map((entry) {
-        final i = entry.key;
-        final seg = entry.value;
-        return RawResourceItem(
-          title: seg.title,
-          sourceUrl: 'https://youtube.com/watch?v=long_llm&t=${seg.startSeconds}s',
-          timestampSeconds: seg.startSeconds,
-          durationSeconds: seg.durationSeconds,
-          index: i,
-        );
-      }).toList();
-
-      final resource = ExtractedResource(
-        title: 'LLM from Scratch (C3 Timestamps)',
-        author: 'Karpathy Format Lecture',
-        description: 'Condition 3 Test: Deep-linked timestamp beats from description.',
-        sourceUrl: 'https://youtube.com/watch?v=long_llm',
-        resourceType: ExtractedResourceType.singleVideoWithTimestamps,
-        items: items,
-      );
-
-      final result = await _ingestionService.ingestExtractedResource(
-        extracted: resource,
-      );
-
-      _roadmapId = result.roadmapId;
-      _roadmapTitle = result.roadmapTitle;
-      _lastIngestionSummary =
-          'Condition 3: Extracted ${result.beatsCount} deep-linked timestamp beats from description!';
-
-      await _loadDatabaseState();
-      _showToast(_lastIngestionSummary!);
-    } catch (e) {
-      _showToast('Condition 3 Error: $e');
-    } finally {
-      if (mounted) setState(() => _isIngesting = false);
-    }
-  }
-
-  /// Ingest real custom YouTube URL
+  /// Ingest real custom YouTube URL (Playlist or Single Video with Chapter Timestamps)
   Future<void> _ingestCustomUrl(String url) async {
-    if (url.trim().isEmpty) return;
+    final clean = url.trim();
+    if (clean.isEmpty) {
+      _showToast('Please paste a valid YouTube URL');
+      return;
+    }
 
     setState(() => _isIngesting = true);
     HapticFeedback.mediumImpact();
 
     try {
-      final result = await _ingestionService.ingestFromUrl(url: url.trim());
+      final result = await _ingestionService.ingestFromUrl(url: clean);
       _roadmapId = result.roadmapId;
       _roadmapTitle = result.roadmapTitle;
       _lastIngestionSummary =
-          'Custom Ingest Success: ${result.beatsCount} beats in ${result.chaptersCount} chapters!';
+          '✓ Ingested ${result.beatsCount} videos into ${result.chaptersCount} chapters in SQLite!';
+      _urlInputController.clear();
       await _loadDatabaseState();
       _showToast(_lastIngestionSummary!);
     } catch (e) {
-      _showToast('Live YouTube Ingestion Error: $e');
+      _showToast('Ingestion Error: $e');
     } finally {
       if (mounted) setState(() => _isIngesting = false);
     }
-  }
-
-  void _showCustomUrlModal() {
-    final textController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        final themeColors = RythemColors.of(context);
-        final isDark = themeColors.isDark;
-
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: GlassContainer(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'INGEST YOUTUBE CURRICULUM',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textTertiary,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, color: themeColors.textSecondary, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Paste any YouTube Playlist or single video URL with timestamps in description.',
-                  style: RythemTypography.bodyMedium.copyWith(
-                    color: themeColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: textController,
-                  style: RythemTypography.bodyLarge.copyWith(color: themeColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'https://youtube.com/playlist?list=...',
-                    hintStyle: TextStyle(color: themeColors.textTertiary),
-                    filled: true,
-                    fillColor: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: themeColors.textPrimary,
-                        width: 1.2,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'QUICK DEMO PRESETS',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 10,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _presetChip(
-                      label: 'Karpathy: Neural Nets',
-                      url: 'https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ',
-                      controller: textController,
-                    ),
-                    _presetChip(
-                      label: 'Karpathy: Let Us Build GPT',
-                      url: 'https://www.youtube.com/watch?v=kCc8FmEb1nY',
-                      controller: textController,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                GlassButton(
-                  label: 'Ingest Into SQLite',
-                  width: double.infinity,
-                  onPressed: () {
-                    final url = textController.text.trim();
-                    Navigator.pop(context);
-                    if (url.isNotEmpty) {
-                      _ingestCustomUrl(url);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _presetChip({
-    required String label,
-    required String url,
-    required TextEditingController controller,
-  }) {
-    final themeColors = RythemColors.of(context);
-    final isDark = themeColors.isDark;
-
-    return GestureDetector(
-      onTap: () {
-        controller.text = url;
-        HapticFeedback.selectionClick();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-          ),
-        ),
-        child: Text(
-          label,
-          style: RythemTypography.labelSmall.copyWith(
-            color: themeColors.textPrimary,
-            fontSize: 11,
-          ),
-        ),
-      ),
-    );
   }
 
   void _showRoadmapSelector() {
@@ -653,17 +509,26 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'STORED ROADMAPS IN SQLITE',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                  letterSpacing: 1.5,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'STORED TARGET TRACKS IN SQLITE',
+                    style: RythemTypography.labelSmall.copyWith(
+                      color: themeColors.textTertiary,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: themeColors.textSecondary, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               if (_allRoadmaps.isEmpty)
                 Text(
-                  'No roadmaps found.',
+                  'No targets found in SQLite database.',
                   style: TextStyle(color: themeColors.textSecondary),
                 )
               else
@@ -727,7 +592,7 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                     },
                   ),
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -751,6 +616,20 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
     );
   }
 
+  String _formatDuration(int seconds) {
+    if (seconds <= 0) return '10m';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) {
+      return '${h}h ${m}m';
+    } else if (m > 0) {
+      return s > 0 ? '${m}m ${s}s' : '${m}m';
+    } else {
+      return '${s}s';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeColors = RythemColors.of(context);
@@ -761,8 +640,7 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -842,7 +720,7 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Database Connection Badge & Switch Track Pill
               Row(
@@ -855,7 +733,7 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                         height: 8,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFF34C759), // Active indicator
+                          color: Color(0xFF34C759),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -913,9 +791,9 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
               ),
               const SizedBox(height: 12),
 
-              // Hero Glass Card (Real SQLite Data)
+              // Hero Glass Card (Active Target Status & Progress)
               GlassCard(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -924,50 +802,56 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            _roadmapTitle,
-                            style: RythemTypography.titleLarge.copyWith(
-                              color: themeColors.textPrimary,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _roadmapTitle,
+                                style: RythemTypography.titleLarge.copyWith(
+                                  color: themeColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _roadmapId == 'rm_demo'
+                                    ? 'Starter Target • Tap beats below to test SQLite updates'
+                                    : 'Active Target • ${_chapters.length} chapters • ${_beats.length} beats',
+                                style: RythemTypography.bodyMedium.copyWith(
+                                  color: themeColors.textTertiary,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _showRoadmapSelector,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.black.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
                               color: isDark
-                                  ? Colors.white.withOpacity(0.08)
-                                  : Colors.black.withOpacity(0.06),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isDark
-                                    ? themeColors.glassBorder
-                                    : const Color(0x14000000),
-                                width: 0.8,
-                              ),
+                                  ? themeColors.glassBorder
+                                  : const Color(0x14000000),
+                              width: 0.8,
                             ),
-                            child: Text(
-                              isDark ? 'DARK GLASS' : 'LIGHT GLASS',
-                              style: RythemTypography.labelSmall.copyWith(
-                                color: themeColors.textPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          ),
+                          child: Text(
+                            isDark ? 'DARK GLASS' : 'LIGHT GLASS',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tapping any beat writes directly to SQLite and recalculates streaks and progress ratios without clock-time.',
-                      style: RythemTypography.bodyMedium.copyWith(
-                        color: themeColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
                     // Milestone Progress Bar (No time, pure ratio)
                     Row(
@@ -994,14 +878,14 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                       height: 8,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
-                    // Flow Streak Metrics (Felt, Not Clock-Measured)
+                    // Flow Streak Metrics (Felt, Not Clock-Measured) & Target Management Actions
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: isDark
                                 ? Colors.white.withOpacity(0.06)
@@ -1031,14 +915,31 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'zero stopwatches',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            fontSize: 10,
+                        if (_allRoadmaps.length > 1)
+                          GestureDetector(
+                            onTap: _deleteCurrentRoadmap,
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 14, color: themeColors.textTertiary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Delete Target',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textTertiary,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Text(
+                            'zero stopwatches',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 10,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ],
@@ -1047,83 +948,148 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
 
               const SizedBox(height: 24),
 
-              // Ingestion Engine 3-Condition Test Harness
-              Text(
-                'INGESTION ENGINE TEST HARNESS (3 CONDITIONS)',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              if (_isIngesting)
-                GlassCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'Ingestion engine running (extracting, clustering, & persisting to SQLite)...',
-                          style: RythemTypography.bodyMedium.copyWith(
-                            color: themeColors.textPrimary,
+              // Dedicated Live YouTube Ingestion Form
+              GlassCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'INGEST YOUTUBE CURRICULUM',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textTertiary,
+                            letterSpacing: 1.5,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              else ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ingestionTestCard(
-                        conditionTag: 'CONDITION 1',
-                        title: 'Playlist & 0-Drop Cluster',
-                        description: 'Clusters flat videos into 4-8 balanced chapters.',
-                        onTap: _testCondition1,
+                        if (_isIngesting)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Paste any YouTube Playlist or video with chapter timestamps.',
+                      style: RythemTypography.bodyMedium.copyWith(
+                        color: themeColors.textSecondary,
+                        fontSize: 12,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ingestionTestCard(
-                        conditionTag: 'CONDITION 2',
-                        title: 'Syllabus & Mentor Extras',
-                        description: 'Aligns topics & tags mentor extras in place.',
-                        onTap: _testCondition2,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _urlInputController,
+                            style: RythemTypography.bodyLarge.copyWith(
+                              color: themeColors.textPrimary,
+                              fontSize: 13,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'https://youtube.com/playlist?list=...',
+                              hintStyle: TextStyle(
+                                color: themeColors.textTertiary,
+                                fontSize: 12,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.white.withOpacity(0.06)
+                                  : Colors.black.withOpacity(0.04),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: isDark
+                                      ? themeColors.glassBorder
+                                      : const Color(0x14000000),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: themeColors.textPrimary,
+                                  width: 1.2,
+                                ),
+                              ),
+                              suffixIcon: IconButton(
+                                tooltip: 'Paste from clipboard',
+                                icon: Icon(
+                                  Icons.content_paste_outlined,
+                                  size: 18,
+                                  color: themeColors.textSecondary,
+                                ),
+                                onPressed: () async {
+                                  final data = await Clipboard.getData('text/plain');
+                                  if (data?.text != null && data!.text!.isNotEmpty) {
+                                    _urlInputController.text = data.text!.trim();
+                                    HapticFeedback.selectionClick();
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        GlassButton(
+                          label: _isIngesting ? 'Ingesting...' : 'Ingest',
+                          width: 100,
+                          variant: GlassButtonVariant.primary,
+                          onPressed: _isIngesting
+                              ? null
+                              : () {
+                                  final url = _urlInputController.text.trim();
+                                  if (url.isNotEmpty) {
+                                    _ingestCustomUrl(url);
+                                  } else {
+                                    _showToast('Please paste a YouTube URL first');
+                                  }
+                                },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'QUICK 1-TAP TEST PRESETS',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 9.5,
+                        letterSpacing: 1.0,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _testPresetChip(
+                          label: 'Karpathy: 10-Video Playlist',
+                          url: 'https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ',
+                        ),
+                        _testPresetChip(
+                          label: 'Karpathy: GPT Chapters (Timestamps)',
+                          url: 'https://www.youtube.com/watch?v=kCc8FmEb1nY',
+                        ),
+                        _testPresetChip(
+                          label: 'Condition 1: Mock 16-Video 0-Drop',
+                          onTap: _testCondition1,
+                        ),
+                        _testPresetChip(
+                          label: 'Condition 2: Syllabus Matcher',
+                          onTap: _testCondition2,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ingestionTestCard(
-                        conditionTag: 'CONDITION 3',
-                        title: 'Video Timestamp Parser',
-                        description: 'Extracts deep-linked beats from descriptions.',
-                        onTap: _testCondition3,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ingestionTestCard(
-                        conditionTag: 'CUSTOM YOUTUBE',
-                        title: 'Paste Live URL',
-                        description: 'Scrape and ingest any public YouTube link.',
-                        isAction: true,
-                        onTap: _showCustomUrlModal,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
 
               const SizedBox(height: 28),
 
@@ -1132,13 +1098,14 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'CURRICULUM BEATS (${_beats.length})',
+                    'CURRICULUM TRACKER (${_beats.length} BEATS • ${_chapters.length} CHAPTERS)',
                     style: RythemTypography.labelSmall.copyWith(
                       color: themeColors.textTertiary,
+                      letterSpacing: 1.2,
                     ),
                   ),
                   Text(
-                    'Tap beat to toggle SQLite state',
+                    'Tap beat to toggle',
                     style: RythemTypography.labelSmall.copyWith(
                       color: themeColors.textTertiary,
                       fontSize: 10,
@@ -1148,120 +1115,89 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
               ),
               const SizedBox(height: 12),
 
-              // Real SQLite Beats List
-              ..._beats.map((beat) {
-                final isCompleted = beat.isCompleted;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: GlassCard(
-                    onTap: () => _toggleBeat(beat),
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
+              // Real SQLite Beats Grouped by Chapter
+              if (_chapters.isEmpty && _beats.isEmpty)
+                GlassCard(
+                  padding: const EdgeInsets.all(28),
+                  child: Center(
+                    child: Column(
                       children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isCompleted
-                                ? (isDark
-                                    ? Colors.white.withOpacity(0.12)
-                                    : Colors.black.withOpacity(0.08))
-                                : (isDark
-                                    ? Colors.white.withOpacity(0.04)
-                                    : Colors.black.withOpacity(0.03)),
-                            border: Border.all(
-                              color: isCompleted
-                                  ? (isDark
-                                      ? themeColors.glassBorderHighlight
-                                      : const Color(0x24000000))
-                                  : (isDark
-                                      ? themeColors.glassBorder
-                                      : const Color(0x12000000)),
-                              width: 1,
-                            ),
-                          ),
-                          child: Icon(
-                            isCompleted
-                                ? Icons.check
-                                : Icons.circle_outlined,
-                            color: isCompleted
-                                ? themeColors.textPrimary
-                                : themeColors.textTertiary,
-                            size: 18,
-                          ),
+                        Icon(Icons.library_music_outlined, size: 36, color: themeColors.textTertiary),
+                        const SizedBox(height: 10),
+                        Text(
+                          'No Target Track Loaded',
+                          style: RythemTypography.titleMedium.copyWith(color: themeColors.textPrimary),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      beat.title,
-                                      style: RythemTypography.titleMedium
-                                          .copyWith(
-                                        color: isCompleted
-                                            ? themeColors.textPrimary
-                                            : themeColors.textSecondary,
-                                        decoration: isCompleted
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                      ),
-                                    ),
-                                  ),
-                                  if (beat.isMentorExtra) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: isDark
-                                            ? Colors.white.withOpacity(0.12)
-                                            : Colors.black.withOpacity(0.08),
-                                        borderRadius:
-                                            BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: isDark
-                                              ? themeColors.glassBorderHighlight
-                                              : const Color(0x20000000),
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'mentor extra',
-                                        style: RythemTypography.labelSmall
-                                            .copyWith(
-                                          fontSize: 9,
-                                          color: themeColors.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isCompleted
-                                    ? 'Completed in SQLite • Logged to beat_logs'
-                                    : 'Mentor order #${beat.sortOrder + 1} • Effort weight: ${beat.effortWeight}${beat.timestampSeconds != null ? " • &t=${beat.timestampSeconds}s" : ""}',
-                                style:
-                                    RythemTypography.bodyMedium.copyWith(
-                                  fontSize: 11,
-                                  color: themeColors.textTertiary,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Paste a YouTube URL above or tap a preset to extract videos into SQLite.',
+                          textAlign: TextAlign.center,
+                          style: RythemTypography.bodyMedium.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
                   ),
-                );
-              }),
+                )
+              else
+                ..._chapters.map((chapter) {
+                  final chapterBeats = _beatsByChapter[chapter.id] ?? [];
+                  final completedInChapter = chapterBeats.where((b) => b.isCompleted).length;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Chapter Header Pill
+                        GlassContainer(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  chapter.title.toUpperCase(),
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.0,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.08)
+                                      : Colors.black.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$completedInChapter/${chapterBeats.length} beats',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    fontSize: 10,
+                                    color: themeColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Beats in Chapter
+                        ...chapterBeats.map((beat) => _buildBeatCard(beat, themeColors, isDark)),
+                      ],
+                    ),
+                  );
+                }),
 
               const SizedBox(height: 24),
 
@@ -1302,71 +1238,179 @@ Complete 3-Hour Crash Course on Large Language Models from Scratch.
     );
   }
 
-  Widget _ingestionTestCard({
-    required String conditionTag,
-    required String title,
-    required String description,
-    required VoidCallback onTap,
-    bool isAction = false,
+  Widget _buildBeatCard(BeatEntity beat, RythemThemeColors themeColors, bool isDark) {
+    final isCompleted = beat.isCompleted;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassCard(
+        onTap: () => _toggleBeat(beat),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isCompleted
+                    ? (isDark ? Colors.white.withOpacity(0.16) : Colors.black.withOpacity(0.10))
+                    : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
+                border: Border.all(
+                  color: isCompleted
+                      ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
+                      : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+                  width: 1.2,
+                ),
+              ),
+              child: Icon(
+                isCompleted ? Icons.check : Icons.circle_outlined,
+                color: isCompleted ? themeColors.textPrimary : themeColors.textTertiary,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          beat.title,
+                          style: RythemTypography.titleMedium.copyWith(
+                            fontSize: 13,
+                            color: isCompleted ? themeColors.textTertiary : themeColors.textPrimary,
+                            decoration: isCompleted ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                      ),
+                      if (beat.isMentorExtra) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            'mentor extra',
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontSize: 9,
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        '#${beat.sortOrder + 1}',
+                        style: RythemTypography.labelSmall.copyWith(
+                          fontSize: 10,
+                          color: themeColors.textTertiary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '•',
+                        style: TextStyle(fontSize: 10, color: themeColors.textTertiary),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Effort ${beat.effortWeight}',
+                        style: RythemTypography.labelSmall.copyWith(
+                          fontSize: 10,
+                          color: themeColors.textTertiary,
+                        ),
+                      ),
+                      if (beat.timestampSeconds != null && beat.timestampSeconds! > 0) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '•',
+                          style: TextStyle(fontSize: 10, color: themeColors.textTertiary),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '@${_formatDuration(beat.timestampSeconds!)}',
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 10,
+                            color: themeColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                      if (beat.sourceUrl != null && beat.sourceUrl!.isNotEmpty) ...[
+                        const Spacer(),
+                        Icon(Icons.play_circle_outline, size: 14, color: themeColors.textTertiary),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _testPresetChip({
+    required String label,
+    String? url,
+    VoidCallback? onTap,
   }) {
     final themeColors = RythemColors.of(context);
     final isDark = themeColors.isDark;
 
-    return GlassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isAction
-                      ? (isDark ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.12))
-                      : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  conditionTag,
-                  style: RythemTypography.labelSmall.copyWith(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: themeColors.textPrimary,
-                  ),
-                ),
-              ),
-              Icon(
-                isAction ? Icons.open_in_new : Icons.play_arrow_outlined,
-                size: 16,
-                color: themeColors.textSecondary,
-              ),
-            ],
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        if (url != null) {
+          _urlInputController.text = url;
+          _ingestCustomUrl(url);
+        } else if (onTap != null) {
+          onTap();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: RythemTypography.titleMedium.copyWith(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: themeColors.textPrimary,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              url != null ? Icons.play_arrow_outlined : Icons.flash_on_outlined,
+              size: 13,
+              color: themeColors.textSecondary,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            description,
-            style: RythemTypography.bodyMedium.copyWith(
-              fontSize: 10.5,
-              color: themeColors.textTertiary,
-              height: 1.25,
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: RythemTypography.labelSmall.copyWith(
+                color: themeColors.textPrimary,
+                fontSize: 10.5,
+              ),
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

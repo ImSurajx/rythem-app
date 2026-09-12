@@ -43,10 +43,12 @@ class CurriculumIngestionService {
     List<SyllabusTopic>? syllabus,
   }) async {
     try {
-      final extracted = await _youtubeClient.extractPlaylist(url).catchError((_) {
-        // If playlist fails or URL is a video, fallback to extractVideo
-        return _youtubeClient.extractVideo(url);
-      });
+      final extracted = await _youtubeClient.extractResource(url);
+      if (extracted.items.isEmpty) {
+        throw Exception(
+          'No videos or chapters could be extracted from "$url". Please verify the URL and ensure the playlist or video is public.',
+        );
+      }
 
       return await ingestExtractedResource(
         extracted: extracted,

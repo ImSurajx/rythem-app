@@ -111,14 +111,20 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                 ),
                 const SizedBox(width: 8),
               ],
-              Text(
-                widget.label,
-                style: widget.variant == GlassButtonVariant.primary
-                    ? RythemTypography.button.copyWith(color: primaryTextColor)
-                    : RythemTypography.button.copyWith(color: secondaryTextColor),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: widget.variant == GlassButtonVariant.primary
+                      ? RythemTypography.button.copyWith(color: primaryTextColor)
+                      : RythemTypography.button.copyWith(color: secondaryTextColor),
+                ),
               ),
             ],
           );
+
+    final horizontalPadding = (widget.width != null && widget.width! < 120) ? 12.0 : 24.0;
 
     Widget buttonBody;
     if (widget.variant == GlassButtonVariant.primary) {
@@ -126,7 +132,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
         width: widget.width,
         height: widget.height,
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         decoration: BoxDecoration(
           color: isEnabled
               ? themeColors.actionPrimary
@@ -159,7 +165,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
         borderColor: widget.variant == GlassButtonVariant.secondary
             ? (isDark ? themeColors.glassBorderHighlight : const Color(0x20000000))
             : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: Center(child: content),
       );
     }
