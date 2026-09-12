@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'core/theme/colors.dart';
 import 'core/theme/theme.dart';
 import 'core/theme/typography.dart';
@@ -8,22 +9,47 @@ void main() {
   runApp(const RythemApp());
 }
 
-class RythemApp extends StatelessWidget {
+class RythemApp extends StatefulWidget {
   const RythemApp({super.key});
+
+  @override
+  State<RythemApp> createState() => _RythemAppState();
+}
+
+class _RythemAppState extends State<RythemApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  void _toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rythem',
       debugShowCheckedModeBanner: false,
-      theme: RythemTheme.darkTheme,
-      home: const DesignSystemShowcaseScreen(),
+      theme: RythemTheme.lightTheme,
+      darkTheme: RythemTheme.darkTheme,
+      themeMode: _themeMode,
+      home: DesignSystemShowcaseScreen(
+        isDark: _themeMode == ThemeMode.dark,
+        onToggleTheme: _toggleTheme,
+      ),
     );
   }
 }
 
 class DesignSystemShowcaseScreen extends StatefulWidget {
-  const DesignSystemShowcaseScreen({super.key});
+  final bool isDark;
+  final VoidCallback onToggleTheme;
+
+  const DesignSystemShowcaseScreen({
+    super.key,
+    required this.isDark,
+    required this.onToggleTheme,
+  });
 
   @override
   State<DesignSystemShowcaseScreen> createState() => _DesignSystemShowcaseScreenState();
@@ -47,8 +73,11 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = RythemColors.of(context);
+    final isDark = themeColors.isDark;
+
     return Scaffold(
-      backgroundColor: RythemColors.background,
+      backgroundColor: themeColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -56,32 +85,61 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Brand Header
-              Center(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(
-                      'RYTHEM',
-                      style: RythemTypography.brandLogo,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'beats over clocks • felt, not measured',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: RythemColors.textTertiary,
+              // Top Bar with Brand & Theme Mode Toggle
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(width: 44), // balance centering
+                  Column(
+                    children: [
+                      const SizedBox(height: 6),
+                      Text(
+                        'RYTHEM',
+                        style: RythemTypography.brandLogo.copyWith(
+                          color: themeColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'beats over clocks • felt, not measured',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Dark / Light Glass Toggle
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      widget.onToggleTheme();
+                    },
+                    child: GlassContainer(
+                      width: 44,
+                      height: 44,
+                      borderRadius: BorderRadius.circular(22),
+                      padding: EdgeInsets.zero,
+                      child: Center(
+                        child: Icon(
+                          isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                          color: themeColors.textPrimary,
+                          size: 20,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 32),
 
               // Theme Spec Section
               Text(
-                'MONOCHROME LIQUID GLASS',
-                style: RythemTypography.labelSmall,
+                isDark ? 'MONOCHROME LIQUID GLASS (DARK)' : 'APPLE CONTROL CENTER GLASS (LIGHT)',
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textTertiary,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -96,22 +154,28 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                       children: [
                         Text(
                           'Flow Milestone',
-                          style: RythemTypography.titleLarge,
+                          style: RythemTypography.titleLarge.copyWith(
+                            color: themeColors.textPrimary,
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.black.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: RythemColors.glassBorder,
+                              color: isDark
+                                  ? themeColors.glassBorder
+                                  : const Color(0x14000000),
                               width: 0.8,
                             ),
                           ),
                           child: Text(
-                            'STAGE 2',
+                            isDark ? 'DARK GLASS' : 'LIGHT GLASS',
                             style: RythemTypography.labelSmall.copyWith(
-                              color: Colors.white,
+                              color: themeColors.textPrimary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -121,7 +185,9 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                     const SizedBox(height: 10),
                     Text(
                       'Progress is measured strictly in discrete beats and milestone bars. Zero clocks, zero stopwatches, zero minutes.',
-                      style: RythemTypography.bodyMedium,
+                      style: RythemTypography.bodyMedium.copyWith(
+                        color: themeColors.textSecondary,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -132,13 +198,14 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                         Text(
                           '$_activeBeats of $_totalBeats beats completed',
                           style: RythemTypography.labelSmall.copyWith(
-                            color: RythemColors.textSecondary,
+                            color: themeColors.textSecondary,
                           ),
                         ),
                         Text(
                           'In Flow',
                           style: RythemTypography.labelSmall.copyWith(
-                            color: Colors.white,
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -157,7 +224,9 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
               // Interactive Beat Tile Cards
               Text(
                 'TACTILE BEAT TILES',
-                style: RythemTypography.labelSmall,
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textTertiary,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -170,15 +239,19 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.1),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.10)
+                            : Colors.black.withOpacity(0.07),
                         border: Border.all(
-                          color: RythemColors.glassBorderHighlight,
+                          color: isDark
+                              ? themeColors.glassBorderHighlight
+                              : const Color(0x20000000),
                           width: 1,
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.check,
-                        color: Colors.white,
+                        color: themeColors.textPrimary,
                         size: 18,
                       ),
                     ),
@@ -189,23 +262,25 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                         children: [
                           Text(
                             'Interactive Milestone Beat',
-                            style: RythemTypography.titleMedium,
+                            style: RythemTypography.titleMedium.copyWith(
+                              color: themeColors.textPrimary,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Tap to advance milestone progress',
                             style: RythemTypography.bodyMedium.copyWith(
                               fontSize: 12,
-                              color: RythemColors.textTertiary,
+                              color: themeColors.textTertiary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward_ios,
                       size: 14,
-                      color: RythemColors.textTertiary,
+                      color: themeColors.textTertiary,
                     ),
                   ],
                 ),
@@ -221,15 +296,19 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.04),
+                        color: isDark
+                            ? Colors.white.withOpacity(0.04)
+                            : Colors.black.withOpacity(0.03),
                         border: Border.all(
-                          color: RythemColors.glassBorder,
+                          color: isDark
+                              ? themeColors.glassBorder
+                              : const Color(0x12000000),
                           width: 1,
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.circle_outlined,
-                        color: RythemColors.textTertiary,
+                        color: themeColors.textTertiary,
                         size: 18,
                       ),
                     ),
@@ -241,7 +320,7 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                           Text(
                             'Pending Beat',
                             style: RythemTypography.titleMedium.copyWith(
-                              color: RythemColors.textSecondary,
+                              color: themeColors.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -249,7 +328,7 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
                             'Queued in mentor chronological order',
                             style: RythemTypography.bodyMedium.copyWith(
                               fontSize: 12,
-                              color: RythemColors.textTertiary,
+                              color: themeColors.textTertiary,
                             ),
                           ),
                         ],
@@ -264,7 +343,9 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
               // Button Variants Section
               Text(
                 'TACTILE BUTTON CONTROLS',
-                style: RythemTypography.labelSmall,
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textTertiary,
+                ),
               ),
               const SizedBox(height: 12),
 

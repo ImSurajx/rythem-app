@@ -29,4 +29,28 @@ class RythemTheme {
       highlightColor: Colors.transparent,
     );
   }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: RythemColors.lightBackground,
+      colorScheme: const ColorScheme.light(
+        primary: RythemColors.lightActionPrimary,
+        onPrimary: RythemColors.lightActionOnPrimary,
+        surface: RythemColors.lightSurface,
+        onSurface: RythemColors.lightTextPrimary,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        centerTitle: false,
+      ),
+      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme),
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+    );
+  }
 }

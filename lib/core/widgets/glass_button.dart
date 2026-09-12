@@ -78,6 +78,11 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null && !widget.isLoading;
+    final themeColors = RythemColors.of(context);
+    final isDark = themeColors.isDark;
+
+    final primaryTextColor = themeColors.actionOnPrimary;
+    final secondaryTextColor = themeColors.textPrimary;
 
     Widget content = widget.isLoading
         ? SizedBox(
@@ -87,8 +92,8 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(
                 widget.variant == GlassButtonVariant.primary
-                    ? RythemColors.actionOnPrimary
-                    : RythemColors.actionPrimary,
+                    ? primaryTextColor
+                    : secondaryTextColor,
               ),
             ),
           )
@@ -101,16 +106,16 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                   widget.icon,
                   size: 18,
                   color: widget.variant == GlassButtonVariant.primary
-                      ? RythemColors.actionOnPrimary
-                      : RythemColors.actionPrimary,
+                      ? primaryTextColor
+                      : secondaryTextColor,
                 ),
                 const SizedBox(width: 8),
               ],
               Text(
                 widget.label,
                 style: widget.variant == GlassButtonVariant.primary
-                    ? RythemTypography.button
-                    : RythemTypography.button.copyWith(color: RythemColors.textPrimary),
+                    ? RythemTypography.button.copyWith(color: primaryTextColor)
+                    : RythemTypography.button.copyWith(color: secondaryTextColor),
               ),
             ],
           );
@@ -123,15 +128,25 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
-          color: isEnabled ? RythemColors.actionPrimary : RythemColors.actionPrimary.withOpacity(0.35),
+          color: isEnabled
+              ? themeColors.actionPrimary
+              : themeColors.actionPrimary.withOpacity(0.35),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withOpacity(0.12),
-              blurRadius: 18,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: content,
       );
@@ -142,8 +157,8 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
         borderRadius: BorderRadius.circular(16),
         opacity: widget.variant == GlassButtonVariant.secondary ? 0.12 : 0.04,
         borderColor: widget.variant == GlassButtonVariant.secondary
-            ? RythemColors.glassBorderHighlight
-            : RythemColors.glassBorder,
+            ? (isDark ? themeColors.glassBorderHighlight : const Color(0x20000000))
+            : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(child: content),
       );
