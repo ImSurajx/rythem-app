@@ -85,27 +85,54 @@ class _DesignSystemShowcaseScreenState extends State<DesignSystemShowcaseScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Bar with Brand & Theme Mode Toggle
+              // Top Bar with Brand Logo & Theme Mode Toggle
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(width: 44), // balance centering
-                  Column(
+                  Row(
                     children: [
-                      const SizedBox(height: 6),
-                      Text(
-                        'RYTHEM',
-                        style: RythemTypography.brandLogo.copyWith(
-                          color: themeColors.textPrimary,
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.12)
+                                  : Colors.black.withOpacity(0.08),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icons/logo.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'beats over clocks • felt, not measured',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textTertiary,
-                        ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RYTHEM',
+                            style: RythemTypography.brandLogo.copyWith(
+                              color: themeColors.textPrimary,
+                              letterSpacing: 4.0,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'beats over clocks • felt, not measured',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textTertiary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
