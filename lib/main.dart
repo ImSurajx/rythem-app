@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/database/database.dart';
 import 'core/ingestion/ingestion.dart';
+import 'core/pacing/pacing.dart';
 import 'core/theme/colors.dart';
 import 'core/theme/theme.dart';
 import 'core/theme/typography.dart';
@@ -72,6 +73,11 @@ class _DesignSystemShowcaseScreenState
     chapterRepo: _chapterRepo,
     beatRepo: _beatRepo,
   );
+  late final _pacingService = PacingService(
+    roadmapRepo: _roadmapRepo,
+    beatRepo: _beatRepo,
+    beatLogRepo: _beatLogRepo,
+  );
 
   final _urlInputController = TextEditingController();
   StreamSubscription<DatabaseEvent>? _eventSubscription;
@@ -88,6 +94,9 @@ class _DesignSystemShowcaseScreenState
   List<RoadmapEntity> _allRoadmaps = [];
   bool _isIngesting = false;
   String? _lastIngestionSummary;
+
+  PacingBudget? _pacingBudget;
+  DateTime? _simulatedNow;
 
   @override
   void initState() {
@@ -246,6 +255,7 @@ class _DesignSystemShowcaseScreenState
           _completedBeats = 0;
           _totalBeats = 0;
           _progressRatio = 0.0;
+          _pacingBudget = null;
         });
       }
       return;
@@ -276,6 +286,17 @@ class _DesignSystemShowcaseScreenState
       beatsByChapter[b.chapterId]!.add(b);
     }
 
+    // Compute live deterministic pacing budget
+    PacingBudget? budget;
+    try {
+      budget = await _pacingService.computePacingBudget(
+        _roadmapId,
+        simulatedNow: _simulatedNow,
+      );
+    } catch (e) {
+      debugPrint('Notice: Pacing budget calculation: $e');
+    }
+
     if (mounted) {
       setState(() {
         _allRoadmaps = allRoadmaps;
@@ -286,6 +307,7 @@ class _DesignSystemShowcaseScreenState
         _totalBeats = progress.totalBeats > 0 ? progress.totalBeats : beats.length;
         _progressRatio = _totalBeats > 0 ? (_completedBeats / _totalBeats) : 0.0;
         _currentStreak = streak > 0 ? streak : 1;
+        _pacingBudget = budget;
       });
     }
   }
@@ -311,6 +333,7 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _resetAndReseedDatabase() async {
     await _roadmapRepo.deleteRoadmap(_roadmapId);
+    _simulatedNow = null;
     await _seedSampleData();
     await _loadDatabaseState();
     HapticFeedback.mediumImpact();
@@ -328,6 +351,7 @@ class _DesignSystemShowcaseScreenState
       _roadmapId = '';
       _roadmapTitle = 'No Active Target';
     }
+    _simulatedNow = null;
     await _loadDatabaseState();
     HapticFeedback.mediumImpact();
     _showToast('Target deleted from SQLite');
@@ -337,12 +361,13 @@ class _DesignSystemShowcaseScreenState
     setState(() {
       _roadmapId = rm.id;
       _roadmapTitle = rm.title;
+      _simulatedNow = null;
     });
     _loadDatabaseState();
     HapticFeedback.selectionClick();
   }
 
-  // --- Ingestion Test Cases & Live URL Processing ---
+  // --- Ingestion Live URL Processing ---
 
   /// Test Condition 1: Blank Roadmap + YouTube Playlist (Zero-Drop Guarantee & Chapter Clustering)
   Future<void> _testCondition1() async {
@@ -375,6 +400,7 @@ class _DesignSystemShowcaseScreenState
 
       _roadmapId = result.roadmapId;
       _roadmapTitle = result.roadmapTitle;
+      _simulatedNow = null;
       _lastIngestionSummary =
           'Condition 1: Ingested ${result.beatsCount} beats into ${result.chaptersCount} chapters (100% zero drop)!';
 
@@ -455,6 +481,7 @@ class _DesignSystemShowcaseScreenState
 
       _roadmapId = result.roadmapId;
       _roadmapTitle = result.roadmapTitle;
+      _simulatedNow = null;
       _lastIngestionSummary =
           'Condition 2: Aligned syllabus. ${result.mentorExtraCount} mentor extras tagged in place!';
 
@@ -482,6 +509,7 @@ class _DesignSystemShowcaseScreenState
       final result = await _ingestionService.ingestFromUrl(url: clean);
       _roadmapId = result.roadmapId;
       _roadmapTitle = result.roadmapTitle;
+      _simulatedNow = null;
       _lastIngestionSummary =
           '✓ Ingested ${result.beatsCount} videos into ${result.chaptersCount} chapters in SQLite!';
       _urlInputController.clear();
@@ -492,6 +520,215 @@ class _DesignSystemShowcaseScreenState
     } finally {
       if (mounted) setState(() => _isIngesting = false);
     }
+  }
+
+  // --- Pacing Engine Simulation Handlers ---
+
+  Future<void> _simulateMissedDay() async {
+    _simulatedNow = (_simulatedNow ?? DateTime.now()).add(const Duration(days: 1));
+    await _loadDatabaseState();
+    HapticFeedback.mediumImpact();
+    final remainingDays = _pacingBudget?.daysLeft ?? 0;
+    final newBudget = _pacingBudget?.formattedBudget ?? "0.0";
+    _showToast('Simulated +1 Day Missed: Backlog diluted across $remainingDays days ($newBudget effort/day)');
+  }
+
+  Future<void> _completeTodaysQuota() async {
+    if (_pacingBudget != null && _pacingBudget!.todaysBeats.isNotEmpty) {
+      for (final b in _pacingBudget!.todaysBeats) {
+        await _beatRepo.toggleBeatCompletion(b.id, isCompleted: true);
+      }
+      await _loadDatabaseState();
+      HapticFeedback.mediumImpact();
+      _showToast("✓ Completed today's mission! Tomorrow's budget recalculated.");
+    } else {
+      _showToast('No pending beats assigned for today.');
+    }
+  }
+
+  Future<void> _simulate3DayLag() async {
+    _simulatedNow = (_simulatedNow ?? DateTime.now()).add(const Duration(days: 3));
+    await _loadDatabaseState();
+    HapticFeedback.heavyImpact();
+    _showAdaptivePacingModal();
+  }
+
+  Future<void> _resetSimulationClock() async {
+    _simulatedNow = null;
+    await _loadDatabaseState();
+    HapticFeedback.lightImpact();
+    _showToast('Simulation clock reset to current time.');
+  }
+
+  void _showAdaptivePacingModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final themeColors = RythemColors.of(context);
+        final isDark = themeColors.isDark;
+
+        return GlassContainer(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'ADAPTIVE PACING DECISION',
+                    style: RythemTypography.labelSmall.copyWith(
+                      color: themeColors.textTertiary,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: themeColors.textSecondary, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sustained lag detected (3+ days). Pure-math adaptation offers 4 non-punitive options to recover rhythm without shame.',
+                style: RythemTypography.bodyMedium.copyWith(
+                  color: themeColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _adaptiveOptionCard(
+                title: 'Push Target Date (+7 Days)',
+                description: 'Extends completion date smoothly diluting remaining effort across more days.',
+                icon: Icons.calendar_today_outlined,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pacingService.applyPacingDecision(
+                    _roadmapId,
+                    const PacingDecision.extendDate(7),
+                  );
+                  await _loadDatabaseState();
+                  _showToast('Target completion date extended by 7 days.');
+                },
+                themeColors: themeColors,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 10),
+              _adaptiveOptionCard(
+                title: 'Trim to Core Must-Do Beats',
+                description: 'Focus effort on foundational beats while keeping extras tagged in place.',
+                icon: Icons.filter_list_outlined,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pacingService.applyPacingDecision(
+                    _roadmapId,
+                    const PacingDecision.trimCore(),
+                  );
+                  await _loadDatabaseState();
+                  _showToast('Focus trimmed to core curriculum beats.');
+                },
+                themeColors: themeColors,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 10),
+              _adaptiveOptionCard(
+                title: 'Borrow Slack from Other Tracks',
+                description: 'Rebalance daily effort from tracks that are currently ahead of pace.',
+                icon: Icons.swap_calls_outlined,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pacingService.applyPacingDecision(
+                    _roadmapId,
+                    const PacingDecision.borrow('secondary'),
+                  );
+                  await _loadDatabaseState();
+                  _showToast('Slack borrowed from secondary tracks.');
+                },
+                themeColors: themeColors,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 10),
+              _adaptiveOptionCard(
+                title: 'Accept & Continue',
+                description: 'Keep existing dates and absorb pace naturally across remaining timeline.',
+                icon: Icons.check_circle_outline,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pacingService.applyPacingDecision(
+                    _roadmapId,
+                    const PacingDecision.accept(),
+                  );
+                  await _loadDatabaseState();
+                  _showToast('Accepted current pace.');
+                },
+                themeColors: themeColors,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _adaptiveOptionCard({
+    required String title,
+    required String description,
+    required IconData icon,
+    required VoidCallback onTap,
+    required RythemThemeColors themeColors,
+    required bool isDark,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: themeColors.textPrimary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: RythemTypography.titleMedium.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: themeColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: RythemTypography.bodyMedium.copyWith(
+                      fontSize: 11,
+                      color: themeColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showRoadmapSelector() {
@@ -948,6 +1185,186 @@ class _DesignSystemShowcaseScreenState
 
               const SizedBox(height: 24),
 
+              // Pacing Engine Section (Pure Math - Zero Stopwatches)
+              Text(
+                'PACING ENGINE (PURE MATH • ZERO STOPWATCHES)',
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textTertiary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              GlassCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.tune_outlined, size: 16, color: themeColors.textPrimary),
+                            const SizedBox(width: 8),
+                            Text(
+                              'DAILY EFFORT ALLOCATION',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_simulatedNow != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
+                              ),
+                            ),
+                            child: Text(
+                              'SIMULATED: ${_simulatedNow!.month}/${_simulatedNow!.day}',
+                              style: RythemTypography.labelSmall.copyWith(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: themeColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 3 Stat metrics
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _pacingMetricTile(
+                            title: "TODAY'S BUDGET",
+                            value: '${_pacingBudget?.formattedBudget ?? "0.0"} effort',
+                            subtitle: 'remaining ÷ days',
+                            themeColors: themeColors,
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _pacingMetricTile(
+                            title: 'DAYS LEFT',
+                            value: '${_pacingBudget?.daysLeft ?? 0} days',
+                            subtitle: 'calendar window',
+                            themeColors: themeColors,
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _pacingMetricTile(
+                            title: 'PENDING EFFORT',
+                            value: _pacingBudget?.remainingEffort.toStringAsFixed(1) ?? '0.0',
+                            subtitle: 'uncompleted sum',
+                            themeColors: themeColors,
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Pacing Status Banner
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: (_pacingBudget?.isRoadmapCompleted ?? false)
+                                    ? const Color(0xFF34C759)
+                                    : (_pacingBudget?.isDailyQuotaCompleted ?? false)
+                                        ? const Color(0xFF34C759)
+                                        : (_pacingBudget?.isSustainedLag ?? false)
+                                            ? const Color(0xFFFF9500)
+                                            : themeColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              (_pacingBudget?.isRoadmapCompleted ?? false)
+                                  ? 'TRACK COMPLETED'
+                                  : (_pacingBudget?.isDailyQuotaCompleted ?? false)
+                                      ? "TODAY'S QUOTA COMPLETE"
+                                      : (_pacingBudget?.isSustainedLag ?? false)
+                                          ? 'SUSTAINED LAG (${_pacingBudget!.lagStreakDays} DAYS)'
+                                          : "TODAY'S MISSION: ${_pacingBudget?.todaysBeats.length ?? 0} BEATS ASSIGNED",
+                              style: RythemTypography.labelSmall.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.8,
+                                color: themeColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'felt, not measured',
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 10,
+                            color: themeColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Interactive Math Simulation Controls
+                    Text(
+                      'ON-DEVICE PACING MATH SIMULATORS',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 9.5,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _testPresetChip(
+                          label: '+1 Missed Day (Dilution)',
+                          onTap: _simulateMissedDay,
+                        ),
+                        _testPresetChip(
+                          label: "Complete Today's Mission",
+                          onTap: _completeTodaysQuota,
+                        ),
+                        _testPresetChip(
+                          label: 'Simulate 3-Day Lag (Adaptation)',
+                          onTap: _simulate3DayLag,
+                        ),
+                        if (_simulatedNow != null)
+                          _testPresetChip(
+                            label: 'Reset Clock',
+                            onTap: _resetSimulationClock,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // Dedicated Live YouTube Ingestion Form
               GlassCard(
                 padding: const EdgeInsets.all(20),
@@ -1040,7 +1457,7 @@ class _DesignSystemShowcaseScreenState
                         const SizedBox(width: 10),
                         GlassButton(
                           label: _isIngesting ? 'Ingesting...' : 'Ingest',
-                          width: 100,
+                          width: 90,
                           variant: GlassButtonVariant.primary,
                           onPressed: _isIngesting
                               ? null
@@ -1238,8 +1655,60 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
+  Widget _pacingMetricTile({
+    required String title,
+    required String value,
+    required String subtitle,
+    required RythemThemeColors themeColors,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textTertiary,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: RythemTypography.titleMedium.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: themeColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: RythemTypography.labelSmall.copyWith(
+              fontSize: 8.5,
+              color: themeColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBeatCard(BeatEntity beat, RythemThemeColors themeColors, bool isDark) {
     final isCompleted = beat.isCompleted;
+    final isAssignedToday = _pacingBudget != null &&
+        _pacingBudget!.todaysBeats.any((b) => b.id == beat.id);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1260,13 +1729,19 @@ class _DesignSystemShowcaseScreenState
                 border: Border.all(
                   color: isCompleted
                       ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
-                      : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-                  width: 1.2,
+                      : isAssignedToday
+                          ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
+                          : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+                  width: isAssignedToday ? 1.5 : 1.2,
                 ),
               ),
               child: Icon(
                 isCompleted ? Icons.check : Icons.circle_outlined,
-                color: isCompleted ? themeColors.textPrimary : themeColors.textTertiary,
+                color: isCompleted
+                    ? themeColors.textPrimary
+                    : isAssignedToday
+                        ? themeColors.textPrimary
+                        : themeColors.textTertiary,
                 size: 16,
               ),
             ),
@@ -1288,6 +1763,28 @@ class _DesignSystemShowcaseScreenState
                           ),
                         ),
                       ),
+                      if (isAssignedToday && !isCompleted) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.16) : Colors.black.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            "today's mission",
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontSize: 9,
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (beat.isMentorExtra) ...[
                         const SizedBox(width: 6),
                         Container(
