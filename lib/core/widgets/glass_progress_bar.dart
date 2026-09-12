@@ -19,14 +19,16 @@ class GlassProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final clampedProgress = progress.clamp(0.0, 1.0);
     final effectiveRadius = borderRadius ?? BorderRadius.circular(height / 2);
+    final themeColors = RythemColors.of(context);
+    final isDark = themeColors.isDark;
 
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: RythemColors.surfaceElevated,
+        color: themeColors.progressTrack,
         borderRadius: effectiveRadius,
         border: Border.all(
-          color: RythemColors.glassBorder,
+          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
           width: 0.8,
         ),
       ),
@@ -41,12 +43,14 @@ class GlassProgressBar extends StatelessWidget {
                 width: fillWidth,
                 height: height,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: themeColors.progressFill,
                   borderRadius: effectiveRadius,
                   boxShadow: showGlow && clampedProgress > 0
                       ? [
                           BoxShadow(
-                            color: Colors.white.withOpacity(0.35),
+                            color: isDark
+                                ? Colors.white.withOpacity(0.35)
+                                : Colors.black.withOpacity(0.15),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),

@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated GitHub Actions CI pipeline building and releasing `rythem.apk`.
 - Monochrome liquid glass design system tokens (pure pitch black `#000000`, translucent glass whites, hairline borders).
 - Reusable liquid glass component library (`GlassContainer`, `GlassCard`, `GlassButton`, `GlassProgressBar`).
-- Fluid typography system utilizing Inter with rhythmic hierarchy and beat-oriented semantics.
+- Fluid typography system powered by Google Fonts Poppins with rhythmic hierarchy and beat-oriented semantics.
 - Tactile micro-interactions (press-scale dynamics, smooth specular highlights, and system haptics).
 - Interactive design system showcase demonstrating beat progression, cards, and liquid buttons.
+- Apple Control Center style light frosted glass theme on soft ambient platinum canvas with diffuse depth and specular highlights.
+- Interactive Dark/Light glass theme switcher toggle with tactile haptic feedback.

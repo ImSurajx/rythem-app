@@ -33,6 +33,28 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveRadius = borderRadius ?? BorderRadius.circular(20);
+    final themeColors = RythemColors.of(context);
+    final isDark = themeColors.isDark;
+
+    // Dark mode: translucent liquid glass with deep ambient shadow
+    // Light mode (Apple Control Center): frosted white plate with soft diffuse shadow & top specular highlight
+    final resolvedBg = backgroundColor ?? (isDark ? Colors.white.withOpacity(opacity) : Colors.white.withOpacity(0.72));
+    final resolvedBorderColor = borderColor ?? (isDark ? themeColors.glassBorder : const Color(0x18000000));
+    final resolvedShadow = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.45),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ]
+        : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ];
 
     return Container(
       width: width,
@@ -40,13 +62,7 @@ class GlassContainer extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(
         borderRadius: effectiveRadius,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.45),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: resolvedShadow,
       ),
       child: ClipRRect(
         borderRadius: effectiveRadius,
@@ -55,10 +71,10 @@ class GlassContainer extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: backgroundColor ?? Colors.white.withOpacity(opacity),
+              color: resolvedBg,
               borderRadius: effectiveRadius,
               border: Border.all(
-                color: borderColor ?? RythemColors.glassBorder,
+                color: resolvedBorderColor,
                 width: 1.0,
               ),
               gradient: borderGradient,
