@@ -1,0 +1,11 @@
+export 'models/extracted_beat.dart';
+export 'models/extracted_chapter.dart';
+export 'models/extracted_resource.dart';
+export 'models/ingestion_result.dart';
+export 'models/syllabus_topic.dart';
+export 'parsers/chapter_clusterer.dart';
+export 'parsers/effort_weight_calculator.dart';
+export 'parsers/timestamp_parser.dart';
+export 'services/curriculum_ingestion_service.dart';
+export 'services/syllabus_matcher_service.dart';
+export 'services/youtube_extractor_service.dart';
