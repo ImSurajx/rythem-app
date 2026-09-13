@@ -52,6 +52,30 @@ void main() {
       }
     });
 
+    test('ChapterClusterer with explicit sections preserves 100% of videos', () {
+      final items = <RawResourceItem>[];
+      for (int m = 1; m <= 5; m++) {
+        for (int v = 1; v <= 15; v++) {
+          items.add(
+            RawResourceItem(
+              title: 'Module $m: Part $v - Advanced Concept',
+              sourceUrl: 'https://youtube.com/watch?v=m${m}_v$v',
+              durationSeconds: 600,
+              index: items.length,
+            ),
+          );
+        }
+      }
+
+      final chapters = ChapterClusterer.cluster(items, roadmapTitle: 'Modular Course');
+      final totalBeats = chapters.fold<int>(0, (sum, ch) => sum + ch.beats.length);
+      expect(totalBeats, items.length);
+      expect(chapters.length, 5);
+      for (final ch in chapters) {
+        expect(ch.beats.length, 15);
+      }
+    });
+
     test('Syllabus parser and database ingestion supports 300+ topics dynamically', () async {
       const topicCount = 320;
       final lines = StringBuffer();
