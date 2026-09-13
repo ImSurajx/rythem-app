@@ -26,10 +26,12 @@ class ExploreScreen extends StatefulWidget {
     required String category,
     required DateTime targetDate,
     String? resourceUrl,
+    String? syllabusText,
   }) onCreateTrack;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
   final Future<void> Function(String roadmapId, String resourceUrl)? onAttachResource;
+  final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
 
   const ExploreScreen({
     super.key,
@@ -41,6 +43,7 @@ class ExploreScreen extends StatefulWidget {
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
     this.onAttachResource,
+    this.onAttachResourceToBeat,
   });
 
   @override
@@ -72,6 +75,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           onArchiveRoadmap: widget.onArchiveRoadmap,
           onRestoreRoadmap: widget.onRestoreRoadmap,
           onAttachResource: widget.onAttachResource,
+          onAttachResourceToBeat: widget.onAttachResourceToBeat,
         ),
       ),
     );
@@ -156,12 +160,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: TextField(
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val.trim()),
-              style: TextStyle(color: themeColors.textPrimary, fontSize: 13.5),
+              textAlignVertical: TextAlignVertical.center,
+              style: TextStyle(
+                color: themeColors.textPrimary,
+                fontSize: 13.5,
+                height: 1.2,
+              ),
               decoration: InputDecoration(
+                isDense: true,
                 hintText: 'Search tracks by title or category...',
-                hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 13),
-                prefixIcon: Icon(Icons.search_rounded,
-                    color: themeColors.textSecondary, size: 20),
+                hintStyle: TextStyle(
+                  color: themeColors.textTertiary,
+                  fontSize: 13,
+                  height: 1.2,
+                  fontWeight: FontWeight.w400,
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: themeColors.textSecondary,
+                  size: 20,
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 46,
+                  minHeight: 46,
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: Icon(Icons.clear,
@@ -172,8 +194,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         },
                       )
                     : null,
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 42,
+                  minHeight: 42,
+                ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               ),
             ),
           ),
@@ -244,11 +270,10 @@ class _RoadmapExploreCard extends StatelessWidget {
         ? roadmap.description!
         : 'CURRICULUM TRACK';
 
-    return GestureDetector(
+    return GlassCard(
       onTap: onTap,
-      child: GlassCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(
+      padding: const EdgeInsets.all(18),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Title & Category Badge
@@ -318,8 +343,7 @@ class _RoadmapExploreCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 

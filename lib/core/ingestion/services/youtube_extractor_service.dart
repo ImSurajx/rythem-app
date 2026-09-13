@@ -286,7 +286,7 @@ class YoutubeExtractorService implements IYoutubeClient {
         }
 
         parseNodes(jsonMap);
-      } while (continuationToken != null && continuationToken!.isNotEmpty && items.length < 500);
+      } while (continuationToken != null && continuationToken!.isNotEmpty);
     } catch (e) {
       debugPrint('Error parsing Innertube playlist: $e');
     }

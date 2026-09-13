@@ -163,10 +163,32 @@ class DatabaseService {
     }
   }
 
+  Future<void> initInMemoryForTesting() async {
+    await close();
+    final inMemoryDb = await openDatabase(
+      inMemoryDatabasePath,
+      version: _databaseVersion,
+      onConfigure: _onConfigure,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
+    setDatabaseForTesting(inMemoryDb);
+  }
+
   Future<void> deleteDatabaseFile() async {
     await close();
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _databaseName);
     await deleteDatabase(path);
   }
+
+  Future<void> resetDatabase() async {
+    if (_db != null && _db!.path == inMemoryDatabasePath) {
+      await initInMemoryForTesting();
+    } else {
+      await deleteDatabaseFile();
+    }
+  }
 }
+
+

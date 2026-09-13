@@ -109,6 +109,7 @@ void main() {
                 required String category,
                 required DateTime targetDate,
                 String? resourceUrl,
+                String? syllabusText,
               }) async {},
             ),
           ),
@@ -143,6 +144,7 @@ void main() {
                 required String category,
                 required DateTime targetDate,
                 String? resourceUrl,
+                String? syllabusText,
               }) async {},
             ),
           ),
@@ -186,6 +188,7 @@ void main() {
                         required String category,
                         required DateTime targetDate,
                         String? resourceUrl,
+                        String? syllabusText,
                       }) async {
                         createdTitle = title;
                         createdCategory = category;

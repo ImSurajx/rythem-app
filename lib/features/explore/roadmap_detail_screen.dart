@@ -29,6 +29,7 @@ class RoadmapDetailScreen extends StatefulWidget {
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
   final Future<void> Function(String roadmapId, String resourceUrl)? onAttachResource;
+  final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
 
   const RoadmapDetailScreen({
     super.key,
@@ -39,6 +40,7 @@ class RoadmapDetailScreen extends StatefulWidget {
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
     this.onAttachResource,
+    this.onAttachResourceToBeat,
   });
 
   @override
@@ -219,6 +221,133 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     );
   }
 
+  void _showAttachResourceToBeatDialog(BeatEntity beat) {
+    final controller = TextEditingController(text: beat.sourceUrl ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+        final themeColors = isDark ? RythemColors.dark : RythemColors.light;
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xF0181818) : const Color(0xF5FFFFFF),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorder : const Color(0x20000000),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'ATTACH RESOURCE TO TOPIC',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, size: 20, color: themeColors.textSecondary),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  beat.title,
+                  style: RythemTypography.titleSmall.copyWith(
+                    color: themeColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Link a YouTube video, playlist, timestamp link, or documentation specifically to this topic.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 11.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'https://youtube.com/watch?v=...&t=120s or resource link',
+                    hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+                    filled: true,
+                    fillColor: isDark
+                        ? Colors.white.withOpacity(0.06)
+                        : Colors.black.withOpacity(0.04),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: themeColors.glassBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: themeColors.glassBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark ? themeColors.glassBorderHighlight : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    label: 'Attach to Topic',
+                    icon: Icons.link_rounded,
+                    onPressed: () {
+                      final url = controller.text.trim();
+                      if (url.isNotEmpty) {
+                        Navigator.pop(ctx);
+                        widget.onAttachResourceToBeat?.call(beat.id, url);
+                        setState(() {
+                          final idx = _currentBeats.indexWhere((b) => b.id == beat.id);
+                          if (idx != -1) {
+                            _currentBeats[idx] = _currentBeats[idx].copyWith(sourceUrl: url);
+                          }
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Attached resource to "${beat.title}"'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _openFocusSession(BeatEntity targetBeat) {
     HapticFeedback.lightImpact();
     final chapter = widget.chapters.where((c) => c.id == targetBeat.chapterId).firstOrNull;
@@ -245,10 +374,15 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
 
     final completedCount = _currentBeats.where((b) => b.isCompleted).length;
     final totalCount = _currentBeats.length;
+    final remainingCount = totalCount - completedCount;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
+    final linkedCount = _currentBeats.where((b) => b.sourceUrl?.isNotEmpty == true).length;
+    final unlinkedCount = totalCount - linkedCount;
     final category = _currentRoadmap.description?.isNotEmpty == true
         ? _currentRoadmap.description!
         : 'CURRICULUM TRACK';
+
+    final nextPendingBeat = _currentBeats.where((b) => !b.isCompleted).firstOrNull;
 
     // Group beats by chapter
     final chapterBeatsMap = <String, List<BeatEntity>>{};
@@ -267,9 +401,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top App Bar
+            // Top App Bar with Prominent "Add Resource" Button (Requirement 5)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -286,11 +420,23 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                       letterSpacing: 1.2,
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.archive_outlined,
-                        color: themeColors.textTertiary, size: 20),
-                    tooltip: 'Archive Track',
-                    onPressed: _handleArchive,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GlassButton(
+                        label: 'Add Resource',
+                        icon: Icons.link_rounded,
+                        variant: GlassButtonVariant.primary,
+                        onPressed: _showAttachResourceDialog,
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: Icon(Icons.archive_outlined,
+                            color: themeColors.textTertiary, size: 20),
+                        tooltip: 'Archive Track',
+                        onPressed: _handleArchive,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -304,7 +450,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Roadmap Header Card
+                    // Roadmap Header & Stats Card
                     GlassCard(
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -346,7 +492,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
 
                           // Progress Bar & Beat Ratio
                           Row(
@@ -375,7 +521,85 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Attach Resource Action
+                          // Status Breakdown Chips (Requirement 2 & 10)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'REMAINING',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: themeColors.textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$remainingCount topics',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: themeColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'RESOURCES',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: themeColors.textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: themeColors.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Attach Resource Action Button
                           Row(
                             children: [
                               Expanded(
@@ -391,14 +615,79 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    // "Up Next" Topic Highlight (Requirement 2)
+                    if (nextPendingBeat != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
+                              ),
+                              child: Icon(
+                                Icons.play_arrow_rounded,
+                                size: 18,
+                                color: themeColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'UP NEXT',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: themeColors.textTertiary,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Current Focus: ${nextPendingBeat.title}',
+                                    style: RythemTypography.titleSmall.copyWith(
+                                      color: themeColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GlassButton(
+                              label: 'Start',
+                              variant: GlassButtonVariant.secondary,
+                              onPressed: () => _openFocusSession(nextPendingBeat),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     // Chapters Section Header
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'CHAPTERS & CURRICULUM FLOW',
+                          'SYLLABUS & TOPIC FLOW',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontWeight: FontWeight.w700,
@@ -406,7 +695,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                         ),
                         Text(
-                          '${widget.chapters.length} Chapters',
+                          '${widget.chapters.length} Chapters • $totalCount Topics',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontSize: 10,
@@ -416,13 +705,13 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Chapter Accordion List (First chapter open by default)
+                    // Chapter Accordion List with per-topic round (+) buttons
                     if (widget.chapters.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(28),
                         child: Center(
                           child: Text(
-                            'No chapters found in this track.\nAttach a YouTube resource or add modules.',
+                            'No topics found in this track.\nAttach a YouTube resource or import a syllabus outline.',
                             style: RythemTypography.bodySmall.copyWith(
                               color: themeColors.textTertiary,
                             ),
@@ -442,6 +731,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           initialExpanded: isFirstChapter,
                           onBeatToggled: _handleBeatToggle,
                           onBeatTapped: _openFocusSession,
+                          onAttachResource: _showAttachResourceToBeatDialog,
                           onFlagBeat: (beat) {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },

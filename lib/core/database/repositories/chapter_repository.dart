@@ -67,4 +67,13 @@ class ChapterRepository {
       whereArgs: [id],
     );
   }
+
+  Future<void> deleteChaptersByRoadmapId(String roadmapId) async {
+    final db = await _db;
+    await db.delete(
+      DatabaseTables.chapters,
+      where: '${ChapterColumns.roadmapId} = ?',
+      whereArgs: [roadmapId],
+    );
+  }
 }

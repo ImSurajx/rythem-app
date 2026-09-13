@@ -8,8 +8,10 @@ import 'core/theme/colors.dart';
 import 'core/theme/theme.dart';
 import 'core/theme/typography.dart';
 import 'core/widgets/widgets.dart';
+import 'core/ingestion/parsers/syllabus_parser.dart';
 import 'features/flow/flow_screen.dart';
 import 'features/explore/explore_screen.dart';
+import 'features/explore/roadmap_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -820,6 +822,28 @@ class _DesignSystemShowcaseScreenState
       onSwitchRoadmap: _showRoadmapSelector,
       onBeatToggled: _setBeatCompletion,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
+      onOpenRoadmapDetail: _openRoadmapDetail,
+    );
+  }
+
+  void _openRoadmapDetail(RoadmapEntity roadmap) {
+    HapticFeedback.lightImpact();
+    final chapters = _chaptersByRoadmap[roadmap.id] ?? [];
+    final beats = _beatsByRoadmap[roadmap.id] ?? [];
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RoadmapDetailScreen(
+          roadmap: roadmap,
+          chapters: chapters,
+          beats: beats,
+          onBeatToggled: _setBeatCompletion,
+          onArchiveRoadmap: _handleArchiveRoadmap,
+          onRestoreRoadmap: _handleRestoreRoadmap,
+          onAttachResource: _handleAttachResource,
+          onAttachResourceToBeat: _handleAttachResourceToBeat,
+        ),
+      ),
     );
   }
 
@@ -828,8 +852,18 @@ class _DesignSystemShowcaseScreenState
     required String category,
     required DateTime targetDate,
     String? resourceUrl,
+    String? syllabusText,
   }) async {
-    if (resourceUrl != null && resourceUrl.isNotEmpty) {
+    if (syllabusText != null && syllabusText.trim().isNotEmpty) {
+      final parsed = SyllabusParser.parse(syllabusText, defaultTitle: title);
+      await _ingestionService.ingestFromSyllabus(
+        title: title,
+        category: category,
+        targetDate: targetDate,
+        syllabus: parsed,
+        resourceUrl: resourceUrl,
+      );
+    } else if (resourceUrl != null && resourceUrl.isNotEmpty) {
       await _ingestionService.ingestFromUrl(
         url: resourceUrl,
         customRoadmapTitle: title,
@@ -887,15 +921,25 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _handleAttachResource(String roadmapId, String resourceUrl) async {
     try {
-      final rm = _allRoadmaps.where((r) => r.id == roadmapId).firstOrNull;
-      await _ingestionService.ingestFromUrl(
-        url: resourceUrl,
-        customRoadmapTitle: rm?.title,
-        customDescription: rm?.description,
+      await _ingestionService.attachResourceToRoadmap(
+        roadmapId: roadmapId,
+        resourceUrl: resourceUrl,
       );
       await _loadDatabaseState();
     } catch (e) {
       debugPrint('Error attaching resource: $e');
+    }
+  }
+
+  Future<void> _handleAttachResourceToBeat(String beatId, String resourceUrl) async {
+    try {
+      await _ingestionService.attachResourceToBeat(
+        beatId: beatId,
+        resourceUrl: resourceUrl,
+      );
+      await _loadDatabaseState();
+    } catch (e) {
+      debugPrint('Error attaching resource to beat: $e');
     }
   }
 
@@ -909,6 +953,7 @@ class _DesignSystemShowcaseScreenState
       onArchiveRoadmap: _handleArchiveRoadmap,
       onRestoreRoadmap: _handleRestoreRoadmap,
       onAttachResource: _handleAttachResource,
+      onAttachResourceToBeat: _handleAttachResourceToBeat,
     );
   }
 

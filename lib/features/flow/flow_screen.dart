@@ -32,6 +32,7 @@ class FlowScreen extends StatefulWidget {
   final VoidCallback onSwitchRoadmap;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final VoidCallback? onExploreTracks;
+  final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
 
   const FlowScreen({
     super.key,
@@ -47,6 +48,7 @@ class FlowScreen extends StatefulWidget {
     required this.onSwitchRoadmap,
     required this.onBeatToggled,
     this.onExploreTracks,
+    this.onOpenRoadmapDetail,
   });
 
   @override
@@ -332,6 +334,9 @@ class _FlowScreenState extends State<FlowScreen> {
                 isDark: isDark,
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
+                onOpenDetail: widget.onOpenRoadmapDetail != null
+                    ? () => widget.onOpenRoadmapDetail!(rm)
+                    : null,
               );
             }),
         ],
@@ -416,6 +421,7 @@ class _TrackTodoListCard extends StatelessWidget {
   final bool isDark;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat) onOpenFocusSession;
+  final VoidCallback? onOpenDetail;
 
   const _TrackTodoListCard({
     required this.roadmap,
@@ -427,6 +433,7 @@ class _TrackTodoListCard extends StatelessWidget {
     required this.isDark,
     required this.onBeatToggled,
     required this.onOpenFocusSession,
+    this.onOpenDetail,
   });
 
   @override
@@ -451,28 +458,43 @@ class _TrackTodoListCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Track Header with title, progress, and focus launcher
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        roadmap.title,
-                        style: RythemTypography.titleMedium.copyWith(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+          // Interactive Track Header with title, progress, and detail opener
+          InkWell(
+            onTap: onOpenDetail,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                roadmap.title,
+                                style: RythemTypography.titleMedium.copyWith(
+                                  color: themeColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: themeColors.textTertiary,
+                            ),
+                          ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -523,6 +545,7 @@ class _TrackTodoListCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
 
           Divider(
             height: 1,
