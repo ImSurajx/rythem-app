@@ -9,6 +9,7 @@ import 'core/theme/theme.dart';
 import 'core/theme/typography.dart';
 import 'core/widgets/widgets.dart';
 import 'features/flow/flow_screen.dart';
+import 'features/explore/explore_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,24 +81,17 @@ class _DesignSystemShowcaseScreenState
     beatLogRepo: _beatLogRepo,
   );
 
-  final _urlInputController = TextEditingController();
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
   String _roadmapTitle = 'Deep Learning & Neural Flow';
   String _roadmapId = 'rm_demo';
-  int _completedBeats = 3;
-  int _totalBeats = 7;
-  double _progressRatio = 3 / 7;
   int _currentStreak = 1;
   List<ChapterEntity> _chapters = [];
   List<BeatEntity> _beats = [];
-  Map<String, List<BeatEntity>> _beatsByChapter = {};
   Map<String, List<ChapterEntity>> _chaptersByRoadmap = {};
   Map<String, List<BeatEntity>> _beatsByRoadmap = {};
   Map<String, PacingBudget> _budgetsByRoadmap = {};
   List<RoadmapEntity> _allRoadmaps = [];
-  bool _isIngesting = false;
-  String? _lastIngestionSummary;
 
   PacingBudget? _pacingBudget;
   DateTime? _simulatedNow;
@@ -121,7 +115,6 @@ class _DesignSystemShowcaseScreenState
   @override
   void dispose() {
     _eventSubscription?.cancel();
-    _urlInputController.dispose();
     super.dispose();
   }
 
@@ -262,10 +255,6 @@ class _DesignSystemShowcaseScreenState
           _roadmapTitle = 'No Active Target';
           _chapters = [];
           _beats = [];
-          _beatsByChapter = {};
-          _completedBeats = 0;
-          _totalBeats = 0;
-          _progressRatio = 0.0;
           _pacingBudget = null;
         });
       }
@@ -304,7 +293,6 @@ class _DesignSystemShowcaseScreenState
 
     final chapters = chaptersByRoadmap[_roadmapId] ?? [];
     final beats = beatsByRoadmap[_roadmapId] ?? [];
-    final progress = await _roadmapRepo.getRoadmapProgress(_roadmapId);
     final streak = await _beatLogRepo.getCurrentStreak();
 
     // Group beats by their chapter
@@ -326,13 +314,9 @@ class _DesignSystemShowcaseScreenState
         _allRoadmaps = allRoadmaps;
         _chapters = chapters;
         _beats = beats;
-        _beatsByChapter = beatsByChapter;
         _chaptersByRoadmap = chaptersByRoadmap;
         _beatsByRoadmap = beatsByRoadmap;
         _budgetsByRoadmap = budgetsByRoadmap;
-        _completedBeats = progress.completedBeats;
-        _totalBeats = progress.totalBeats > 0 ? progress.totalBeats : beats.length;
-        _progressRatio = _totalBeats > 0 ? (_completedBeats / _totalBeats) : 0.0;
         _currentStreak = streak > 0 ? streak : 1;
         _pacingBudget = budget;
       });
@@ -353,11 +337,6 @@ class _DesignSystemShowcaseScreenState
     await _loadDatabaseState();
   }
 
-  Future<void> _toggleBeat(BeatEntity beat) async {
-    await _beatRepo.toggleBeatCompletion(beat.id, isCompleted: !beat.isCompleted);
-    await _loadDatabaseState();
-  }
-
   Future<void> _resetAndReseedDatabase() async {
     await _roadmapRepo.deleteRoadmap(_roadmapId);
     _simulatedNow = null;
@@ -365,23 +344,6 @@ class _DesignSystemShowcaseScreenState
     await _loadDatabaseState();
     HapticFeedback.mediumImpact();
     _showToast('Reset database to demo starter track');
-  }
-
-  Future<void> _deleteCurrentRoadmap() async {
-    if (_roadmapId.isEmpty) return;
-    await _roadmapRepo.deleteRoadmap(_roadmapId);
-    final remaining = await _roadmapRepo.getActiveRoadmaps();
-    if (remaining.isNotEmpty) {
-      _roadmapId = remaining.first.id;
-      _roadmapTitle = remaining.first.title;
-    } else {
-      _roadmapId = '';
-      _roadmapTitle = 'No Active Target';
-    }
-    _simulatedNow = null;
-    await _loadDatabaseState();
-    HapticFeedback.mediumImpact();
-    _showToast('Target deleted from SQLite');
   }
 
   void _switchRoadmap(RoadmapEntity rm) {
@@ -392,161 +354,6 @@ class _DesignSystemShowcaseScreenState
     });
     _loadDatabaseState();
     HapticFeedback.selectionClick();
-  }
-
-  // --- Ingestion Live URL Processing ---
-
-  /// Test Condition 1: Blank Roadmap + YouTube Playlist (Zero-Drop Guarantee & Chapter Clustering)
-  Future<void> _testCondition1() async {
-    setState(() => _isIngesting = true);
-    HapticFeedback.lightImpact();
-
-    try {
-      final items = List.generate(
-        16,
-        (i) => RawResourceItem(
-          title: 'Lesson ${i + 1}: Modern Neural Systems Part ${i + 1}',
-          sourceUrl: 'https://youtube.com/watch?v=mock_$i',
-          durationSeconds: 720 + (i * 45),
-          index: i,
-        ),
-      );
-
-      final resource = ExtractedResource(
-        title: 'Neural Networks Masterclass (Condition 1)',
-        author: 'AI Research Mentor',
-        description: 'Condition 1 Test: 16 flat videos clustered with zero drop.',
-        sourceUrl: 'https://youtube.com/playlist?list=PL_c1_demo',
-        resourceType: ExtractedResourceType.playlist,
-        items: items,
-      );
-
-      final result = await _ingestionService.ingestExtractedResource(
-        extracted: resource,
-      );
-
-      _roadmapId = result.roadmapId;
-      _roadmapTitle = result.roadmapTitle;
-      _simulatedNow = null;
-      _lastIngestionSummary =
-          'Condition 1: Ingested ${result.beatsCount} beats into ${result.chaptersCount} chapters (100% zero drop)!';
-
-      await _loadDatabaseState();
-      _showToast(_lastIngestionSummary!);
-    } catch (e) {
-      _showToast('Condition 1 Error: $e');
-    } finally {
-      if (mounted) setState(() => _isIngesting = false);
-    }
-  }
-
-  /// Test Condition 2: Existing Syllabus Outline + Mentor Playlist (Mentor Flow & Extras Tagging)
-  Future<void> _testCondition2() async {
-    setState(() => _isIngesting = true);
-    HapticFeedback.lightImpact();
-
-    try {
-      final items = [
-        const RawResourceItem(
-          title: 'Matrix Operations & Linear Algebra Foundations',
-          sourceUrl: 'https://youtube.com/watch?v=m1',
-          durationSeconds: 900,
-          index: 0,
-        ),
-        const RawResourceItem(
-          title: 'Calculus, Gradients & Automatic Differentiation',
-          sourceUrl: 'https://youtube.com/watch?v=m2',
-          durationSeconds: 1200,
-          index: 1,
-        ),
-        const RawResourceItem(
-          title: 'Mentor Special: Vim & NeoVim Mastery for AI Engineers',
-          sourceUrl: 'https://youtube.com/watch?v=m3',
-          durationSeconds: 1500,
-          index: 2,
-        ),
-        const RawResourceItem(
-          title: 'Convolutional Neural Networks & Feature Maps',
-          sourceUrl: 'https://youtube.com/watch?v=m4',
-          durationSeconds: 1100,
-          index: 3,
-        ),
-        const RawResourceItem(
-          title: 'Mentor Special: Profiling PyTorch CUDA Memory Spikes',
-          sourceUrl: 'https://youtube.com/watch?v=m5',
-          durationSeconds: 1400,
-          index: 4,
-        ),
-        const RawResourceItem(
-          title: 'Transformer Architecture & Self-Attention Mechanics',
-          sourceUrl: 'https://youtube.com/watch?v=m6',
-          durationSeconds: 1800,
-          index: 5,
-        ),
-      ];
-
-      final resource = ExtractedResource(
-        title: 'Deep Learning with Syllabus (Condition 2)',
-        author: 'Mentor Lab',
-        description: 'Condition 2 Test: Aligns syllabus and flags mentor extras in place.',
-        sourceUrl: 'https://youtube.com/playlist?list=PL_c2_demo',
-        resourceType: ExtractedResourceType.playlist,
-        items: items,
-      );
-
-      final syllabus = [
-        const SyllabusTopic(id: 's_linalg', title: 'Linear Algebra and Matrix Theory'),
-        const SyllabusTopic(id: 's_calc', title: 'Calculus and Automatic Differentiation'),
-        const SyllabusTopic(id: 's_cnn', title: 'Convolutional Neural Networks (CNNs)'),
-        const SyllabusTopic(id: 's_transformer', title: 'Self-Attention and Transformer Models'),
-      ];
-
-      final result = await _ingestionService.ingestExtractedResource(
-        extracted: resource,
-        syllabus: syllabus,
-      );
-
-      _roadmapId = result.roadmapId;
-      _roadmapTitle = result.roadmapTitle;
-      _simulatedNow = null;
-      _lastIngestionSummary =
-          'Condition 2: Aligned syllabus. ${result.mentorExtraCount} mentor extras tagged in place!';
-
-      await _loadDatabaseState();
-      _showToast(_lastIngestionSummary!);
-    } catch (e) {
-      _showToast('Condition 2 Error: $e');
-    } finally {
-      if (mounted) setState(() => _isIngesting = false);
-    }
-  }
-
-  /// Ingest real custom YouTube URL (Playlist or Single Video with Chapter Timestamps)
-  Future<void> _ingestCustomUrl(String url) async {
-    final clean = url.trim();
-    if (clean.isEmpty) {
-      _showToast('Please paste a valid YouTube URL');
-      return;
-    }
-
-    setState(() => _isIngesting = true);
-    HapticFeedback.mediumImpact();
-
-    try {
-      final result = await _ingestionService.ingestFromUrl(url: clean);
-      _roadmapId = result.roadmapId;
-      _roadmapTitle = result.roadmapTitle;
-      _simulatedNow = null;
-      _lastIngestionSummary =
-          '✓ Ingested ${result.beatsCount} videos into ${result.chaptersCount} chapters in SQLite!';
-      _urlInputController.clear();
-      await _loadDatabaseState();
-      _showToast(_lastIngestionSummary!);
-    } catch (e) {
-      _showToast('Ingestion Error: $e');
-    } finally {
-      if (mounted) setState(() => _isIngesting = false);
-    }
   }
 
   // --- Pacing Engine Simulation Handlers ---
@@ -880,20 +687,6 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  String _formatDuration(int seconds) {
-    if (seconds <= 0) return '10m';
-    final h = seconds ~/ 3600;
-    final m = (seconds % 3600) ~/ 60;
-    final s = seconds % 60;
-    if (h > 0) {
-      return '${h}h ${m}m';
-    } else if (m > 0) {
-      return s > 0 ? '${m}m ${s}s' : '${m}m';
-    } else {
-      return '${s}s';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeColors = RythemColors.of(context);
@@ -1030,561 +823,93 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
+  Future<void> _handleCreateTrack({
+    required String title,
+    required String category,
+    required DateTime targetDate,
+    String? resourceUrl,
+  }) async {
+    if (resourceUrl != null && resourceUrl.isNotEmpty) {
+      await _ingestionService.ingestFromUrl(
+        url: resourceUrl,
+        customRoadmapTitle: title,
+        customDescription: category,
+        targetCompletionDate: targetDate,
+      );
+    } else {
+      final id = 'rm_${DateTime.now().millisecondsSinceEpoch}';
+      final rm = RoadmapEntity(
+        id: id,
+        title: title,
+        description: category,
+        targetCompletionDate: targetDate,
+        status: 'active',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await _roadmapRepo.createRoadmap(rm);
+      final ch = ChapterEntity(
+        id: 'ch_${id}_1',
+        roadmapId: id,
+        title: 'Core Foundations',
+        sortOrder: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await _chapterRepo.createChapter(ch);
+      final beat = BeatEntity(
+        id: 'beat_${id}_1',
+        chapterId: ch.id,
+        roadmapId: id,
+        title: 'Initial Orientation',
+        effortWeight: 1.0,
+        sortOrder: 0,
+        isCompleted: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await _beatRepo.createBeat(beat);
+    }
+    await _loadDatabaseState();
+  }
+
+  Future<void> _handleArchiveRoadmap(RoadmapEntity roadmap) async {
+    final updated = roadmap.copyWith(status: 'archived', updatedAt: DateTime.now());
+    await _roadmapRepo.updateRoadmap(updated);
+    await _loadDatabaseState();
+  }
+
+  Future<void> _handleRestoreRoadmap(RoadmapEntity roadmap) async {
+    final updated = roadmap.copyWith(status: 'active', updatedAt: DateTime.now());
+    await _roadmapRepo.updateRoadmap(updated);
+    await _loadDatabaseState();
+  }
+
+  Future<void> _handleAttachResource(String roadmapId, String resourceUrl) async {
+    try {
+      final rm = _allRoadmaps.where((r) => r.id == roadmapId).firstOrNull;
+      await _ingestionService.ingestFromUrl(
+        url: resourceUrl,
+        customRoadmapTitle: rm?.title,
+        customDescription: rm?.description,
+      );
+      await _loadDatabaseState();
+    } catch (e) {
+      debugPrint('Error attaching resource: $e');
+    }
+  }
+
   Widget _buildExploreTab(RythemThemeColors themeColors, bool isDark) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Database Connection Badge & Switch Track Pill
-          Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF34C759),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'SQLITE READY • PACING ENGINE ACTIVE',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textTertiary,
-                          fontSize: 10,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_allRoadmaps.length > 1)
-                    GestureDetector(
-                      onTap: _showRoadmapSelector,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.swap_horiz, size: 14, color: themeColors.textSecondary),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Switch Track (${_allRoadmaps.length})',
-                              style: RythemTypography.labelSmall.copyWith(
-                                fontSize: 10,
-                                color: themeColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Theme Spec Section
-              Text(
-                isDark
-                    ? 'MONOCHROME LIQUID GLASS (DARK)'
-                    : 'APPLE CONTROL CENTER GLASS (LIGHT)',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Hero Glass Card (Active Target Status & Progress)
-              GlassCard(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _roadmapTitle,
-                                style: RythemTypography.titleLarge.copyWith(
-                                  color: themeColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _roadmapId == 'rm_demo'
-                                    ? 'Starter Target • Tap beats below to test SQLite updates'
-                                    : 'Active Target • ${_chapters.length} chapters • ${_beats.length} beats',
-                                style: RythemTypography.bodyMedium.copyWith(
-                                  color: themeColors.textTertiary,
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.08)
-                                : Colors.black.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isDark
-                                  ? themeColors.glassBorder
-                                  : const Color(0x14000000),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            isDark ? 'DARK GLASS' : 'LIGHT GLASS',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Milestone Progress Bar (No time, pure ratio)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '$_completedBeats of $_totalBeats beats completed',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textSecondary,
-                          ),
-                        ),
-                        Text(
-                          '${(_progressRatio * 100).toInt()}%',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    GlassProgressBar(
-                      progress: _progressRatio,
-                      height: 8,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Flow Streak Metrics (Felt, Not Clock-Measured) & Today's Budget Pill
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.06)
-                                : Colors.black.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isDark
-                                  ? themeColors.glassBorder
-                                  : const Color(0x14000000),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.offline_bolt_outlined,
-                                size: 14,
-                                color: themeColors.textPrimary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Flow Streak: $_currentStreak Day${_currentStreak == 1 ? '' : 's'}',
-                                style: RythemTypography.labelSmall.copyWith(
-                                  color: themeColors.textPrimary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.06)
-                                : Colors.black.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isDark
-                                  ? themeColors.glassBorder
-                                  : const Color(0x14000000),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.tune_outlined,
-                                size: 13,
-                                color: themeColors.textPrimary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Today's Budget: ${_pacingBudget?.formattedBudget ?? '0.0'} effort",
-                                style: RythemTypography.labelSmall.copyWith(
-                                  color: themeColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_allRoadmaps.length > 1)
-                          GestureDetector(
-                            onTap: _deleteCurrentRoadmap,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.delete_outline, size: 14, color: themeColors.textTertiary),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Delete Target',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    color: themeColors.textTertiary,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          Text(
-                            'zero stopwatches',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textTertiary,
-                              fontSize: 10,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Dedicated Live YouTube Ingestion Form
-              GlassCard(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'INGEST YOUTUBE CURRICULUM',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        if (_isIngesting)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Paste any YouTube Playlist or video with chapter timestamps.',
-                      style: RythemTypography.bodyMedium.copyWith(
-                        color: themeColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _urlInputController,
-                            style: RythemTypography.bodyLarge.copyWith(
-                              color: themeColors.textPrimary,
-                              fontSize: 13,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'https://youtube.com/playlist?list=...',
-                              hintStyle: TextStyle(
-                                color: themeColors.textTertiary,
-                                fontSize: 12,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              filled: true,
-                              fillColor: isDark
-                                  ? Colors.white.withOpacity(0.06)
-                                  : Colors.black.withOpacity(0.04),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: isDark
-                                      ? themeColors.glassBorder
-                                      : const Color(0x14000000),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: themeColors.textPrimary,
-                                  width: 1.2,
-                                ),
-                              ),
-                              suffixIcon: IconButton(
-                                tooltip: 'Paste from clipboard',
-                                icon: Icon(
-                                  Icons.content_paste_outlined,
-                                  size: 18,
-                                  color: themeColors.textSecondary,
-                                ),
-                                onPressed: () async {
-                                  final data = await Clipboard.getData('text/plain');
-                                  if (data?.text != null && data!.text!.isNotEmpty) {
-                                    _urlInputController.text = data.text!.trim();
-                                    HapticFeedback.selectionClick();
-                                  }
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        GlassButton(
-                          label: _isIngesting ? 'Ingesting...' : 'Ingest',
-                          width: 90,
-                          variant: GlassButtonVariant.primary,
-                          onPressed: _isIngesting
-                              ? null
-                              : () {
-                                  final url = _urlInputController.text.trim();
-                                  if (url.isNotEmpty) {
-                                    _ingestCustomUrl(url);
-                                  } else {
-                                    _showToast('Please paste a YouTube URL first');
-                                  }
-                                },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'QUICK 1-TAP TEST PRESETS',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textTertiary,
-                        fontSize: 9.5,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _testPresetChip(
-                          label: 'Karpathy: 10-Video Playlist',
-                          url: 'https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ',
-                        ),
-                        _testPresetChip(
-                          label: 'Karpathy: GPT Chapters (Timestamps)',
-                          url: 'https://www.youtube.com/watch?v=kCc8FmEb1nY',
-                        ),
-                        _testPresetChip(
-                          label: 'Condition 1: Mock 16-Video 0-Drop',
-                          onTap: _testCondition1,
-                        ),
-                        _testPresetChip(
-                          label: 'Condition 2: Syllabus Matcher',
-                          onTap: _testCondition2,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // Active Chapter & Beats Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'CURRICULUM TRACKER (${_beats.length} BEATS • ${_chapters.length} CHAPTERS)',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textTertiary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  Text(
-                    'Tap beat to toggle',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textTertiary,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Real SQLite Beats Grouped by Chapter
-              if (_chapters.isEmpty && _beats.isEmpty)
-                GlassCard(
-                  padding: const EdgeInsets.all(28),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.library_music_outlined, size: 36, color: themeColors.textTertiary),
-                        const SizedBox(height: 10),
-                        Text(
-                          'No Target Track Loaded',
-                          style: RythemTypography.titleMedium.copyWith(color: themeColors.textPrimary),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Paste a YouTube URL above or tap a preset to extract videos into SQLite.',
-                          textAlign: TextAlign.center,
-                          style: RythemTypography.bodyMedium.copyWith(
-                            color: themeColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                ..._chapters.map((chapter) {
-                  final chapterBeats = _beatsByChapter[chapter.id] ?? [];
-                  final completedInChapter = chapterBeats.where((b) => b.isCompleted).length;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Chapter Header Pill
-                        GlassContainer(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          borderRadius: BorderRadius.circular(14),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  chapter.title.toUpperCase(),
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    color: themeColors.textPrimary,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.0,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.white.withOpacity(0.08)
-                                      : Colors.black.withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '$completedInChapter/${chapterBeats.length} beats',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    fontSize: 10,
-                                    color: themeColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Beats in Chapter
-                        ...chapterBeats.map((beat) => _buildBeatCard(beat, themeColors, isDark)),
-                      ],
-                    ),
-                  );
-                }),
-
-              const SizedBox(height: 24),
-
-              // Button Controls Section
-              Text(
-                'SQLITE MUTATION CONTROLS',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: GlassButton(
-                      label: 'Advance Beat',
-                      variant: GlassButtonVariant.primary,
-                      onPressed: _advanceNextBeat,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GlassButton(
-                      label: 'Reseed DB',
-                      variant: GlassButtonVariant.secondary,
-                      onPressed: _resetAndReseedDatabase,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 40),
-            ],
-          ),
-        );
+    return ExploreScreen(
+      roadmaps: _allRoadmaps,
+      chaptersByRoadmap: _chaptersByRoadmap,
+      beatsByRoadmap: _beatsByRoadmap,
+      onBeatToggled: _setBeatCompletion,
+      onCreateTrack: _handleCreateTrack,
+      onArchiveRoadmap: _handleArchiveRoadmap,
+      onRestoreRoadmap: _handleRestoreRoadmap,
+      onAttachResource: _handleAttachResource,
+    );
   }
 
   Widget _buildMetricsTab(RythemThemeColors themeColors, bool isDark) {
@@ -2053,167 +1378,9 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  Widget _buildBeatCard(BeatEntity beat, RythemThemeColors themeColors, bool isDark) {
-    final isCompleted = beat.isCompleted;
-    final isAssignedToday = _pacingBudget != null &&
-        _pacingBudget!.todaysBeats.any((b) => b.id == beat.id);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: GlassCard(
-        onTap: () => _toggleBeat(beat),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCompleted
-                    ? (isDark ? Colors.white.withOpacity(0.16) : Colors.black.withOpacity(0.10))
-                    : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
-                border: Border.all(
-                  color: isCompleted
-                      ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
-                      : isAssignedToday
-                          ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
-                          : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-                  width: isAssignedToday ? 1.5 : 1.2,
-                ),
-              ),
-              child: Icon(
-                isCompleted ? Icons.check : Icons.circle_outlined,
-                color: isCompleted
-                    ? themeColors.textPrimary
-                    : isAssignedToday
-                        ? themeColors.textPrimary
-                        : themeColors.textTertiary,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          beat.title,
-                          style: RythemTypography.titleMedium.copyWith(
-                            fontSize: 13,
-                            color: isCompleted ? themeColors.textTertiary : themeColors.textPrimary,
-                            decoration: isCompleted ? TextDecoration.lineThrough : null,
-                          ),
-                        ),
-                      ),
-                      if (isAssignedToday && !isCompleted) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.16) : Colors.black.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            "today's mission",
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 9,
-                              color: themeColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (beat.isMentorExtra) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            'mentor extra',
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 9,
-                              color: themeColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        '#${beat.sortOrder + 1}',
-                        style: RythemTypography.labelSmall.copyWith(
-                          fontSize: 10,
-                          color: themeColors.textTertiary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '•',
-                        style: TextStyle(fontSize: 10, color: themeColors.textTertiary),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Effort ${beat.effortWeight}',
-                        style: RythemTypography.labelSmall.copyWith(
-                          fontSize: 10,
-                          color: themeColors.textTertiary,
-                        ),
-                      ),
-                      if (beat.timestampSeconds != null && beat.timestampSeconds! > 0) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          '•',
-                          style: TextStyle(fontSize: 10, color: themeColors.textTertiary),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '@${_formatDuration(beat.timestampSeconds!)}',
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 10,
-                            color: themeColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                      if (beat.sourceUrl != null && beat.sourceUrl!.isNotEmpty) ...[
-                        const Spacer(),
-                        Icon(Icons.play_circle_outline, size: 14, color: themeColors.textTertiary),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _testPresetChip({
     required String label,
-    String? url,
     VoidCallback? onTap,
   }) {
     final themeColors = RythemColors.of(context);
@@ -2222,10 +1389,7 @@ class _DesignSystemShowcaseScreenState
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        if (url != null) {
-          _urlInputController.text = url;
-          _ingestCustomUrl(url);
-        } else if (onTap != null) {
+        if (onTap != null) {
           onTap();
         }
       },
@@ -2242,7 +1406,7 @@ class _DesignSystemShowcaseScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              url != null ? Icons.play_arrow_outlined : Icons.flash_on_outlined,
+              Icons.flash_on_outlined,
               size: 13,
               color: themeColors.textSecondary,
             ),
