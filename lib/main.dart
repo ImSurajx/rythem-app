@@ -900,6 +900,7 @@ class _DesignSystemShowcaseScreenState
       await _loadDatabaseState();
     } catch (e) {
       debugPrint('Error attaching resource: $e');
+      rethrow;
     }
   }
 
@@ -912,6 +913,7 @@ class _DesignSystemShowcaseScreenState
       await _loadDatabaseState();
     } catch (e) {
       debugPrint('Error attaching resource to beat: $e');
+      rethrow;
     }
   }
 
