@@ -17,6 +17,7 @@ class ChapterAccordion extends StatefulWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat) onBeatTapped;
   final void Function(BeatEntity beat)? onFlagBeat;
+  final void Function(BeatEntity beat)? onAttachResource;
 
   const ChapterAccordion({
     super.key,
@@ -26,6 +27,7 @@ class ChapterAccordion extends StatefulWidget {
     required this.onBeatToggled,
     required this.onBeatTapped,
     this.onFlagBeat,
+    this.onAttachResource,
   });
 
   @override
@@ -179,6 +181,9 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               onFlag: widget.onFlagBeat != null
                                   ? () => widget.onFlagBeat!(beat)
                                   : null,
+                              onAttachResource: widget.onAttachResource != null
+                                  ? () => widget.onAttachResource!(beat)
+                                  : null,
                             );
                           },
                         ),
@@ -203,6 +208,7 @@ class _AccordionBeatTile extends StatelessWidget {
   final ValueChanged<bool> onToggle;
   final VoidCallback onTap;
   final VoidCallback? onFlag;
+  final VoidCallback? onAttachResource;
 
   const _AccordionBeatTile({
     required this.beat,
@@ -211,6 +217,7 @@ class _AccordionBeatTile extends StatelessWidget {
     required this.onToggle,
     required this.onTap,
     this.onFlag,
+    this.onAttachResource,
   });
 
   @override
@@ -322,17 +329,85 @@ class _AccordionBeatTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${beat.effortWeight.toStringAsFixed(1)} effort',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textTertiary,
-                      fontSize: 9.5,
-                    ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (beat.sourceUrl == null || beat.sourceUrl!.isEmpty) ...[
+                        Text(
+                          'no resource linked yet',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textTertiary.withOpacity(0.75),
+                            fontSize: 9.5,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '•',
+                          style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                        ),
+                        const SizedBox(width: 5),
+                      ] else ...[
+                        Icon(
+                          Icons.link_rounded,
+                          size: 11,
+                          color: themeColors.textSecondary,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'linked',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '•',
+                          style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                      Text(
+                        '${beat.effortWeight.toStringAsFixed(1)} effort',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+
+            if (onAttachResource != null) ...[
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: onAttachResource,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                    border: Border.all(
+                      color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
+                      width: 0.9,
+                    ),
+                  ),
+                  child: Icon(
+                    beat.sourceUrl?.isNotEmpty == true
+                        ? Icons.link_rounded
+                        : Icons.add_rounded,
+                    size: 14,
+                    color: themeColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
 
             if (onFlag != null)
               IconButton(

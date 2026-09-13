@@ -184,4 +184,19 @@ class BeatRepository {
     if (results.isEmpty) return 0.0;
     return (results.first['remaining_effort'] as num?)?.toDouble() ?? 0.0;
   }
+
+  Future<void> updateBeat(BeatEntity beat) async {
+    final db = await _db;
+    await db.update(
+      DatabaseTables.beats,
+      beat.toMap(),
+      where: '${BeatColumns.id} = ?',
+      whereArgs: [beat.id],
+    );
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.beatToggled,
+      entityId: beat.id,
+      roadmapId: beat.roadmapId,
+    ));
+  }
 }

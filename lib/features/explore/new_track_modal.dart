@@ -11,6 +11,7 @@ class NewTrackModal extends StatefulWidget {
     required String category,
     required DateTime targetDate,
     String? resourceUrl,
+    String? syllabusText,
   }) onCreateTrack;
 
   const NewTrackModal({
@@ -25,6 +26,7 @@ class NewTrackModal extends StatefulWidget {
       required String category,
       required DateTime targetDate,
       String? resourceUrl,
+      String? syllabusText,
     }) onCreateTrack,
   }) {
     return showModalBottomSheet(
@@ -42,6 +44,8 @@ class NewTrackModal extends StatefulWidget {
 class _NewTrackModalState extends State<NewTrackModal> {
   final _titleController = TextEditingController();
   final _resourceController = TextEditingController();
+  final _syllabusController = TextEditingController();
+  bool _showSyllabusInput = false;
   String _selectedCategory = 'Engineering';
   DateTime _targetDate = DateTime.now().add(const Duration(days: 14));
   bool _isLoading = false;
@@ -70,12 +74,16 @@ class _NewTrackModalState extends State<NewTrackModal> {
       final resourceUrl = _resourceController.text.trim().isNotEmpty
           ? _resourceController.text.trim()
           : null;
+      final syllabusText = _syllabusController.text.trim().isNotEmpty
+          ? _syllabusController.text.trim()
+          : null;
 
       await widget.onCreateTrack(
         title: title,
         category: _selectedCategory,
         targetDate: _targetDate,
         resourceUrl: resourceUrl,
+        syllabusText: syllabusText,
       );
 
       if (mounted) {
@@ -120,6 +128,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
   void dispose() {
     _titleController.dispose();
     _resourceController.dispose();
+    _syllabusController.dispose();
     super.dispose();
   }
 
@@ -322,6 +331,99 @@ class _NewTrackModalState extends State<NewTrackModal> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Syllabus Import Section
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _showSyllabusInput = !_showSyllabusInput);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _showSyllabusInput
+                          ? (isDark ? themeColors.glassBorderHighlight : Colors.black54)
+                          : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.playlist_add_check_rounded,
+                            size: 18,
+                            color: themeColors.textPrimary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Import / Paste Syllabus (Optional)',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(
+                        _showSyllabusInput
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: themeColors.textTertiary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (_showSyllabusInput) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Paste topics, module headers, bulleted lists, or JSON. Each topic becomes a track item.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 10.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _syllabusController,
+                  maxLines: 6,
+                  minLines: 3,
+                  style: TextStyle(color: themeColors.textPrimary, fontSize: 12.5),
+                  decoration: InputDecoration(
+                    hintText: 'e.g.\nModule 1: Foundations\n- Arrays and Strings\n- Two Sum\n- Sliding Window\nModule 2: Search\n- Binary Search',
+                    hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 11),
+                    filled: true,
+                    fillColor: isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.black.withOpacity(0.03),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: themeColors.glassBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: themeColors.glassBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark ? themeColors.glassBorderHighlight : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Submit Button

@@ -36,6 +36,19 @@ class ChapterClusterer {
       ));
     }
 
+    return clusterBeats(allBeats, roadmapTitle: roadmapTitle);
+  }
+
+  /// Clusters pre-constructed ExtractedBeat items directly, preserving metadata
+  /// such as isMentorExtra, syllabusTopicId, matchConfidence, etc.
+  static List<ExtractedChapter> clusterBeats(
+    List<ExtractedBeat> allBeats, {
+    String? roadmapTitle,
+  }) {
+    if (allBeats.isEmpty) {
+      return [];
+    }
+
     final count = allBeats.length;
 
     // Small playlist (<= 4 items): single chapter
@@ -52,13 +65,14 @@ class ChapterClusterer {
     // Attempt to detect explicit section / module / chapter headers in video titles
     final sectionBoundaries = _detectSectionBoundaries(allBeats);
 
-    if (sectionBoundaries.length > 1 && sectionBoundaries.length <= 8) {
+    if (sectionBoundaries.length > 1) {
       return _buildChaptersFromBoundaries(allBeats, sectionBoundaries);
     }
 
-    // Fallback to balanced thematic chunking (4-8 chapters)
+    // Fallback to balanced thematic chunking
     return _buildBalancedChapters(allBeats, roadmapTitle: roadmapTitle);
   }
+
 
   /// Detects explicit section markers like "Module 1", "Part 1", "Section 2", "Chapter 3", "Day 5".
   static List<int> _detectSectionBoundaries(List<ExtractedBeat> beats) {
@@ -116,7 +130,7 @@ class ChapterClusterer {
     String? roadmapTitle,
   }) {
     final count = beats.length;
-    // Determine target chapter count (typically 4 to 8)
+    // Determine target chapter count dynamically based on playlist size
     int targetChapters;
     if (count <= 8) {
       targetChapters = 2;
@@ -128,8 +142,11 @@ class ChapterClusterer {
       targetChapters = 5;
     } else if (count <= 60) {
       targetChapters = 6;
+    } else if (count <= 100) {
+      targetChapters = 8;
     } else {
-      targetChapters = 7;
+      // Dynamic chapter sizing (~10-15 beats per chapter) for 100, 200, 500+ items
+      targetChapters = (count / 12).ceil();
     }
 
     final itemsPerChapter = (count / targetChapters).ceil();
