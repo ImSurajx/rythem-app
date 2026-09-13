@@ -66,15 +66,20 @@ jobs:
           if [ "$TAG_NAME" = "refs/heads/master" ] || [ -z "$TAG_NAME" ] || [ "$TAG_NAME" = "$GITHUB_REF" ]; then
             TAG_NAME="v1.0.0"
           fi
-          echo "Publishing release for tag: $TAG_NAME"
+          echo "Target release tag: $TAG_NAME"
 
-          # Delete previous release and tag if it exists to allow clean re-release
-          gh release delete "$TAG_NAME" --yes --cleanup-tag || true
-
-          # Create release and upload APK
-          gh release create "$TAG_NAME" release_output/rythem.apk \
-            --title "Rythem $TAG_NAME" \
-            --generate-notes
+          # If release exists, upload and overwrite the APK asset using --clobber
+          # If release does not exist yet, create it with release notes
+          if gh release view "$TAG_NAME" > /dev/null 2>&1; then
+            echo "Release $TAG_NAME exists. Uploading and updating APK asset..."
+            gh release upload "$TAG_NAME" release_output/rythem.apk --clobber
+          else
+            echo "Release $TAG_NAME does not exist. Creating new release..."
+            gh release create "$TAG_NAME" release_output/rythem.apk \
+              --title "Rythem $TAG_NAME" \
+              --generate-notes
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
