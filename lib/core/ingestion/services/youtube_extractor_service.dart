@@ -104,29 +104,32 @@ class YoutubeExtractorService implements IYoutubeClient {
       debugPrint('Notice: standard playlist metadata fetch fell back: $e');
     }
 
-    // Extract all videos via Innertube browse API (handles modern lockupViewModel & legacy)
-    var rawItems = await _fetchPlaylistVideosViaInnertube(playlistId);
+    final rawItems = <RawResourceItem>[];
 
-    // If Innertube returned empty, fallback to youtube_explode_dart streaming
-    if (rawItems.isEmpty) {
-      try {
-        int index = 0;
-        await for (final video in _yt.playlists.getVideos(playlistId)) {
-          final durationSec = video.duration?.inSeconds ?? 600;
-          rawItems.add(RawResourceItem(
-            title: video.title,
-            sourceUrl: video.url,
-            durationSeconds: durationSec,
-            index: index,
-            description: video.description,
-            thumbnailUrl: video.thumbnails.highResUrl,
-          ));
-          index++;
-        }
-      } catch (e) {
-        debugPrint('Fallback getVideos error: $e');
+    // 1. Primary: Use youtube_explode_dart streaming to paginate through all videos (100, 200, 300, 500+ items)
+    try {
+      int index = 0;
+      await for (final video in _yt.playlists.getVideos(playlistId)) {
+        final durationSec = video.duration?.inSeconds ?? 600;
+        rawItems.add(RawResourceItem(
+          title: video.title,
+          sourceUrl: video.url,
+          durationSeconds: durationSec,
+          index: index++,
+          description: video.description,
+          thumbnailUrl: video.thumbnails.highResUrl,
+        ));
       }
+    } catch (e) {
+      debugPrint('Notice: youtube_explode_dart getVideos fell back: $e');
     }
+
+    // 2. Fallback: If youtube_explode_dart returned empty, use direct Innertube browse API
+    if (rawItems.isEmpty) {
+      final innertubeItems = await _fetchPlaylistVideosViaInnertube(playlistId);
+      rawItems.addAll(innertubeItems);
+    }
+
 
     if (rawItems.isEmpty) {
       throw Exception(
@@ -269,11 +272,18 @@ class YoutubeExtractorService implements IYoutubeClient {
               }
             } else if (node.containsKey('continuationItemRenderer')) {
               final cir = node['continuationItemRenderer'] as Map<String, dynamic>;
-              final token = cir['continuationEndpoint']?['continuationCommand']?['token']?.toString();
+              final token = cir['continuationEndpoint']?['continuationCommand']?['token']?.toString() ??
+                  cir['button']?['buttonRenderer']?['command']?['continuationCommand']?['token']?.toString();
+              if (token != null && token.isNotEmpty) {
+                continuationToken = token;
+              }
+            } else if (node.containsKey('continuationCommand')) {
+              final token = node['continuationCommand']?['token']?.toString();
               if (token != null && token.isNotEmpty) {
                 continuationToken = token;
               }
             }
+
 
             for (final val in node.values) {
               parseNodes(val);

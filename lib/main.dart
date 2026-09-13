@@ -26,12 +26,11 @@ class RythemApp extends StatefulWidget {
 }
 
 class _RythemAppState extends State<RythemApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode _themeMode = ThemeMode.system;
 
-  void _toggleTheme() {
+  void _setThemeMode(ThemeMode mode) {
     setState(() {
-      _themeMode =
-          _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+      _themeMode = mode;
     });
   }
 
@@ -44,21 +43,21 @@ class _RythemAppState extends State<RythemApp> {
       darkTheme: RythemTheme.darkTheme,
       themeMode: _themeMode,
       home: DesignSystemShowcaseScreen(
-        isDark: _themeMode == ThemeMode.dark,
-        onToggleTheme: _toggleTheme,
+        themeMode: _themeMode,
+        onThemeModeChanged: _setThemeMode,
       ),
     );
   }
 }
 
 class DesignSystemShowcaseScreen extends StatefulWidget {
-  final bool isDark;
-  final VoidCallback onToggleTheme;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
 
   const DesignSystemShowcaseScreen({
     super.key,
-    required this.isDark,
-    required this.onToggleTheme,
+    required this.themeMode,
+    required this.onThemeModeChanged,
   });
 
   @override
@@ -143,7 +142,7 @@ class _DesignSystemShowcaseScreenState
     await _roadmapRepo.createRoadmap(RoadmapEntity(
       id: _roadmapId,
       title: _roadmapTitle,
-      description: 'Mastering backpropagation, loss surfaces, and attention dynamics.',
+      description: 'Deep Learning',
       targetCompletionDate: now.add(const Duration(days: 14)),
       isPrimary: true,
       createdAt: now,
@@ -708,59 +707,32 @@ class _DesignSystemShowcaseScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.12)
-                                  : Colors.black.withOpacity(0.08),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/icons/logo.png',
-                            fit: BoxFit.cover,
-                          ),
+                      Text(
+                        'RYTHEM',
+                        style: RythemTypography.brandLogo.copyWith(
+                          color: themeColors.textPrimary,
+                          letterSpacing: 3.5,
+                          fontSize: 18,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'RYTHEM',
-                            style: RythemTypography.brandLogo.copyWith(
-                              color: themeColors.textPrimary,
-                              letterSpacing: 3.5,
-                              fontSize: 18,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'beats over clocks • felt, not measured',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textTertiary,
-                              fontSize: 9.5,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 1),
+                      Text(
+                        'beats over clocks • felt, not measured',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 9.5,
+                        ),
                       ),
                     ],
                   ),
-                  // Dark / Light Glass Toggle
+                  // Settings Glass Button
                   GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      widget.onToggleTheme();
+                      setState(() => _currentTabIndex = 3);
                     },
                     child: GlassContainer(
                       width: 40,
@@ -769,11 +741,11 @@ class _DesignSystemShowcaseScreenState
                       padding: EdgeInsets.zero,
                       child: Center(
                         child: Icon(
-                          isDark
-                              ? Icons.light_mode_outlined
-                              : Icons.dark_mode_outlined,
-                          color: themeColors.textPrimary,
-                          size: 18,
+                          Icons.settings_outlined,
+                          color: _currentTabIndex == 3
+                              ? themeColors.textPrimary
+                              : themeColors.textSecondary,
+                          size: 19,
                         ),
                       ),
                     ),
@@ -1161,6 +1133,65 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 12),
 
+          // Appearance / Theme Mode Card
+          GlassCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.palette_outlined, size: 18, color: themeColors.textPrimary),
+                    const SizedBox(width: 10),
+                    Text(
+                      'APPEARANCE',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Customize app theme. Follows your device system appearance by default.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _buildThemeModeOption(
+                  mode: ThemeMode.system,
+                  title: 'System Default (Recommended)',
+                  subtitle: 'Automatically sync with your device dark / light mode.',
+                  icon: Icons.brightness_auto_rounded,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                ),
+                _buildThemeModeOption(
+                  mode: ThemeMode.dark,
+                  title: 'Dark Theme',
+                  subtitle: 'Deep pitch charcoal with frosted glass accents.',
+                  icon: Icons.dark_mode_outlined,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                ),
+                _buildThemeModeOption(
+                  mode: ThemeMode.light,
+                  title: 'Light Theme',
+                  subtitle: 'Crisp daylight contrast with luminous glass tinting.',
+                  icon: Icons.light_mode_outlined,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Pacing Calibration Card (design.md §0 Step 4 & §5)
           GlassCard(
             padding: const EdgeInsets.all(20),
@@ -1367,6 +1398,75 @@ class _DesignSystemShowcaseScreenState
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeModeOption({
+    required ThemeMode mode,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required RythemThemeColors themeColors,
+    required bool isDark,
+  }) {
+    final isSelected = widget.themeMode == mode;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        widget.onThemeModeChanged(mode);
+        _showToast('Theme set to ${mode == ThemeMode.system ? "System Default" : mode == ThemeMode.dark ? "Dark Theme" : "Light Theme"}');
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
+              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
+                : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+            width: isSelected ? 1.2 : 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: RythemTypography.titleSmall.copyWith(
+                      color: themeColors.textPrimary,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: RythemTypography.bodySmall.copyWith(
+                      color: themeColors.textTertiary,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle_rounded, size: 18, color: themeColors.textPrimary),
           ],
         ),
       ),

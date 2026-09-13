@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/theme/colors.dart';
@@ -50,13 +53,156 @@ class _NewTrackModalState extends State<NewTrackModal> {
   DateTime _targetDate = DateTime.now().add(const Duration(days: 14));
   bool _isLoading = false;
 
-  static const _categories = [
-    'Engineering',
-    'System Design',
-    'Mathematics',
-    'Computer Science',
-    'General',
-  ];
+  late List<String> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _categories = [
+      'Engineering',
+      'System Design',
+      'Mathematics',
+      'Computer Science',
+      'General',
+    ];
+  }
+
+  Future<void> _importFileFromStorage() async {
+    HapticFeedback.lightImpact();
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['json', 'txt', 'md'],
+      );
+
+      if (file != null) {
+        String? content;
+        try {
+          final bytes = await file.readAsBytes();
+          if (bytes.isNotEmpty) {
+            content = utf8.decode(bytes);
+          }
+        } catch (_) {}
+
+        if ((content == null || content.isEmpty) && file.path != null) {
+          content = await File(file.path!).readAsString();
+        }
+
+        if (content != null && content.trim().isNotEmpty) {
+          setState(() {
+            _showSyllabusInput = true;
+            _syllabusController.text = content!;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Loaded "${file.name}" from storage'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking syllabus file: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open file: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pasteFromClipboard() async {
+    HapticFeedback.lightImpact();
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.trim().isNotEmpty) {
+      setState(() {
+        _showSyllabusInput = true;
+        _syllabusController.text = data.text!;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pasted syllabus from clipboard'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Clipboard is empty'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAddCustomCategoryDialog() {
+    final catController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final themeColors = isDark ? RythemColors.dark : RythemColors.light;
+
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Text(
+            'New Category',
+            style: RythemTypography.titleMedium.copyWith(
+              color: themeColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: TextField(
+            controller: catController,
+            autofocus: true,
+            style: TextStyle(color: themeColors.textPrimary, fontSize: 13.5),
+            decoration: InputDecoration(
+              hintText: 'e.g. Deep Learning, Mobile, Finance',
+              hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+              filled: true,
+              fillColor: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: themeColors.glassBorder),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: themeColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () {
+                final text = catController.text.trim();
+                if (text.isNotEmpty) {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    if (!_categories.contains(text)) {
+                      _categories.add(text);
+                    }
+                    _selectedCategory = text;
+                  });
+                }
+              },
+              child: Text(
+                'Add',
+                style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   Future<void> _submit() async {
     final title = _titleController.text.trim();
@@ -227,39 +373,71 @@ class _NewTrackModalState extends State<NewTrackModal> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _categories.map((cat) {
-                  final isSelected = _selectedCategory == cat;
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedCategory = cat);
-                    },
+                children: [
+                  ..._categories.map((cat) {
+                    final isSelected = _selectedCategory == cat;
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _selectedCategory = cat);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.09))
+                              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
+                                : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+                            width: isSelected ? 1.2 : 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          cat,
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  // + Custom category button
+                  GestureDetector(
+                    onTap: _showAddCustomCategoryDialog,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? (isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.09))
-                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected
-                              ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
-                              : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-                          width: isSelected ? 1.2 : 0.8,
+                          color: isDark ? themeColors.glassBorder : const Color(0x18000000),
                         ),
                       ),
-                      child: Text(
-                        cat,
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          fontSize: 11,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 14, color: themeColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Custom',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
+
               const SizedBox(height: 16),
 
               // Target Date
@@ -387,13 +565,83 @@ class _NewTrackModalState extends State<NewTrackModal> {
               if (_showSyllabusInput) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Paste topics, module headers, bulleted lists, or JSON. Each topic becomes a track item.',
+                  'Import JSON / TXT from storage, paste clipboard text, or enter topics manually.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                     fontSize: 10.5,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: _importFileFromStorage,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: themeColors.glassBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.folder_open_rounded, size: 16, color: themeColors.textPrimary),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Import File',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: themeColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        onTap: _pasteFromClipboard,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: themeColors.glassBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.content_paste_rounded, size: 16, color: themeColors.textPrimary),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Paste Text',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: themeColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: _syllabusController,
                   maxLines: 6,

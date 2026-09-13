@@ -403,44 +403,46 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
           children: [
             // Top App Bar with Prominent "Add Resource" Button (Requirement 5)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
                     icon: Icon(Icons.arrow_back_ios_new_rounded,
                         color: themeColors.textPrimary, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  Text(
-                    'ROADMAP DETAIL',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textTertiary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'ROADMAP DETAIL',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GlassButton(
-                        label: 'Add Resource',
-                        icon: Icons.link_rounded,
-                        variant: GlassButtonVariant.primary,
-                        onPressed: _showAttachResourceDialog,
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        icon: Icon(Icons.archive_outlined,
-                            color: themeColors.textTertiary, size: 20),
-                        tooltip: 'Archive Track',
-                        onPressed: _handleArchive,
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  GlassButton(
+                    label: 'Add Resource',
+                    icon: Icons.link_rounded,
+                    height: 36,
+                    variant: GlassButtonVariant.primary,
+                    onPressed: _showAttachResourceDialog,
+                  ),
+                  const SizedBox(width: 2),
+                  IconButton(
+                    icon: Icon(Icons.archive_outlined,
+                        color: themeColors.textTertiary, size: 20),
+                    tooltip: 'Archive Track',
+                    onPressed: _handleArchive,
                   ),
                 ],
               ),
             ),
+
 
             // Scrollable Content
             Expanded(
@@ -471,25 +473,31 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.white.withOpacity(0.1)
-                                      : Colors.black.withOpacity(0.06),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  category.toUpperCase(),
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: themeColors.textSecondary,
-                                    letterSpacing: 0.5,
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 140),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.1)
+                                        : Colors.black.withOpacity(0.06),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    category.toUpperCase(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: themeColors.textSecondary,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                 ),
                               ),
+
                             ],
                           ),
                           const SizedBox(height: 14),
