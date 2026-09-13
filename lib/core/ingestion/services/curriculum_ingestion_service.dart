@@ -373,19 +373,26 @@ class CurriculumIngestionService {
     }
 
     // Remaining syllabus topics not in mentor's playlist move down,
-    // preserving their relative syllabus order (Requirement 7)
-    for (final beat in existingBeats) {
-      if (!matchedBeatIds.contains(beat.id)) {
-        alignedBeats.add(ExtractedBeat(
-          title: beat.title,
-          sourceUrl: beat.sourceUrl,
-          durationSeconds: 600,
-          effortWeight: beat.effortWeight,
-          sortOrder: alignedBeats.length,
-          thumbnailUrl: null,
-          syllabusTopicId: beat.syllabusTopicId ?? beat.id,
-          isMentorExtra: false,
-        ));
+    // preserving their relative syllabus order (Requirement 7).
+    // If the roadmap only had the default "Initial Orientation" placeholder beat, replace it cleanly.
+    final isInitialPlaceholder = existingBeats.length == 1 &&
+        (existingBeats.first.title.toLowerCase().contains('initial orientation') ||
+            existingBeats.first.title.toLowerCase().contains('core foundations'));
+
+    if (!isInitialPlaceholder) {
+      for (final beat in existingBeats) {
+        if (!matchedBeatIds.contains(beat.id)) {
+          alignedBeats.add(ExtractedBeat(
+            title: beat.title,
+            sourceUrl: beat.sourceUrl,
+            durationSeconds: 600,
+            effortWeight: beat.effortWeight,
+            sortOrder: alignedBeats.length,
+            thumbnailUrl: null,
+            syllabusTopicId: beat.syllabusTopicId ?? beat.id,
+            isMentorExtra: false,
+          ));
+        }
       }
     }
 
@@ -444,6 +451,10 @@ class CurriculumIngestionService {
 
     await _chapterRepo.createChaptersBatch(chapterEntities);
     await _beatRepo.createBeatsBatch(beatEntities);
+    DatabaseEventBus.instance.emit(DatabaseEvent(
+      type: DatabaseEventType.roadmapUpdated,
+      roadmapId: roadmapId,
+    ));
   }
 
   /// Attaches a resource URL directly to an individual beat/topic.

@@ -81,10 +81,17 @@ class YoutubeExtractorService implements IYoutubeClient {
     final cleanUrl = url.trim();
 
     if (parsePlaylistId(cleanUrl) != null) {
-      return await extractPlaylist(cleanUrl);
-    } else {
-      return await extractVideo(cleanUrl);
+      try {
+        final pl = await extractPlaylist(cleanUrl);
+        if (pl.items.isNotEmpty) {
+          return pl;
+        }
+      } catch (e) {
+        debugPrint('Playlist extraction fell back to video extraction: $e');
+      }
     }
+
+    return await extractVideo(cleanUrl);
   }
 
   @override
@@ -104,32 +111,33 @@ class YoutubeExtractorService implements IYoutubeClient {
       debugPrint('Notice: standard playlist metadata fetch fell back: $e');
     }
 
-    final rawItems = <RawResourceItem>[];
+    // 1. Primary: Direct Innertube browse API with pagination (handles all 100, 200, 500+ videos)
+    var rawItems = await _fetchPlaylistVideosViaInnertube(playlistId);
 
-    // 1. Primary: Use youtube_explode_dart streaming to paginate through all videos (100, 200, 300, 500+ items)
-    try {
-      int index = 0;
-      await for (final video in _yt.playlists.getVideos(playlistId)) {
-        final durationSec = video.duration?.inSeconds ?? 600;
-        rawItems.add(RawResourceItem(
-          title: video.title,
-          sourceUrl: video.url,
-          durationSeconds: durationSec,
-          index: index++,
-          description: video.description,
-          thumbnailUrl: video.thumbnails.highResUrl,
-        ));
+    // 2. Fallback: If Innertube returned 0 or 1 item, attempt youtube_explode_dart streaming
+    if (rawItems.length <= 1) {
+      final explodeItems = <RawResourceItem>[];
+      try {
+        int index = 0;
+        await for (final video in _yt.playlists.getVideos(playlistId)) {
+          final durationSec = video.duration?.inSeconds ?? 600;
+          explodeItems.add(RawResourceItem(
+            title: video.title,
+            sourceUrl: video.url,
+            durationSeconds: durationSec,
+            index: index++,
+            description: video.description,
+            thumbnailUrl: video.thumbnails.highResUrl,
+          ));
+        }
+      } catch (e) {
+        debugPrint('Notice: youtube_explode_dart getVideos fell back: $e');
       }
-    } catch (e) {
-      debugPrint('Notice: youtube_explode_dart getVideos fell back: $e');
-    }
 
-    // 2. Fallback: If youtube_explode_dart returned empty, use direct Innertube browse API
-    if (rawItems.isEmpty) {
-      final innertubeItems = await _fetchPlaylistVideosViaInnertube(playlistId);
-      rawItems.addAll(innertubeItems);
+      if (explodeItems.length > rawItems.length) {
+        rawItems = explodeItems;
+      }
     }
-
 
     if (rawItems.isEmpty) {
       throw Exception(
@@ -152,6 +160,7 @@ class YoutubeExtractorService implements IYoutubeClient {
   Future<List<RawResourceItem>> _fetchPlaylistVideosViaInnertube(String playlistId) async {
     final cleanId = playlistId.startsWith('VL') ? playlistId : 'VL$playlistId';
     final items = <RawResourceItem>[];
+    final seenVideoIds = <String>{};
     String? continuationToken;
     int index = 0;
 
@@ -214,7 +223,7 @@ class YoutubeExtractorService implements IYoutubeClient {
 
         void parseNodes(dynamic node) {
           if (node is Map<String, dynamic>) {
-            // Modern YouTube Lockup View Model
+            // 1. Modern YouTube Lockup View Model
             if (node.containsKey('lockupViewModel')) {
               final lvm = node['lockupViewModel'] as Map<String, dynamic>;
               final videoId = lvm['contentId']?.toString() ?? '';
@@ -244,7 +253,8 @@ class YoutubeExtractorService implements IYoutubeClient {
                 }
               }
 
-              if (videoId.isNotEmpty && title.isNotEmpty) {
+              if (videoId.isNotEmpty && title.isNotEmpty && !seenVideoIds.contains(videoId)) {
+                seenVideoIds.add(videoId);
                 items.add(RawResourceItem(
                   title: title,
                   sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
@@ -254,14 +264,33 @@ class YoutubeExtractorService implements IYoutubeClient {
                 ));
               }
             } else if (node.containsKey('playlistVideoRenderer')) {
-              // Legacy Playlist Video Renderer
+              // 2. Legacy Playlist Video Renderer
               final pvr = node['playlistVideoRenderer'] as Map<String, dynamic>;
               final videoId = pvr['videoId']?.toString() ?? '';
               final titleRuns = pvr['title']?['runs'] as List?;
               final title = titleRuns?.map((r) => r['text']).join('') ?? pvr['title']?['simpleText']?.toString() ?? '';
               final lengthSec = int.tryParse(pvr['lengthSeconds']?.toString() ?? '') ?? 600;
 
-              if (videoId.isNotEmpty && title.isNotEmpty) {
+              if (videoId.isNotEmpty && title.isNotEmpty && !seenVideoIds.contains(videoId)) {
+                seenVideoIds.add(videoId);
+                items.add(RawResourceItem(
+                  title: title,
+                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                  durationSeconds: lengthSec,
+                  index: index++,
+                  thumbnailUrl: 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
+                ));
+              }
+            } else if (node.containsKey('gridVideoRenderer') || node.containsKey('videoRenderer')) {
+              // 3. Grid / Standard Video Renderer
+              final vr = (node['gridVideoRenderer'] ?? node['videoRenderer']) as Map<String, dynamic>;
+              final videoId = vr['videoId']?.toString() ?? '';
+              final titleRuns = vr['title']?['runs'] as List?;
+              final title = titleRuns?.map((r) => r['text']).join('') ?? vr['title']?['simpleText']?.toString() ?? '';
+              final lengthSec = int.tryParse(vr['lengthSeconds']?.toString() ?? '') ?? 600;
+
+              if (videoId.isNotEmpty && title.isNotEmpty && !seenVideoIds.contains(videoId)) {
+                seenVideoIds.add(videoId);
                 items.add(RawResourceItem(
                   title: title,
                   sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
@@ -277,13 +306,7 @@ class YoutubeExtractorService implements IYoutubeClient {
               if (token != null && token.isNotEmpty) {
                 continuationToken = token;
               }
-            } else if (node.containsKey('continuationCommand')) {
-              final token = node['continuationCommand']?['token']?.toString();
-              if (token != null && token.isNotEmpty) {
-                continuationToken = token;
-              }
             }
-
 
             for (final val in node.values) {
               parseNodes(val);
@@ -296,7 +319,7 @@ class YoutubeExtractorService implements IYoutubeClient {
         }
 
         parseNodes(jsonMap);
-      } while (continuationToken != null && continuationToken!.isNotEmpty);
+      } while (continuationToken != null && continuationToken!.isNotEmpty && items.length < 1000);
     } catch (e) {
       debugPrint('Error parsing Innertube playlist: $e');
     }

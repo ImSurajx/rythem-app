@@ -65,7 +65,7 @@ class ChapterClusterer {
     // Attempt to detect explicit section / module / chapter headers in video titles
     final sectionBoundaries = _detectSectionBoundaries(allBeats);
 
-    if (sectionBoundaries.length > 1) {
+    if (sectionBoundaries.length > 1 && sectionBoundaries.length <= 12) {
       return _buildChaptersFromBoundaries(allBeats, sectionBoundaries);
     }
 
@@ -73,12 +73,11 @@ class ChapterClusterer {
     return _buildBalancedChapters(allBeats, roadmapTitle: roadmapTitle);
   }
 
-
-  /// Detects explicit section markers like "Module 1", "Part 1", "Section 2", "Chapter 3", "Day 5".
+  /// Detects explicit section markers like "Module 1", "Part 1", "Section 2", "Chapter 3".
   static List<int> _detectSectionBoundaries(List<ExtractedBeat> beats) {
     final boundaries = <int>[0]; // Always start with index 0
     final moduleRegex = RegExp(
-      r'(?:module|section|chapter|part|phase|stage|day)\s*(\d+)',
+      r'(?:module|section|chapter|part|phase)\s*(\d+)',
       caseSensitive: false,
     );
 
@@ -90,10 +89,11 @@ class ChapterClusterer {
       if (match != null) {
         final numStr = match.group(1);
         final num = int.tryParse(numStr ?? '') ?? -1;
-        if (num > 0 && num != lastFoundNumber && i > boundaries.last) {
-          // Avoid tiny 1-beat chapters unless intentional
-          if (i - boundaries.last >= 2) {
-            boundaries.add(i);
+        if (num > 0) {
+          if (num != lastFoundNumber) {
+            if (i > boundaries.last && (i - boundaries.last) >= 2) {
+              boundaries.add(i);
+            }
             lastFoundNumber = num;
           }
         }
@@ -113,6 +113,7 @@ class ChapterClusterer {
       final start = boundaries[b];
       final end = (b + 1 < boundaries.length) ? boundaries[b + 1] : beats.length;
       final chapterBeats = beats.sublist(start, end);
+      if (chapterBeats.isEmpty) continue;
 
       final title = _synthesizeChapterTitle(chapterBeats, chapterIndex: b + 1);
       chapters.add(ExtractedChapter(
@@ -155,9 +156,13 @@ class ChapterClusterer {
     for (int c = 0; c < targetChapters; c++) {
       final start = c * itemsPerChapter;
       if (start >= count) break;
-      final end = (start + itemsPerChapter < count) ? start + itemsPerChapter : count;
+      final end = (c == targetChapters - 1 || start + itemsPerChapter >= count)
+          ? count
+          : start + itemsPerChapter;
 
       final chapterBeats = beats.sublist(start, end);
+      if (chapterBeats.isEmpty) continue;
+
       final title = _synthesizeChapterTitle(chapterBeats, chapterIndex: c + 1);
 
       chapters.add(ExtractedChapter(

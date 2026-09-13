@@ -1,5 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:rythem_app/core/database/database_event_bus.dart';
+import 'package:rythem_app/core/database/repositories/roadmap_repository.dart';
+import 'package:rythem_app/core/database/repositories/chapter_repository.dart';
+import 'package:rythem_app/core/database/repositories/beat_repository.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/database/models/roadmap_entity.dart';
@@ -49,13 +54,48 @@ class RoadmapDetailScreen extends StatefulWidget {
 
 class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   late RoadmapEntity _currentRoadmap;
+  late List<ChapterEntity> _currentChapters;
   late List<BeatEntity> _currentBeats;
+
+  final _roadmapRepo = RoadmapRepository();
+  final _chapterRepo = ChapterRepository();
+  final _beatRepo = BeatRepository();
+  StreamSubscription<DatabaseEvent>? _eventSub;
+  bool _isAttaching = false;
 
   @override
   void initState() {
     super.initState();
     _currentRoadmap = widget.roadmap;
+    _currentChapters = List.from(widget.chapters);
     _currentBeats = List.from(widget.beats);
+
+    _eventSub = DatabaseEventBus.instance.stream.listen((_) {
+      _reloadFromDb();
+    });
+  }
+
+  @override
+  void dispose() {
+    _eventSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _reloadFromDb() async {
+    try {
+      final rm = await _roadmapRepo.getRoadmapById(_currentRoadmap.id);
+      final chapters = await _chapterRepo.getChaptersByRoadmapId(_currentRoadmap.id);
+      final beats = await _beatRepo.getBeatsByRoadmapId(_currentRoadmap.id);
+      if (mounted) {
+        setState(() {
+          if (rm != null) _currentRoadmap = rm;
+          _currentChapters = chapters;
+          _currentBeats = beats;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error reloading roadmap detail from DB: $e');
+    }
   }
 
   @override
@@ -63,6 +103,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.roadmap != widget.roadmap) {
       _currentRoadmap = widget.roadmap;
+    }
+    if (oldWidget.chapters != widget.chapters) {
+      _currentChapters = List.from(widget.chapters);
     }
     if (oldWidget.beats != widget.beats) {
       _currentBeats = List.from(widget.beats);
@@ -195,21 +238,46 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: GlassButton(
-                    label: 'Attach & Ingest',
+                    label: _isAttaching ? 'Extracting & Ingesting...' : 'Attach & Ingest',
                     icon: Icons.link_rounded,
-                    onPressed: () {
-                      final url = controller.text.trim();
-                      if (url.isNotEmpty) {
-                        Navigator.pop(ctx);
-                        widget.onAttachResource?.call(_currentRoadmap.id, url);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Attached resource: $url'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    },
+                    onPressed: _isAttaching
+                        ? () {}
+                        : () async {
+                            final url = controller.text.trim();
+                            if (url.isNotEmpty) {
+                              Navigator.pop(ctx);
+                              setState(() => _isAttaching = true);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Extracting playlist and dividing into chapters...'),
+                                  duration: Duration(seconds: 3),
+                                ),
+                              );
+                              try {
+                                await widget.onAttachResource?.call(_currentRoadmap.id, url);
+                                await _reloadFromDb();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Ingested ${_currentBeats.length} videos across ${_currentChapters.length} chapters!'),
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to attach resource: $e'),
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _isAttaching = false);
+                              }
+                            }
+                          },
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -386,7 +454,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
 
     // Group beats by chapter
     final chapterBeatsMap = <String, List<BeatEntity>>{};
-    for (final ch in widget.chapters) {
+    for (final ch in _currentChapters) {
       chapterBeatsMap[ch.id] = [];
     }
     for (final b in _currentBeats) {
@@ -703,7 +771,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                         ),
                         Text(
-                          '${widget.chapters.length} Chapters • $totalCount Topics',
+                          '${_currentChapters.length} Chapters • $totalCount Topics',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontSize: 10,
@@ -714,7 +782,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                     const SizedBox(height: 12),
 
                     // Chapter Accordion List with per-topic round (+) buttons
-                    if (widget.chapters.isEmpty)
+                    if (_currentChapters.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(28),
                         child: Center(
@@ -728,8 +796,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         ),
                       )
                     else
-                      ...List.generate(widget.chapters.length, (i) {
-                        final chapter = widget.chapters[i];
+                      ...List.generate(_currentChapters.length, (i) {
+                        final chapter = _currentChapters[i];
                         final beats = chapterBeatsMap[chapter.id] ?? [];
                         final isFirstChapter = (i == 0);
 
