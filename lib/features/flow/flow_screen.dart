@@ -607,14 +607,30 @@ class _TrackTodoListCard extends StatelessWidget {
           else ...[
             Builder(
               builder: (context) {
-                // Focus on today's mission beats first; if none or all done, show up to 3 next pending beats
+                final now = DateTime.now();
+                final todayStart = DateTime(now.year, now.month, now.day);
+                final completedToday = allBeats.where((b) {
+                  if (!b.isCompleted) return false;
+                  return b.completedAt != null && b.completedAt!.isAfter(todayStart);
+                }).toList();
+
                 final missionBeats = allBeats.where((b) => todaysBeatIds.contains(b.id)).toList();
                 final List<BeatEntity> flowBeats;
                 if (missionBeats.isNotEmpty) {
-                  flowBeats = missionBeats;
+                  final seenIds = <String>{};
+                  final combined = <BeatEntity>[];
+                  for (final b in [...completedToday, ...missionBeats]) {
+                    if (seenIds.add(b.id)) combined.add(b);
+                  }
+                  flowBeats = combined;
                 } else {
                   final pending = allBeats.where((b) => !b.isCompleted).take(3).toList();
-                  flowBeats = pending.isNotEmpty ? pending : allBeats.take(3).toList();
+                  final seenIds = <String>{};
+                  final combined = <BeatEntity>[];
+                  for (final b in [...completedToday, ...pending]) {
+                    if (seenIds.add(b.id)) combined.add(b);
+                  }
+                  flowBeats = combined.isNotEmpty ? combined : allBeats.take(3).toList();
                 }
 
                 return Column(
@@ -628,12 +644,10 @@ class _TrackTodoListCard extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final beat = flowBeats[index];
                         final chapter = chapterMap[beat.chapterId];
-                        final isTodayMission = todaysBeatIds.contains(beat.id) && !beat.isCompleted;
 
                         return _FlowBeatChecklistTile(
                           beat: beat,
                           chapterTitle: chapter?.title ?? 'Chapter ${beat.sortOrder + 1}',
-                          isTodayMission: isTodayMission,
                           themeColors: themeColors,
                           isDark: isDark,
                           onToggle: (val) => onBeatToggled(beat, val),
@@ -828,7 +842,6 @@ class _EveningUnlockBanner extends StatelessWidget {
 class _FlowBeatChecklistTile extends StatelessWidget {
   final BeatEntity beat;
   final String chapterTitle;
-  final bool isTodayMission;
   final RythemColorTokens themeColors;
   final bool isDark;
   final ValueChanged<bool> onToggle;
@@ -838,7 +851,6 @@ class _FlowBeatChecklistTile extends StatelessWidget {
   const _FlowBeatChecklistTile({
     required this.beat,
     required this.chapterTitle,
-    required this.isTodayMission,
     required this.themeColors,
     required this.isDark,
     required this.onToggle,
@@ -852,17 +864,13 @@ class _FlowBeatChecklistTile extends StatelessWidget {
     final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: isTodayMission
-            ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
-            : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.015)),
-        borderRadius: BorderRadius.circular(14),
+        color: themeColors.rowBackground,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isTodayMission
-              ? (isDark ? themeColors.glassBorderHighlight : Colors.black45)
-              : (isDark ? themeColors.glassBorder : const Color(0x10000000)),
-          width: isTodayMission ? 1.1 : 0.7,
+          color: themeColors.rowBorder,
+          width: 0.7,
         ),
       ),
       child: Row(
@@ -880,8 +888,8 @@ class _FlowBeatChecklistTile extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
                   color: beat.isCompleted
                       ? themeColors.textPrimary
@@ -890,9 +898,7 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                   border: Border.all(
                     color: beat.isCompleted
                         ? themeColors.textPrimary
-                        : (isTodayMission
-                            ? themeColors.textPrimary
-                            : themeColors.textTertiary),
+                        : themeColors.textTertiary,
                     width: 1.5,
                   ),
                 ),
@@ -902,14 +908,14 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                   curve: Curves.easeOutBack,
                   child: Icon(
                     Icons.check_rounded,
-                    size: 15,
+                    size: 13,
                     color: isDark ? Colors.black : Colors.white,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
           // 2. Task Content Area (Tapping Task Content = Directly Opens Attached Resource)
           Expanded(
@@ -919,50 +925,19 @@ class _FlowBeatChecklistTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      if (isTodayMission) ...[
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.15)
-                                : Colors.black.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: isDark ? themeColors.glassBorderHighlight : Colors.black26,
-                              width: 0.6,
-                            ),
-                          ),
-                          child: Text(
-                            "MISSION",
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w700,
-                              color: themeColors.textPrimary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                      ],
-                      Expanded(
-                        child: Text(
-                          beat.title,
-                          style: RythemTypography.bodyMedium.copyWith(
-                            color: beat.isCompleted
-                                ? themeColors.textTertiary
-                                : themeColors.textPrimary,
-                            decoration:
-                                beat.isCompleted ? TextDecoration.lineThrough : null,
-                            fontWeight: isTodayMission ? FontWeight.w600 : FontWeight.w500,
-                            fontSize: 13,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    beat.title,
+                    style: RythemTypography.bodyMedium.copyWith(
+                      color: beat.isCompleted
+                          ? themeColors.textTertiary
+                          : themeColors.textPrimary,
+                      decoration:
+                          beat.isCompleted ? TextDecoration.lineThrough : null,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 5),
                   Wrap(

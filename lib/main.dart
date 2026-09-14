@@ -1696,55 +1696,22 @@ class _DesignSystemShowcaseScreenState
                 ),
               ),
               if (info.tier != ModelTier.fallback) ...[
+                const SizedBox(width: 10),
                 if (!isDownloaded)
-                  GestureDetector(
-                    onTap: onDownload,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white : Colors.black,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.download_rounded,
-                            size: 12,
-                            color: isDark ? Colors.black : Colors.white,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Download',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: isDark ? Colors.black : Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  GlassButton(
+                    label: 'Download',
+                    icon: Icons.download_rounded,
+                    height: 28,
+                    variant: GlassButtonVariant.secondary,
+                    onPressed: onDownload,
                   )
                 else ...[
                   if (!isActive)
-                    GestureDetector(
-                      onTap: onSelect,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white10 : Colors.black12,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Activate',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                    GlassButton(
+                      label: 'Activate',
+                      height: 28,
+                      variant: GlassButtonVariant.ghost,
+                      onPressed: onSelect,
                     ),
                   const SizedBox(width: 6),
                   GestureDetector(

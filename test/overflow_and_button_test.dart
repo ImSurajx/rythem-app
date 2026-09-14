@@ -102,6 +102,49 @@ void main() {
       expect(find.textContaining('video'), findsOneWidget);
       expect(find.textContaining('2.5 effort'), findsOneWidget);
     });
+
+    testWidgets('Completed task in Flow retains visibility and applies strike-through decoration', (tester) async {
+      final completedBeat = testBeatLong.copyWith(
+        isCompleted: true,
+        completedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: FlowScreen(
+              activeRoadmap: testRoadmap,
+              allRoadmaps: [testRoadmap],
+              chapters: [testChapterLong],
+              allBeats: [completedBeat],
+              pacingBudget: null,
+              chaptersByRoadmap: {
+                testRoadmap.id: [testChapterLong],
+              },
+              beatsByRoadmap: {
+                testRoadmap.id: [completedBeat],
+              },
+              streakDays: 5,
+              onSwitchRoadmap: () {},
+              onBeatToggled: (_, __) async {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify completed task is still visible
+      final titleFinder = find.textContaining('Fundamental Theorem');
+      expect(titleFinder, findsOneWidget);
+
+      // Verify lineThrough decoration is applied
+      final textWidget = tester.widget<Text>(titleFinder);
+      expect(textWidget.style?.decoration, TextDecoration.lineThrough);
+
+      // Verify MISSION badge is not present
+      expect(find.text('MISSION'), findsNothing);
+    });
   });
 
   group('GlassButton Hierarchy & Material Tests', () {

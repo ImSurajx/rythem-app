@@ -56,11 +56,34 @@ class PacingService {
       daysLeft: daysLeft,
     );
 
-    // 4. Walk pending queue in mentor order to select today's beats
-    final todaysBeats = PacingCalculator.walkQueueToFillBudget(
-      pendingBeats: pendingBeats,
-      targetBudget: todayEffortShare,
-    );
+    // 4. Check beats completed today
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final beatsCompletedToday = completedBeats.where((b) {
+      if (b.completedAt == null) return false;
+      return b.completedAt!.isAfter(todayStart);
+    }).toList();
+
+    double completedTodayEffort = 0.0;
+    for (final b in beatsCompletedToday) {
+      completedTodayEffort += b.effortWeight;
+    }
+
+    // Walk pending queue to fill the remaining budget for today
+    final remainingBudget = (todayEffortShare - completedTodayEffort).clamp(0.0, todayEffortShare);
+    final pendingBeatsForToday = remainingBudget > 0
+        ? PacingCalculator.walkQueueToFillBudget(
+            pendingBeats: pendingBeats,
+            targetBudget: remainingBudget,
+          )
+        : (beatsCompletedToday.isEmpty
+            ? PacingCalculator.walkQueueToFillBudget(
+                pendingBeats: pendingBeats,
+                targetBudget: todayEffortShare,
+              )
+            : <BeatEntity>[]);
+
+    // Todays beats includes beats completed today + pending beats for today
+    final todaysBeats = [...beatsCompletedToday, ...pendingBeatsForToday];
 
     double todaysSelectedEffort = 0.0;
     for (final b in todaysBeats) {
@@ -68,16 +91,8 @@ class PacingService {
     }
     todaysSelectedEffort = double.parse(todaysSelectedEffort.toStringAsFixed(2));
 
-    // 5. Check if today's assigned beats have already been completed
-    // (e.g. beats completed today that were in today's assignment)
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final completedToday = completedBeats.where((b) {
-      if (b.completedAt == null) return false;
-      return b.completedAt!.isAfter(todayStart);
-    }).length;
-
     final isDailyQuotaCompleted = isRoadmapCompleted ||
-        (todaysBeats.isNotEmpty && completedToday >= todaysBeats.length);
+        (todaysBeats.isNotEmpty && beatsCompletedToday.length >= todaysBeats.length);
 
     // 6. Trend Analysis over the past 7 days
     final recentDailyEfforts = await _getRecentDailyEfforts(roadmapId, now);
