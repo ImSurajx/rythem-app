@@ -18,6 +18,8 @@ class ChapterAccordion extends StatefulWidget {
   final void Function(BeatEntity beat) onBeatTapped;
   final void Function(BeatEntity beat)? onFlagBeat;
   final void Function(BeatEntity beat)? onAttachResource;
+  final Future<void> Function(BeatEntity beat)? onConfirmMatch;
+  final Future<void> Function(BeatEntity beat)? onRejectMatch;
 
   const ChapterAccordion({
     super.key,
@@ -28,6 +30,8 @@ class ChapterAccordion extends StatefulWidget {
     required this.onBeatTapped,
     this.onFlagBeat,
     this.onAttachResource,
+    this.onConfirmMatch,
+    this.onRejectMatch,
   });
 
   @override
@@ -184,6 +188,12 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               onAttachResource: widget.onAttachResource != null
                                   ? () => widget.onAttachResource!(beat)
                                   : null,
+                              onConfirmMatch: widget.onConfirmMatch != null
+                                  ? () => widget.onConfirmMatch!(beat)
+                                  : null,
+                              onRejectMatch: widget.onRejectMatch != null
+                                  ? () => widget.onRejectMatch!(beat)
+                                  : null,
                             );
                           },
                         ),
@@ -209,6 +219,8 @@ class _AccordionBeatTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onFlag;
   final VoidCallback? onAttachResource;
+  final VoidCallback? onConfirmMatch;
+  final VoidCallback? onRejectMatch;
 
   const _AccordionBeatTile({
     required this.beat,
@@ -218,10 +230,17 @@ class _AccordionBeatTile extends StatelessWidget {
     required this.onTap,
     this.onFlag,
     this.onAttachResource,
+    this.onConfirmMatch,
+    this.onRejectMatch,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showConfirmationPrompt = beat.matchConfidence != null &&
+        beat.matchConfidence! < 0.70 &&
+        beat.syllabusTopicId != null &&
+        !beat.isMentorExtra;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -236,9 +255,12 @@ class _AccordionBeatTile extends StatelessWidget {
             width: 0.7,
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
             // Interactive Checkbox
             GestureDetector(
               onTap: () {
@@ -427,7 +449,95 @@ class _AccordionBeatTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+
+        // Inline Confirmation Prompt for Ambiguous Syllabus Matches (docs/design.md §5 & user-flow.md Flow 4)
+        if (showConfirmationPrompt) ...[
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorderHighlight : const Color(0x24000000),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  size: 13,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'Looks related to "${beat.syllabusTopicId}" — confirm?',
+                    style: RythemTypography.labelSmall.copyWith(
+                      color: themeColors.textPrimary,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Confirm Action
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    onConfirmMatch?.call();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white : Colors.black,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Confirm',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: isDark ? Colors.black : Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // Reject Action
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    onRejectMatch?.call();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Reject',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ),
+  ),
+);
   }
 }
