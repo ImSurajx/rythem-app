@@ -87,29 +87,28 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
     final List<BoxShadow> shadows;
 
     if (widget.variant == GlassButtonVariant.primary) {
+      textColor = themeColors.textPrimary;
       if (isDark) {
-        textColor = Colors.white;
-        backgroundColor = isEnabled ? const Color(0x22FFFFFF) : const Color(0x10FFFFFF);
-        borderColor = isEnabled ? const Color(0x3EFFFFFF) : const Color(0x1EFFFFFF);
+        backgroundColor = isEnabled ? const Color(0x1EFFFFFF) : const Color(0x0EFFFFFF);
+        borderColor = isEnabled ? const Color(0x32FFFFFF) : const Color(0x1CFFFFFF);
         shadows = isEnabled
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.32),
-                  blurRadius: 14,
-                  offset: const Offset(0, 3),
+                  color: Colors.black.withOpacity(0.28),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
                 ),
               ]
             : [];
       } else {
-        textColor = const Color(0xFF0D0E12);
-        backgroundColor = isEnabled ? const Color(0x40FFFFFF) : const Color(0x20FFFFFF);
-        borderColor = isEnabled ? const Color(0x22000000) : const Color(0x12000000);
+        backgroundColor = isEnabled ? const Color(0x18000000) : const Color(0x0A000000);
+        borderColor = isEnabled ? const Color(0x1E000000) : const Color(0x12000000);
         shadows = isEnabled
             ? [
                 BoxShadow(
-                  color: const Color(0xFF0E1420).withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
+                  color: const Color(0xFF0E1420).withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
                 ),
               ]
             : [];
@@ -117,20 +116,20 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
     } else if (widget.variant == GlassButtonVariant.secondary) {
       textColor = themeColors.textPrimary;
       if (isDark) {
-        backgroundColor = isEnabled ? const Color(0x14FFFFFF) : const Color(0x08FFFFFF);
-        borderColor = isEnabled ? const Color(0x24FFFFFF) : const Color(0x12FFFFFF);
+        backgroundColor = isEnabled ? const Color(0x18FFFFFF) : const Color(0x0CFFFFFF);
+        borderColor = isEnabled ? const Color(0x2AFFFFFF) : const Color(0x18FFFFFF);
         shadows = isEnabled
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
+                  color: Colors.black.withOpacity(0.25),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ]
             : [];
       } else {
-        backgroundColor = isEnabled ? const Color(0x24FFFFFF) : const Color(0x12FFFFFF);
-        borderColor = isEnabled ? const Color(0x16000000) : const Color(0x0C000000);
+        backgroundColor = isEnabled ? const Color(0x12000000) : const Color(0x06000000);
+        borderColor = isEnabled ? const Color(0x18000000) : const Color(0x10000000);
         shadows = isEnabled
             ? [
                 BoxShadow(

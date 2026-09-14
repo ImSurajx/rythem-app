@@ -111,6 +111,8 @@ void main() {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
       await tester.pump();
       if (find.text('Calculus & Gradient Vectors').evaluate().isNotEmpty) {
+        await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 250)));
+        await tester.pump();
         break;
       }
     }
@@ -149,6 +151,10 @@ void main() {
     expect(normalPreset, findsOneWidget);
 
     await tester.tap(normalPreset);
+    for (int i = 0; i < 30; i++) {
+      await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+    }
     await tester.pumpAndSettle();
   });
 }
