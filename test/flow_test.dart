@@ -133,7 +133,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('renders Evening Unlocked state when all mission beats are done', (tester) async {
+    testWidgets('renders Streak Calendar with glass circular cells and zero locked states', (tester) async {
       final completedBeats = testBeats.map((b) => b.copyWith(isCompleted: true)).toList();
       final budget = PacingBudget(
         roadmapId: 'rm_test',
@@ -163,9 +163,12 @@ void main() {
         ),
       );
 
-      // Evening Unlocked indicator
-      expect(find.text('Evening unlocked'), findsOneWidget);
-      expect(find.text('Complete'), findsOneWidget);
+      // Streak Calendar verification
+      expect(find.text('STREAK CALENDAR'), findsOneWidget);
+      expect(find.text('6 days active'), findsOneWidget);
+      // Zero locked text
+      expect(find.text('Evening locked'), findsNothing);
+      expect(find.text('Evening unlocked'), findsNothing);
     });
   });
 

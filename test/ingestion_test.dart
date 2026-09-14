@@ -26,7 +26,7 @@ void main() {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
-  group('Sub-stage 4.1: Timestamp Parser & Effort Weight Derivation', () {
+  group('Phase 4.1: Timestamp Parser & Effort Weight Derivation', () {
     test('parses multi-hour descriptions with mm:ss and hh:mm:ss timestamps', () {
       const description = '''
 00:00 Introduction & Overview
@@ -83,7 +83,7 @@ void main() {
     });
   });
 
-  group('Sub-stage 4.2: Chapter Clusterer (Condition 1 - Zero-Drop Guarantee)', () {
+  group('Phase 4.2: Chapter Clusterer (Condition 1 - Zero-Drop Guarantee)', () {
     test('clusters 20 flat playlist videos into 4 balanced chapters without dropping any', () {
       final items = List.generate(
         20,
@@ -132,7 +132,7 @@ void main() {
     });
   });
 
-  group('Sub-stage 4.3: Syllabus Matcher (Condition 2 - Mentor Flow & Extras)', () {
+  group('Phase 4.3: Syllabus Matcher (Condition 2 - Mentor Flow & Extras)', () {
     test('matches aligned topics and tags unaligned items as mentor_extra in place', () {
       final matcher = SyllabusMatcherService();
 
@@ -192,7 +192,7 @@ void main() {
     });
   });
 
-  group('Sub-stage 4.4 & 4.5: End-to-End Curriculum Ingestion Pipeline in SQLite', () {
+  group('Phase 4.4 & 4.5: End-to-End Curriculum Ingestion Pipeline in SQLite', () {
     late Database db;
     late DatabaseService dbService;
     late RoadmapRepository roadmapRepo;

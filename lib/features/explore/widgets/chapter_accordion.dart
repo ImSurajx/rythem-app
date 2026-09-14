@@ -202,38 +202,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                             ),
                           ),
                         )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: widget.beats.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 6),
-                          itemBuilder: (context, index) {
-                            final beat = widget.beats[index];
-                            return BeatTile(
-                              beat: beat,
-                              themeColors: themeColors,
-                              isDark: isDark,
-                              onToggle: (val) => widget.onBeatToggled(beat, val),
-                              onOpenResource: () => ResourceLauncher.openResource(
-                                context,
-                                url: beat.sourceUrl,
-                                title: beat.title,
-                              ),
-                              onFlag: widget.onFlagBeat != null
-                                  ? () => widget.onFlagBeat!(beat)
-                                  : null,
-                              onAttachResource: widget.onAttachResource != null
-                                  ? () => widget.onAttachResource!(beat)
-                                  : null,
-                              onConfirmMatch: widget.onConfirmMatch != null
-                                  ? () => widget.onConfirmMatch!(beat)
-                                  : null,
-                              onRejectMatch: widget.onRejectMatch != null
-                                  ? () => widget.onRejectMatch!(beat)
-                                  : null,
-                            );
-                          },
-                        ),
+                      : _buildCategorizedBeatsList(themeColors, isDark),
                 ),
               ],
             ),
@@ -246,6 +215,199 @@ class _ChapterAccordionState extends State<ChapterAccordion>
             sizeCurve: Curves.easeInOutCubic,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategorizedBeatsList(RythemColorTokens themeColors, bool isDark) {
+    // 1. Partition beats into mapped topics, bonus/extras, and uncovered gaps
+    final Map<String, List<BeatEntity>> topicMap = {};
+    final List<BeatEntity> bonusBeats = [];
+    final List<BeatEntity> gapBeats = [];
+
+    for (final beat in widget.beats) {
+      if ((beat.id.contains('_gap_') || (beat.sourceUrl == null && beat.syllabusTopicId != null)) &&
+          !beat.isMentorExtra) {
+        gapBeats.add(beat);
+      } else if (beat.isMentorExtra) {
+        bonusBeats.add(beat);
+      } else {
+        final topicName = beat.syllabusTopicId ?? 'Core Curriculum';
+        topicMap.putIfAbsent(topicName, () => []).add(beat);
+      }
+    }
+
+    final hasCategories = topicMap.length > 1 || bonusBeats.isNotEmpty || gapBeats.isNotEmpty;
+
+    // If no distinct topics exist (e.g. flat unparsed course), render clean flat list
+    if (!hasCategories) {
+      return ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: widget.beats.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 6),
+        itemBuilder: (context, index) => _buildBeatItem(widget.beats[index], themeColors, isDark),
+      );
+    }
+
+    final sections = <Widget>[];
+
+    // Render topics in first-seen sequence
+    int topicNumber = 1;
+    for (final entry in topicMap.entries) {
+      final topicName = entry.key;
+      final beats = entry.value;
+      final completed = beats.where((b) => b.isCompleted).length;
+
+      sections.add(
+        _TopicGroupSection(
+          title: 'Topic $topicNumber: $topicName',
+          subtitle: '$completed/${beats.length} complete • ${beats.length} video${beats.length == 1 ? '' : 's'}',
+          icon: Icons.menu_book_rounded,
+          accentColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+          themeColors: themeColors,
+          isDark: isDark,
+          children: beats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
+        ),
+      );
+      topicNumber++;
+    }
+
+    // Render Bonus & Enrichment if present
+    if (bonusBeats.isNotEmpty) {
+      final completed = bonusBeats.where((b) => b.isCompleted).length;
+      sections.add(
+        _TopicGroupSection(
+          title: '✦ Bonus & Enrichment',
+          subtitle: '$completed/${bonusBeats.length} complete • ${bonusBeats.length} video${bonusBeats.length == 1 ? '' : 's'}',
+          icon: Icons.auto_awesome_rounded,
+          accentColor: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+          themeColors: themeColors,
+          isDark: isDark,
+          children: bonusBeats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
+        ),
+      );
+    }
+
+    // Render Uncovered Gaps if present
+    if (gapBeats.isNotEmpty) {
+      sections.add(
+        _TopicGroupSection(
+          title: '⚠️ Uncovered Syllabus Gaps',
+          subtitle: '${gapBeats.length} topic${gapBeats.length == 1 ? '' : 's'} not in playlist',
+          icon: Icons.warning_amber_rounded,
+          accentColor: const Color(0xFFF59E0B),
+          themeColors: themeColors,
+          isDark: isDark,
+          children: gapBeats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: sections,
+    );
+  }
+
+  Widget _buildBeatItem(BeatEntity beat, RythemColorTokens themeColors, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: BeatTile(
+        beat: beat,
+        themeColors: themeColors,
+        isDark: isDark,
+        onToggle: (val) => widget.onBeatToggled(beat, val),
+        onOpenResource: () => ResourceLauncher.openResource(
+          context,
+          url: beat.sourceUrl,
+          title: beat.title,
+        ),
+        onFlag: widget.onFlagBeat != null ? () => widget.onFlagBeat!(beat) : null,
+        onAttachResource: widget.onAttachResource != null ? () => widget.onAttachResource!(beat) : null,
+        onConfirmMatch: widget.onConfirmMatch != null ? () => widget.onConfirmMatch!(beat) : null,
+        onRejectMatch: widget.onRejectMatch != null ? () => widget.onRejectMatch!(beat) : null,
+      ),
+    );
+  }
+}
+
+/// Sub-chapter topic grouping section card with liquid glass styling
+class _TopicGroupSection extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accentColor;
+  final RythemColorTokens themeColors;
+  final bool isDark;
+  final List<Widget> children;
+
+  const _TopicGroupSection({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accentColor,
+    required this.themeColors,
+    required this.isDark,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+          width: 0.8,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+              child: Row(
+                children: [
+                  Icon(icon, size: 14, color: accentColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: RythemTypography.titleMedium.copyWith(
+                        color: themeColors.textPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      subtitle,
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 9.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...children,
+          ],
+        ),
       ),
     );
   }

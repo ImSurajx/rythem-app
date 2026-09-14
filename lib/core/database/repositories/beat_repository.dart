@@ -71,28 +71,29 @@ class BeatRepository {
     return results.map(BeatEntity.fromMap).toList();
   }
 
-  /// Ground Truth: Mentor's flow is king. Always returned in chronological sort order.
+  /// Ground Truth: Mentor's flow is king. Always returned in chronological chapter-first sequence.
   Future<List<BeatEntity>> getBeatsByRoadmapId(String roadmapId) async {
     final db = await _db;
-    final results = await db.query(
-      DatabaseTables.beats,
-      where: '${BeatColumns.roadmapId} = ?',
-      whereArgs: [roadmapId],
-      orderBy: '${BeatColumns.sortOrder} ASC, ${BeatColumns.createdAt} ASC',
-    );
+    final results = await db.rawQuery('''
+      SELECT b.* FROM ${DatabaseTables.beats} b
+      LEFT JOIN ${DatabaseTables.chapters} c ON b.${BeatColumns.chapterId} = c.${ChapterColumns.id}
+      WHERE b.${BeatColumns.roadmapId} = ?
+      ORDER BY COALESCE(c.${ChapterColumns.sortOrder}, 0) ASC, b.${BeatColumns.sortOrder} ASC, b.${BeatColumns.createdAt} ASC
+    ''', [roadmapId]);
     return results.map(BeatEntity.fromMap).toList();
   }
 
-  /// Fetches pending incomplete beats from the front of the queue in mentor order.
+  /// Fetches pending incomplete beats from the front of the queue in chapter-first sequence.
   Future<List<BeatEntity>> getPendingBeats(String roadmapId, {int? limit}) async {
     final db = await _db;
-    final results = await db.query(
-      DatabaseTables.beats,
-      where: '${BeatColumns.roadmapId} = ? AND ${BeatColumns.isCompleted} = 0',
-      whereArgs: [roadmapId],
-      orderBy: '${BeatColumns.sortOrder} ASC, ${BeatColumns.createdAt} ASC',
-      limit: limit,
-    );
+    final limitClause = limit != null ? 'LIMIT $limit' : '';
+    final results = await db.rawQuery('''
+      SELECT b.* FROM ${DatabaseTables.beats} b
+      LEFT JOIN ${DatabaseTables.chapters} c ON b.${BeatColumns.chapterId} = c.${ChapterColumns.id}
+      WHERE b.${BeatColumns.roadmapId} = ? AND b.${BeatColumns.isCompleted} = 0
+      ORDER BY COALESCE(c.${ChapterColumns.sortOrder}, 0) ASC, b.${BeatColumns.sortOrder} ASC, b.${BeatColumns.createdAt} ASC
+      $limitClause
+    ''', [roadmapId]);
     return results.map(BeatEntity.fromMap).toList();
   }
 
