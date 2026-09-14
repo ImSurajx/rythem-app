@@ -214,7 +214,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
           // Track List
           if (filteredRoadmaps.isEmpty)

@@ -1,13 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import 'glass_container.dart';
 
 enum GlassButtonVariant {
-  primary, // Solid white with pure black text
-  secondary, // Frosted translucent glass with white text
-  ghost, // Minimalist subtle border
+  primary, // Translucent frosted glass with floating specular highlight
+  secondary, // Subtle translucent frosted glass with soft border
+  ghost, // Minimalist transparent glass with thin subtle border
 }
 
 class GlassButton extends StatefulWidget {
@@ -81,8 +81,78 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
     final themeColors = RythemColors.of(context);
     final isDark = themeColors.isDark;
 
-    final primaryTextColor = themeColors.actionOnPrimary;
-    final secondaryTextColor = themeColors.textPrimary;
+    final Color textColor;
+    final Color backgroundColor;
+    final Color borderColor;
+    final List<BoxShadow> shadows;
+
+    if (widget.variant == GlassButtonVariant.primary) {
+      if (isDark) {
+        textColor = Colors.white;
+        backgroundColor = isEnabled ? const Color(0x2EFFFFFF) : const Color(0x14FFFFFF);
+        borderColor = isEnabled ? const Color(0x55FFFFFF) : const Color(0x22FFFFFF);
+        shadows = isEnabled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.40),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            : [];
+      } else {
+        textColor = const Color(0xFF0D0E12);
+        backgroundColor = isEnabled ? const Color(0xCCFFFFFF) : const Color(0x70FFFFFF);
+        borderColor = isEnabled ? const Color(0x35000000) : const Color(0x18000000);
+        shadows = isEnabled
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF0E1420).withOpacity(0.10),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [];
+      }
+    } else if (widget.variant == GlassButtonVariant.secondary) {
+      textColor = themeColors.textPrimary;
+      if (isDark) {
+        backgroundColor = isEnabled ? const Color(0x18FFFFFF) : const Color(0x0CFFFFFF);
+        borderColor = isEnabled ? const Color(0x2AFFFFFF) : const Color(0x18FFFFFF);
+        shadows = isEnabled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [];
+      } else {
+        backgroundColor = isEnabled ? const Color(0x18000000) : const Color(0x0C000000);
+        borderColor = isEnabled ? const Color(0x1A000000) : const Color(0x10000000);
+        shadows = isEnabled
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF0E1420).withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [];
+      }
+    } else {
+      // ghost
+      textColor = themeColors.textSecondary;
+      backgroundColor = Colors.transparent;
+      borderColor = isDark ? const Color(0x22FFFFFF) : const Color(0x1A000000);
+      shadows = [];
+    }
 
     Widget content = widget.isLoading
         ? SizedBox(
@@ -90,11 +160,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
             height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                widget.variant == GlassButtonVariant.primary
-                    ? primaryTextColor
-                    : secondaryTextColor,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(textColor),
             ),
           )
         : Row(
@@ -105,9 +171,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                 Icon(
                   widget.icon,
                   size: 18,
-                  color: widget.variant == GlassButtonVariant.primary
-                      ? primaryTextColor
-                      : secondaryTextColor,
+                  color: textColor,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -116,59 +180,46 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                   widget.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: widget.variant == GlassButtonVariant.primary
-                      ? RythemTypography.button.copyWith(color: primaryTextColor)
-                      : RythemTypography.button.copyWith(color: secondaryTextColor),
+                  style: RythemTypography.button.copyWith(
+                    color: textColor,
+                    fontWeight: widget.variant == GlassButtonVariant.primary
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                  ),
                 ),
               ),
             ],
           );
 
-    final horizontalPadding = (widget.width != null && widget.width! < 120) ? 12.0 : 24.0;
+    final horizontalPadding = (widget.width != null && widget.width! < 120) ? 12.0 : 22.0;
 
-    Widget buttonBody;
-    if (widget.variant == GlassButtonVariant.primary) {
-      buttonBody = Container(
-        width: widget.width,
-        height: widget.height,
-        alignment: Alignment.center,
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-        decoration: BoxDecoration(
-          color: isEnabled
-              ? themeColors.actionPrimary
-              : themeColors.actionPrimary.withOpacity(0.35),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isDark
-              ? [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.12),
-                    blurRadius: 18,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: content,
-      );
-    } else {
-      buttonBody = GlassContainer(
-        width: widget.width,
-        height: widget.height,
+    final buttonBody = Container(
+      width: widget.width,
+      height: widget.height,
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        opacity: widget.variant == GlassButtonVariant.secondary ? 0.12 : 0.04,
-        borderColor: widget.variant == GlassButtonVariant.secondary
-            ? (isDark ? themeColors.glassBorderHighlight : const Color(0x20000000))
-            : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-        child: Center(child: content),
-      );
-    }
+        boxShadow: shadows,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            alignment: Alignment.center,
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: borderColor,
+                width: widget.variant == GlassButtonVariant.primary ? 1.0 : 0.8,
+              ),
+            ),
+            child: content,
+          ),
+        ),
+      ),
+    );
 
     return AnimatedBuilder(
       animation: _scaleAnimation,

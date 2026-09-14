@@ -6,6 +6,7 @@ import 'package:rythem_app/core/database/models/roadmap_entity.dart';
 import 'package:rythem_app/core/pacing/pacing.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
+import 'package:rythem_app/core/utils/resource_launcher.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'confusing_beat_dialog.dart';
@@ -636,7 +637,11 @@ class _TrackTodoListCard extends StatelessWidget {
                           themeColors: themeColors,
                           isDark: isDark,
                           onToggle: (val) => onBeatToggled(beat, val),
-                          onTap: () => onOpenFocusSession(beat),
+                          onOpenResource: () => ResourceLauncher.openResource(
+                            context,
+                            url: beat.sourceUrl,
+                            title: beat.title,
+                          ),
                           onFlag: () {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },
@@ -827,7 +832,7 @@ class _FlowBeatChecklistTile extends StatelessWidget {
   final RythemColorTokens themeColors;
   final bool isDark;
   final ValueChanged<bool> onToggle;
-  final VoidCallback onTap;
+  final VoidCallback? onOpenResource;
   final VoidCallback onFlag;
 
   const _FlowBeatChecklistTile({
@@ -837,76 +842,80 @@ class _FlowBeatChecklistTile extends StatelessWidget {
     required this.themeColors,
     required this.isDark,
     required this.onToggle,
-    required this.onTap,
+    required this.onOpenResource,
     required this.onFlag,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
+    final hasResource = beat.sourceUrl != null && beat.sourceUrl!.trim().isNotEmpty;
+    final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isTodayMission
+            ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
+            : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.015)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
           color: isTodayMission
-              ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
-              : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.015)),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isTodayMission
-                ? (isDark ? themeColors.glassBorderHighlight : Colors.black45)
-                : (isDark ? themeColors.glassBorder : const Color(0x10000000)),
-            width: isTodayMission ? 1.1 : 0.7,
-          ),
+              ? (isDark ? themeColors.glassBorderHighlight : Colors.black45)
+              : (isDark ? themeColors.glassBorder : const Color(0x10000000)),
+          width: isTodayMission ? 1.1 : 0.7,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Interactive Todo Checkbox
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                onToggle(!beat.isCompleted);
-              },
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // 1. Interactive Todo Checkbox (Checkbox = Completion)
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onToggle(!beat.isCompleted);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: beat.isCompleted
+                      ? themeColors.textPrimary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
                     color: beat.isCompleted
                         ? themeColors.textPrimary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: beat.isCompleted
-                          ? themeColors.textPrimary
-                          : (isTodayMission
-                              ? themeColors.textPrimary
-                              : themeColors.textTertiary),
-                      width: 1.5,
-                    ),
+                        : (isTodayMission
+                            ? themeColors.textPrimary
+                            : themeColors.textTertiary),
+                    width: 1.5,
                   ),
-                  child: AnimatedScale(
-                    scale: beat.isCompleted ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 15,
-                      color: isDark ? Colors.black : Colors.white,
-                    ),
+                ),
+                child: AnimatedScale(
+                  scale: beat.isCompleted ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 15,
+                    color: isDark ? Colors.black : Colors.white,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+          ),
+          const SizedBox(width: 10),
 
-            // Title and Chapter Subtitle
-            Expanded(
+          // 2. Task Content Area (Tapping Task Content = Directly Opens Attached Resource)
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onOpenResource,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -967,9 +976,36 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
-                        '• ${beat.effortWeight.toStringAsFixed(1)} effort',
+                        '•',
+                        style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                      ),
+                      const SizedBox(width: 6),
+                      if (hasResource) ...[
+                        Icon(
+                          isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
+                          size: 11,
+                          color: themeColors.textSecondary,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          isYt ? 'video' : 'resource',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '•',
+                          style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        '${beat.effortWeight.toStringAsFixed(1)} effort',
                         style: RythemTypography.labelSmall.copyWith(
                           color: themeColors.textTertiary,
                           fontSize: 9.5,
@@ -980,26 +1016,36 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                 ],
               ),
             ),
+          ),
 
-            // Friction Action & Focus Indicator
-            IconButton(
-              icon: Icon(
-                Icons.help_outline_rounded,
-                size: 16,
-                color: themeColors.textTertiary,
+          // 3. Subtle Resource indicator icon if link exists
+          if (hasResource)
+            GestureDetector(
+              onTap: onOpenResource,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Icon(
+                  Icons.open_in_new_rounded,
+                  size: 14,
+                  color: themeColors.textTertiary,
+                ),
               ),
-              onPressed: onFlag,
-              tooltip: 'Flag Confusion',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
+
+          // 4. Friction / Confusion Flag
+          IconButton(
+            icon: Icon(
+              Icons.help_outline_rounded,
+              size: 16,
               color: themeColors.textTertiary,
             ),
-          ],
-        ),
+            onPressed: onFlag,
+            tooltip: 'Flag Confusion',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          ),
+        ],
       ),
     );
   }
