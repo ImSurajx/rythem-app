@@ -3,8 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:rythem_app/core/ai/ai.dart';
-import 'package:rythem_app/core/database/database_service.dart';
-import 'package:rythem_app/core/database/repositories/app_settings_repository.dart';
+import 'package:rythem_app/core/database/database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -135,6 +134,117 @@ void main() {
         'Breadth First Search',
       );
       expect(score, greaterThan(0.5));
+    });
+
+    test('Explains programming concept: what is test case in programming with concrete structure and code', () async {
+      final manager = ModelDownloadManager(
+        settingsRepo: settingsRepo,
+        overrideModelsDir: tempDir.path,
+      );
+      final inference = LocalInferenceService(downloadManager: manager);
+
+      final explanation = await inference.answerQuery(
+        prompt: 'what is test case in programming',
+      );
+
+      expect(explanation, contains('Test Case in Programming'));
+      expect(explanation, contains('Preconditions'));
+      expect(explanation, contains('Expected Result'));
+      expect(explanation, contains('Happy Path'));
+      expect(explanation, contains('Boundary & Edge Cases'));
+      expect(explanation, contains('test('));
+    });
+
+    test('Answers tracker queries with real days, completed beats, and pacing from database', () async {
+      await testDb.execute('''
+        CREATE TABLE roadmaps (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          target_completion_date TEXT,
+          status TEXT NOT NULL,
+          is_primary INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+      ''');
+      await testDb.execute('''
+        CREATE TABLE beats (
+          id TEXT PRIMARY KEY,
+          chapter_id TEXT NOT NULL,
+          roadmap_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          source_url TEXT,
+          timestamp_seconds INTEGER,
+          effort_weight REAL NOT NULL,
+          sort_order INTEGER NOT NULL,
+          is_completed INTEGER NOT NULL DEFAULT 0,
+          is_mentor_extra INTEGER NOT NULL DEFAULT 0,
+          completed_at TEXT,
+          match_confidence REAL,
+          syllabus_topic_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+      ''');
+
+      final roadmapRepo = RoadmapRepository(dbService: DatabaseService.instance);
+      final beatRepo = BeatRepository(dbService: DatabaseService.instance);
+      final now = DateTime.now();
+
+      await roadmapRepo.createRoadmap(RoadmapEntity(
+        id: 'rm_dsa',
+        title: 'DSA with Python',
+        isPrimary: true,
+        createdAt: now.subtract(const Duration(days: 12)),
+        targetCompletionDate: now.add(const Duration(days: 18)),
+        status: 'active',
+        updatedAt: now,
+      ));
+
+      await beatRepo.createBeat(BeatEntity(
+        id: 'b1',
+        chapterId: 'c1',
+        roadmapId: 'rm_dsa',
+        title: 'Two Sum',
+        effortWeight: 1.0,
+        sortOrder: 0,
+        isCompleted: true,
+        createdAt: now,
+        updatedAt: now,
+      ));
+      await beatRepo.createBeat(BeatEntity(
+        id: 'b2',
+        chapterId: 'c1',
+        roadmapId: 'rm_dsa',
+        title: 'Three Sum',
+        effortWeight: 1.5,
+        sortOrder: 1,
+        isCompleted: false,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      final manager = ModelDownloadManager(
+        settingsRepo: settingsRepo,
+        overrideModelsDir: tempDir.path,
+      );
+      final inference = LocalInferenceService(
+        downloadManager: manager,
+        roadmapRepo: roadmapRepo,
+        beatRepo: beatRepo,
+      );
+
+      final response = await inference.answerQuery(
+        prompt: 'look for this tracker & tell me how many days it took me to complete',
+        roadmapId: 'rm_dsa',
+      );
+
+      expect(response, contains('Tracker Status & Timeline Analysis'));
+      expect(response, contains('DSA with Python'));
+      expect(response, contains('1 of 2 beats completed'));
+      expect(response, contains('days'));
+      expect(response, contains('beats/day'));
     });
   });
 }

@@ -85,6 +85,9 @@ class _DesignSystemShowcaseScreenState
   final _modelDownloadManager = ModelDownloadManager();
   late final _localInferenceService = LocalInferenceService(
     downloadManager: _modelDownloadManager,
+    roadmapRepo: _roadmapRepo,
+    beatRepo: _beatRepo,
+    pacingService: _pacingService,
   );
   LocalInferenceService get inferenceService => _localInferenceService;
 
@@ -493,8 +496,10 @@ class _DesignSystemShowcaseScreenState
                                 });
                                 final sw = Stopwatch()..start();
                                 try {
-                                  final result = await _localInferenceService.explainConfusingBeat(
-                                    beatTitle: topic,
+                                  final result = await _localInferenceService.answerQuery(
+                                    prompt: topic,
+                                    roadmapId: _roadmapId,
+                                    roadmapTitle: _roadmapTitle,
                                   );
                                   sw.stop();
                                   setModalState(() {
