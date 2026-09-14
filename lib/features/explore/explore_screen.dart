@@ -31,7 +31,7 @@ class ExploreScreen extends StatefulWidget {
   }) onCreateTrack;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
-  final Future<void> Function(String roadmapId, String resourceUrl)? onAttachResource;
+  final Future<void> Function(String roadmapId, String resourceUrl, {String? chapterId})? onAttachResource;
   final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
 
   const ExploreScreen({

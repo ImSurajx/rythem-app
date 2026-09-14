@@ -130,31 +130,35 @@ void main() {
     final updatedBeats = await beatRepo.getBeatsByRoadmapId(creationResult.roadmapId);
 
     // Verify:
-    // 1st: Arrays and Strings (matched Lecture 1)
-    // 2nd: Sliding Window (matched Lecture 2)
-    // 3rd: Two Sum (matched Lecture 3)
-    // 4th: Binary Search (matched Lecture 4)
+    // 1st: Lecture 1 (matched Arrays and Strings)
+    // 2nd: Lecture 2 (matched Sliding Window)
+    // 3rd: Lecture 3 (matched Two Sum)
+    // 4th: Lecture 4 (matched Binary Search)
     // 5th: Mentor extra bonus tips
-    // 6th: Graph Traversal (uncovered by mentor, pushed down while preserving syllabus existence)
+    // 6th: Graph Traversal (uncovered by mentor, placed as gap at the end)
     final updatedTitles = updatedBeats.map((b) => b.title).toList();
 
-    expect(updatedTitles[0], 'Arrays and Strings');
+    expect(updatedTitles[0], contains('Arrays and Strings'));
+    expect(updatedBeats[0].syllabusTopicId, 'Arrays and Strings');
     expect(updatedBeats[0].sourceUrl, contains('vid1'));
 
-    expect(updatedTitles[1], 'Sliding Window');
+    expect(updatedTitles[1], contains('Sliding Window'));
+    expect(updatedBeats[1].syllabusTopicId, 'Sliding Window');
     expect(updatedBeats[1].sourceUrl, contains('vid2'));
 
-    expect(updatedTitles[2], 'Two Sum');
+    expect(updatedTitles[2], contains('Two Sum'));
+    expect(updatedBeats[2].syllabusTopicId, 'Two Sum');
     expect(updatedBeats[2].sourceUrl, contains('vid3'));
 
-    expect(updatedTitles[3], 'Binary Search');
+    expect(updatedTitles[3], contains('Binary Search'));
+    expect(updatedBeats[3].syllabusTopicId, 'Binary Search');
     expect(updatedBeats[3].sourceUrl, contains('vid4'));
 
     expect(updatedTitles[4], contains('Bonus - Competitive Programming Tips'));
     expect(updatedBeats[4].isMentorExtra, isTrue);
 
     expect(updatedTitles[5], 'Graph Traversal');
-    expect(updatedBeats[5].sourceUrl, isNull); // Remains unlinked
+    expect(updatedBeats[5].sourceUrl, isNull); // Remains unlinked gap
     expect(updatedBeats[5].isMentorExtra, isFalse);
   });
 }

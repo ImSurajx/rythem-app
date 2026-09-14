@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../database/database.dart';
-import '../models/extracted_beat.dart';
+import '../../ai/services/local_inference_service.dart';
+import '../../ai/models/curriculum_audit_result.dart';
 import '../models/extracted_resource.dart';
 import '../models/ingestion_result.dart';
 import '../models/syllabus_topic.dart';
@@ -16,6 +17,7 @@ class CurriculumIngestionService {
   final RoadmapRepository _roadmapRepo;
   final ChapterRepository _chapterRepo;
   final BeatRepository _beatRepo;
+  final LocalInferenceService _inferenceService;
 
   CurriculumIngestionService({
     IYoutubeClient? youtubeClient,
@@ -23,11 +25,13 @@ class CurriculumIngestionService {
     RoadmapRepository? roadmapRepo,
     ChapterRepository? chapterRepo,
     BeatRepository? beatRepo,
+    LocalInferenceService? inferenceService,
   })  : _youtubeClient = youtubeClient ?? YoutubeExtractorService(),
         _matcherService = matcherService ?? SyllabusMatcherService(),
         _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
         _chapterRepo = chapterRepo ?? ChapterRepository(),
-        _beatRepo = beatRepo ?? BeatRepository();
+        _beatRepo = beatRepo ?? BeatRepository(),
+        _inferenceService = inferenceService ?? LocalInferenceService();
 
   /// Ingests a curriculum from a YouTube URL (playlist or single video).
   /// 
@@ -192,18 +196,6 @@ class CurriculumIngestionService {
     String? resourceUrl,
     bool isPrimary = false,
   }) async {
-    final cleanResource = resourceUrl?.trim();
-    if (cleanResource != null && cleanResource.isNotEmpty) {
-      return await ingestFromUrl(
-        url: cleanResource,
-        customRoadmapTitle: title,
-        customDescription: category,
-        targetCompletionDate: targetDate,
-        isPrimary: isPrimary,
-        syllabus: syllabus.allTopics,
-      );
-    }
-
     final now = DateTime.now();
     final roadmapId = 'rm_${now.millisecondsSinceEpoch}_syl';
 
@@ -268,31 +260,60 @@ class CurriculumIngestionService {
       await _roadmapRepo.setPrimaryRoadmap(roadmapId);
     }
 
+    int finalBeatsCount = beatEntities.length;
+    double finalEffort = totalEffort;
+    int mentorExtras = 0;
+
+    final cleanResource = resourceUrl?.trim();
+    if (cleanResource != null && cleanResource.isNotEmpty) {
+      final audit = await attachResourceToRoadmap(
+        roadmapId: roadmapId,
+        resourceUrl: cleanResource,
+      );
+      if (audit != null) {
+        final updatedBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
+        finalBeatsCount = updatedBeats.length;
+        finalEffort = updatedBeats.fold(0.0, (acc, b) => acc + b.effortWeight);
+        mentorExtras = audit.mentorExtras.length;
+      }
+    }
+
     return IngestionResult(
       roadmapId: roadmapId,
       roadmapTitle: title,
       chaptersCount: chapterEntities.length,
-      beatsCount: beatEntities.length,
-      totalEffort: totalEffort,
-      mentorExtraCount: 0,
+      beatsCount: finalBeatsCount,
+      totalEffort: double.parse(finalEffort.toStringAsFixed(1)),
+      mentorExtraCount: mentorExtras,
       unconfirmedMatchesCount: 0,
       chapterTitles: chapterTitles,
     );
   }
 
-  /// Attaches a resource (YouTube playlist/video or generic link) to an existing tracker/roadmap.
-  /// Enforces mentor teaching sequence priority (reordering syllabus topics to match mentor order).
-  Future<void> attachResourceToRoadmap({
+  /// Attaches a resource (YouTube playlist/video or generic link) to a specific Subject / Chapter.
+  /// 
+  /// Guarantees:
+  /// - Macro subjects and other chapters in the track are NEVER modified or deleted.
+  /// - 100% of playlist videos are preserved in exact 0..N-1 mentor sequence.
+  /// - Local AI inference audits coverage, re-sequences syllabus topics according to the mentor's
+  ///   teaching flow, flags uncovered gaps at the end, and marks bonus videos as mentor extras.
+  /// - Returns a structured [CurriculumAuditResult] with AI Markdown narrative.
+  Future<CurriculumAuditResult?> attachResourceToSubject({
     required String roadmapId,
+    required String chapterId,
     required String resourceUrl,
   }) async {
     final cleanUrl = resourceUrl.trim();
-    if (cleanUrl.isEmpty) return;
+    if (cleanUrl.isEmpty) return null;
 
     final existingRoadmap = await _roadmapRepo.getRoadmapById(roadmapId);
-    if (existingRoadmap == null) return;
+    if (existingRoadmap == null) return null;
 
-    final existingBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
+    final chapters = await _chapterRepo.getChaptersByRoadmapId(roadmapId);
+    final targetChapter = chapters.where((c) => c.id == chapterId).firstOrNull;
+    if (targetChapter == null) return null;
+
+    final existingBeats = await _beatRepo.getBeatsByChapterId(chapterId);
 
     ExtractedResource extracted;
     final isYoutube = YoutubeExtractorService.parsePlaylistId(cleanUrl) != null ||
@@ -302,14 +323,14 @@ class CurriculumIngestionService {
       extracted = await _youtubeClient.extractResource(cleanUrl);
     } else {
       extracted = ExtractedResource(
-        title: 'Linked Resource',
+        title: targetChapter.title,
         description: cleanUrl,
         author: 'Resource Provider',
         sourceUrl: cleanUrl,
         resourceType: ExtractedResourceType.singleVideo,
         items: [
           RawResourceItem(
-            title: existingRoadmap.title,
+            title: targetChapter.title,
             sourceUrl: cleanUrl,
             durationSeconds: 900,
             index: 0,
@@ -322,140 +343,142 @@ class CurriculumIngestionService {
       throw Exception('No content items could be found from "$cleanUrl".');
     }
 
-    final matchedBeatIds = <String>{};
-    final alignedBeats = <ExtractedBeat>[];
-
-    // Priority to Mentor's teaching order:
-    // Match mentor items to syllabus topics sequentially
-    for (int i = 0; i < extracted.items.length; i++) {
-      final rawItem = extracted.items[i];
-      final effort = EffortWeightCalculator.calculate(rawItem.durationSeconds);
-
-      BeatEntity? bestMatch;
-      double bestScore = 0.0;
-
-      for (final beat in existingBeats) {
-        if (matchedBeatIds.contains(beat.id)) continue;
-        final score = _matcherService.calculateSimilarity(rawItem.title, beat.title);
-        if (score > bestScore && score >= SyllabusMatcherService.ambiguousConfidenceThreshold) {
-          bestScore = score;
-          bestMatch = beat;
-        }
-      }
-
-      if (bestMatch != null) {
-        matchedBeatIds.add(bestMatch.id);
-        alignedBeats.add(ExtractedBeat(
-          title: bestMatch.title,
-          sourceUrl: rawItem.sourceUrl,
-          durationSeconds: rawItem.durationSeconds,
-          effortWeight: effort,
-          sortOrder: alignedBeats.length,
-          thumbnailUrl: rawItem.thumbnailUrl,
-          timestampSeconds: rawItem.timestampSeconds,
-          syllabusTopicId: bestMatch.syllabusTopicId ?? bestMatch.id,
-          matchConfidence: bestScore,
-          isMentorExtra: false,
-        ));
-      } else {
-        // Extra mentor material
-        alignedBeats.add(ExtractedBeat(
-          title: rawItem.title,
-          sourceUrl: rawItem.sourceUrl,
-          durationSeconds: rawItem.durationSeconds,
-          effortWeight: effort,
-          sortOrder: alignedBeats.length,
-          thumbnailUrl: rawItem.thumbnailUrl,
-          timestampSeconds: rawItem.timestampSeconds,
-          isMentorExtra: true,
-        ));
-      }
-    }
-
-    // Remaining syllabus topics not in mentor's playlist move down,
-    // preserving their relative syllabus order (Requirement 7).
-    // If the roadmap only had the default "Initial Orientation" placeholder beat, replace it cleanly.
+    // Benchmark topics: existing beats before attachment
     final isInitialPlaceholder = existingBeats.length == 1 &&
         (existingBeats.first.title.toLowerCase().contains('initial orientation') ||
             existingBeats.first.title.toLowerCase().contains('core foundations'));
 
-    if (!isInitialPlaceholder) {
-      for (final beat in existingBeats) {
-        if (!matchedBeatIds.contains(beat.id)) {
-          alignedBeats.add(ExtractedBeat(
-            title: beat.title,
-            sourceUrl: beat.sourceUrl,
-            durationSeconds: 600,
-            effortWeight: beat.effortWeight,
-            sortOrder: alignedBeats.length,
-            thumbnailUrl: null,
-            syllabusTopicId: beat.syllabusTopicId ?? beat.id,
-            isMentorExtra: false,
-          ));
-        }
-      }
-    }
+    final syllabusTopicTitles = isInitialPlaceholder
+        ? <String>[targetChapter.title]
+        : existingBeats.map((b) => b.title).toList();
 
-    // Re-cluster into balanced chapters
-    final clustered = ChapterClusterer.clusterBeats(
-      alignedBeats,
-      roadmapTitle: existingRoadmap.title,
+    final videoTitles = extracted.items.map((i) => i.title).toList();
+
+    // 1. First-Priority AI Coverage & Sequence Audit
+    final audit = await _inferenceService.auditSubjectResource(
+      subjectTitle: targetChapter.title,
+      syllabusTopics: syllabusTopicTitles,
+      videoTitles: videoTitles,
     );
 
-
-    // Atomically replace chapters & beats
-    await _chapterRepo.deleteChaptersByRoadmapId(roadmapId);
-    await _beatRepo.deleteBeatsByRoadmapId(roadmapId);
-
+    // 2. Prepare replacement beats for this chapter
     final now = DateTime.now();
-    final chapterEntities = <ChapterEntity>[];
-    final beatEntities = <BeatEntity>[];
-    int globalSort = 0;
+    final newBeats = <BeatEntity>[];
+    int sortIndex = 0;
 
-    for (int c = 0; c < clustered.length; c++) {
-      final ch = clustered[c];
-      final chId = '${roadmapId}_ch_$c';
+    // A. Videos in exact original mentor order (0..N-1)
+    for (int i = 0; i < extracted.items.length; i++) {
+      final rawItem = extracted.items[i];
+      final effort = EffortWeightCalculator.calculate(rawItem.durationSeconds);
+      final mapping = (i < audit.mappings.length) ? audit.mappings[i] : null;
 
-      chapterEntities.add(ChapterEntity(
-        id: chId,
+      final prevCompleted = existingBeats.any((b) =>
+          (b.sourceUrl == rawItem.sourceUrl || b.title == rawItem.title) && b.isCompleted);
+
+      newBeats.add(BeatEntity(
+        id: '${chapterId}_v_$i',
+        chapterId: chapterId,
         roadmapId: roadmapId,
-        title: ch.title,
-        sortOrder: c,
+        title: rawItem.title,
+        sourceUrl: rawItem.sourceUrl,
+        timestampSeconds: rawItem.timestampSeconds,
+        effortWeight: effort,
+        sortOrder: sortIndex++,
+        isCompleted: prevCompleted,
+        isMentorExtra: mapping?.isMentorExtra ?? false,
+        matchConfidence: mapping?.confidence,
+        syllabusTopicId: mapping?.matchedTopicId,
         createdAt: now,
         updatedAt: now,
       ));
-
-      for (final b in ch.beats) {
-        final origBeat = existingBeats.where((orig) => orig.title == b.title).firstOrNull;
-        final isCompleted = origBeat?.isCompleted ?? false;
-        final beatId = '${chId}_b_$globalSort';
-
-        beatEntities.add(BeatEntity(
-          id: beatId,
-          chapterId: chId,
-          roadmapId: roadmapId,
-          title: b.title,
-          sourceUrl: b.sourceUrl?.isNotEmpty == true ? b.sourceUrl : null,
-          timestampSeconds: b.timestampSeconds,
-          effortWeight: b.effortWeight,
-          sortOrder: globalSort,
-          isCompleted: isCompleted,
-          isMentorExtra: b.isMentorExtra,
-          matchConfidence: b.matchConfidence,
-          syllabusTopicId: b.syllabusTopicId,
-          createdAt: now,
-          updatedAt: now,
-        ));
-        globalSort++;
-      }
     }
 
-    await _chapterRepo.createChaptersBatch(chapterEntities);
-    await _beatRepo.createBeatsBatch(beatEntities);
+    // B. Uncovered syllabus benchmark gaps placed at the end of the chapter
+    for (int g = 0; g < audit.uncoveredGaps.length; g++) {
+      final gapTitle = audit.uncoveredGaps[g];
+      newBeats.add(BeatEntity(
+        id: '${chapterId}_gap_$g',
+        chapterId: chapterId,
+        roadmapId: roadmapId,
+        title: gapTitle,
+        sourceUrl: null,
+        timestampSeconds: null,
+        effortWeight: 1.0,
+        sortOrder: sortIndex++,
+        isCompleted: false,
+        isMentorExtra: false,
+        syllabusTopicId: gapTitle,
+        createdAt: now,
+        updatedAt: now,
+      ));
+    }
+
+    // 3. Atomically replace ONLY this chapter's beats.
+    // Fixed macro subject structure is preserved without touching other chapters.
+    await _beatRepo.deleteBeatsByChapterId(chapterId);
+    await _beatRepo.createBeatsBatch(newBeats);
+
     DatabaseEventBus.instance.emit(DatabaseEvent(
       type: DatabaseEventType.roadmapUpdated,
       roadmapId: roadmapId,
     ));
+
+    return audit;
+  }
+
+  /// Attaches a resource to a roadmap by automatically matching the resource's title
+  /// to the most relevant Subject / Chapter in the roadmap, or defaulting to the first.
+  Future<CurriculumAuditResult?> attachResourceToRoadmap({
+    required String roadmapId,
+    required String resourceUrl,
+    String? preferredChapterId,
+  }) async {
+    final cleanUrl = resourceUrl.trim();
+    if (cleanUrl.isEmpty) return null;
+
+    final chapters = await _chapterRepo.getChaptersByRoadmapId(roadmapId);
+    if (chapters.isEmpty) return null;
+
+    if (preferredChapterId != null) {
+      final found = chapters.where((c) => c.id == preferredChapterId).firstOrNull;
+      if (found != null) {
+        return await attachResourceToSubject(
+          roadmapId: roadmapId,
+          chapterId: found.id,
+          resourceUrl: cleanUrl,
+        );
+      }
+    }
+
+    // Auto-match playlist title to candidate subject
+    ChapterEntity targetChapter = chapters.first;
+    double highestScore = -1.0;
+
+    String extractedTitle = '';
+    try {
+      final isYoutube = YoutubeExtractorService.parsePlaylistId(cleanUrl) != null ||
+          YoutubeExtractorService.parseVideoId(cleanUrl) != null;
+      if (isYoutube) {
+        final extracted = await _youtubeClient.extractResource(cleanUrl);
+        extractedTitle = extracted.title;
+      }
+    } catch (_) {}
+
+    if (extractedTitle.isNotEmpty) {
+      for (final ch in chapters) {
+        final score = _matcherService.calculateSimilarity(extractedTitle, ch.title);
+        if (score > highestScore) {
+          highestScore = score;
+          targetChapter = ch;
+        }
+      }
+    }
+
+    return await attachResourceToSubject(
+      roadmapId: roadmapId,
+      chapterId: targetChapter.id,
+      resourceUrl: cleanUrl,
+    );
   }
 
   /// Attaches a resource URL directly to an individual beat/topic.

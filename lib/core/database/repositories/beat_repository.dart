@@ -208,4 +208,13 @@ class BeatRepository {
       whereArgs: [roadmapId],
     );
   }
+
+  Future<void> deleteBeatsByChapterId(String chapterId) async {
+    final db = await _db;
+    await db.delete(
+      DatabaseTables.beats,
+      where: '${BeatColumns.chapterId} = ?',
+      whereArgs: [chapterId],
+    );
+  }
 }

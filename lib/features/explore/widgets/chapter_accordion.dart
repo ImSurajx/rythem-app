@@ -19,6 +19,7 @@ class ChapterAccordion extends StatefulWidget {
   final void Function(BeatEntity beat)? onBeatTapped;
   final void Function(BeatEntity beat)? onFlagBeat;
   final void Function(BeatEntity beat)? onAttachResource;
+  final void Function(ChapterEntity chapter)? onAttachResourceToChapter;
   final Future<void> Function(BeatEntity beat)? onConfirmMatch;
   final Future<void> Function(BeatEntity beat)? onRejectMatch;
 
@@ -31,6 +32,7 @@ class ChapterAccordion extends StatefulWidget {
     this.onBeatTapped,
     this.onFlagBeat,
     this.onAttachResource,
+    this.onAttachResourceToChapter,
     this.onConfirmMatch,
     this.onRejectMatch,
   });
@@ -65,6 +67,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     final completedCount = widget.beats.where((b) => b.isCompleted).length;
     final totalCount = widget.beats.length;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
+    final gapsCount = widget.beats.where((b) => b.sourceUrl == null && !b.isMentorExtra).length;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -120,12 +123,45 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            if (gapsCount > 0) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0x22F59E0B),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '$gapsCount gaps',
+                                  style: const TextStyle(
+                                    color: Color(0xFFF59E0B),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 10),
+
+                  if (widget.onAttachResourceToChapter != null) ...[
+                    IconButton(
+                      icon: Icon(
+                        Icons.add_link_rounded,
+                        size: 19,
+                        color: themeColors.textSecondary,
+                      ),
+                      tooltip: 'Attach Resource to Subject',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      onPressed: () => widget.onAttachResourceToChapter?.call(widget.chapter),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
 
                   // Animated Rotating Chevron
                   AnimatedRotation(
