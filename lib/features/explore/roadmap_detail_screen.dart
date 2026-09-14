@@ -11,6 +11,7 @@ import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/database/models/roadmap_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
+import 'package:rythem_app/core/utils/resource_launcher.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
@@ -122,36 +123,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       }
     });
     await widget.onBeatToggled(beat, isCompleted);
-  }
-
-  void _handleArchive() {
-    HapticFeedback.mediumImpact();
-    final archivedRoadmap = _currentRoadmap;
-    widget.onArchiveRoadmap?.call(archivedRoadmap);
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Track "${archivedRoadmap.title}" archived',
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: const Color(0xE6202020),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        action: SnackBarAction(
-          label: 'UNDO',
-          textColor: Colors.white,
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            widget.onRestoreRoadmap?.call(archivedRoadmap);
-          },
-        ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
-
-    Navigator.of(context).pop();
   }
 
   Future<void> _handleConfirmMatch(BeatEntity beat) async {
@@ -516,73 +487,79 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Top Frosted Glass App Bar
-              ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xB3090A0D) : const Color(0xCCFFFFFF),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: isDark ? const Color(0x1AFFFFFF) : const Color(0x14000000),
+              // Floating Frosted Glass Top Navigation Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0x30FFFFFF) : const Color(0x66FFFFFF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                           width: 0.8,
                         ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.arrow_back_ios_new_rounded,
-                              color: themeColors.textPrimary, size: 20),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            _currentRoadmap.title,
-                            style: RythemTypography.titleSmall.copyWith(
-                              color: themeColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withOpacity(0.3)
+                                : const Color(0xFF0E1420).withOpacity(0.06),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        GlassButton(
-                          label: 'Add',
-                          icon: Icons.link_rounded,
-                          height: 34,
-                          variant: GlassButtonVariant.primary,
-                          onPressed: _showAttachResourceDialog,
-                        ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          icon: Icon(Icons.archive_outlined,
-                              color: themeColors.textTertiary, size: 20),
-                          tooltip: 'Archive Track',
-                          onPressed: _handleArchive,
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.arrow_back_ios_new_rounded,
+                                color: themeColors.textPrimary, size: 18),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _currentRoadmap.title,
+                              style: RythemTypography.titleSmall.copyWith(
+                                color: themeColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GlassButton(
+                            label: 'Add',
+                            icon: Icons.link_rounded,
+                            height: 32,
+                            variant: GlassButtonVariant.secondary,
+                            onPressed: _showAttachResourceDialog,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
 
-
-            // Scrollable Content
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Roadmap Header & Stats Card
-                    GlassCard(
-                      padding: const EdgeInsets.all(20),
+              // Scrollable Content
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Roadmap Header & Stats Card
+                      GlassCard(
+                        padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -753,68 +730,104 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // "Up Next" Topic Highlight (Requirement 2)
+                    // "Up Next" Topic Highlight (Direct Resource Launch)
                     if (nextPendingBeat != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
-                            width: 1.0,
+                      GestureDetector(
+                        onTap: () {
+                          if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
+                            ResourceLauncher.openResource(
+                              context,
+                              url: nextPendingBeat.sourceUrl,
+                              title: nextPendingBeat.title,
+                            );
+                          } else {
+                            _openFocusSession(nextPendingBeat);
+                          }
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
+                              width: 1.0,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
+                                ),
+                                child: Icon(
+                                  nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                      ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
+                                          ? Icons.play_arrow_rounded
+                                          : Icons.language_rounded)
+                                      : Icons.play_arrow_rounded,
+                                  size: 18,
+                                  color: themeColors.textPrimary,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.play_arrow_rounded,
-                                size: 18,
-                                color: themeColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'UP NEXT',
-                                    style: RythemTypography.labelSmall.copyWith(
-                                      color: themeColors.textTertiary,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.8,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'UP NEXT',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: themeColors.textTertiary,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.8,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Current Focus: ${nextPendingBeat.title}',
-                                    style: RythemTypography.titleSmall.copyWith(
-                                      color: themeColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Current Focus: ${nextPendingBeat.title}',
+                                      style: RythemTypography.titleSmall.copyWith(
+                                        color: themeColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            GlassButton(
-                              label: 'Start',
-                              variant: GlassButtonVariant.secondary,
-                              onPressed: () => _openFocusSession(nextPendingBeat),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              GlassButton(
+                                label: nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                    ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
+                                        ? 'Watch'
+                                        : 'Learn')
+                                    : 'Start',
+                                icon: nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                    ? Icons.open_in_new_rounded
+                                    : null,
+                                height: 34,
+                                variant: GlassButtonVariant.secondary,
+                                onPressed: () {
+                                  if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
+                                    ResourceLauncher.openResource(
+                                      context,
+                                      url: nextPendingBeat.sourceUrl,
+                                      title: nextPendingBeat.title,
+                                    );
+                                  } else {
+                                    _openFocusSession(nextPendingBeat);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
 

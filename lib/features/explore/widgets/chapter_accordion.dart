@@ -4,6 +4,7 @@ import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
+import 'package:rythem_app/core/utils/resource_launcher.dart';
 
 /// Collapsible Chapter Accordion widget for Roadmap Detail per `docs/design.md` §5:
 /// - First chapter open by default
@@ -15,7 +16,7 @@ class ChapterAccordion extends StatefulWidget {
   final List<BeatEntity> beats;
   final bool initialExpanded;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
-  final void Function(BeatEntity beat) onBeatTapped;
+  final void Function(BeatEntity beat)? onBeatTapped;
   final void Function(BeatEntity beat)? onFlagBeat;
   final void Function(BeatEntity beat)? onAttachResource;
   final Future<void> Function(BeatEntity beat)? onConfirmMatch;
@@ -27,7 +28,7 @@ class ChapterAccordion extends StatefulWidget {
     required this.beats,
     this.initialExpanded = false,
     required this.onBeatToggled,
-    required this.onBeatTapped,
+    this.onBeatTapped,
     this.onFlagBeat,
     this.onAttachResource,
     this.onConfirmMatch,
@@ -181,7 +182,11 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               themeColors: themeColors,
                               isDark: isDark,
                               onToggle: (val) => widget.onBeatToggled(beat, val),
-                              onTap: () => widget.onBeatTapped(beat),
+                              onOpenResource: () => ResourceLauncher.openResource(
+                                context,
+                                url: beat.sourceUrl,
+                                title: beat.title,
+                              ),
                               onFlag: widget.onFlagBeat != null
                                   ? () => widget.onFlagBeat!(beat)
                                   : null,
@@ -219,7 +224,7 @@ class _AccordionBeatTile extends StatelessWidget {
   final RythemColorTokens themeColors;
   final bool isDark;
   final ValueChanged<bool> onToggle;
-  final VoidCallback onTap;
+  final VoidCallback? onOpenResource;
   final VoidCallback? onFlag;
   final VoidCallback? onAttachResource;
   final VoidCallback? onConfirmMatch;
@@ -230,7 +235,7 @@ class _AccordionBeatTile extends StatelessWidget {
     required this.themeColors,
     required this.isDark,
     required this.onToggle,
-    required this.onTap,
+    required this.onOpenResource,
     this.onFlag,
     this.onAttachResource,
     this.onConfirmMatch,
@@ -243,10 +248,10 @@ class _AccordionBeatTile extends StatelessWidget {
         beat.matchConfidence! < 0.70 &&
         beat.syllabusTopicId != null &&
         !beat.isMentorExtra;
+    final hasResource = beat.sourceUrl != null && beat.sourceUrl!.trim().isNotEmpty;
+    final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: themeColors.rowBackground,
@@ -303,109 +308,113 @@ class _AccordionBeatTile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
 
-            // Beat Title & Badges
+            // Beat Title & Badges (Tapping content opens resource)
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Mentor Extra Badge
-                      if (beat.isMentorExtra) ...[
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.12)
-                                : Colors.black.withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOpenResource,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // Mentor Extra Badge
+                        if (beat.isMentorExtra) ...[
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
                               color: isDark
-                                  ? themeColors.glassBorderHighlight
-                                  : Colors.black26,
-                              width: 0.6,
+                                  ? Colors.white.withOpacity(0.12)
+                                  : Colors.black.withOpacity(0.07),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isDark
+                                    ? themeColors.glassBorderHighlight
+                                    : Colors.black26,
+                                width: 0.6,
+                              ),
+                            ),
+                            child: Text(
+                              'MENTOR EXTRA',
+                              style: RythemTypography.labelSmall.copyWith(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                color: themeColors.textPrimary,
+                                letterSpacing: 0.4,
+                              ),
                             ),
                           ),
+                        ],
+                        Expanded(
                           child: Text(
-                            'MENTOR EXTRA',
+                            beat.title,
+                            style: RythemTypography.bodyMedium.copyWith(
+                              color: beat.isCompleted
+                                  ? themeColors.textTertiary
+                                  : themeColors.textPrimary,
+                              decoration:
+                                  beat.isCompleted ? TextDecoration.lineThrough : null,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12.5,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        if (!hasResource) ...[
+                          Text(
+                            'no resource linked yet',
                             style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              color: themeColors.textPrimary,
-                              letterSpacing: 0.4,
+                              color: themeColors.textTertiary.withOpacity(0.75),
+                              fontSize: 9.5,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                        ),
-                      ],
-                      Expanded(
-                        child: Text(
-                          beat.title,
-                          style: RythemTypography.bodyMedium.copyWith(
-                            color: beat.isCompleted
-                                ? themeColors.textTertiary
-                                : themeColors.textPrimary,
-                            decoration:
-                                beat.isCompleted ? TextDecoration.lineThrough : null,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12.5,
+                          const SizedBox(width: 5),
+                          Text(
+                            '•',
+                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      if (beat.sourceUrl == null || beat.sourceUrl!.isEmpty) ...[
-                        Text(
-                          'no resource linked yet',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary.withOpacity(0.75),
-                            fontSize: 9.5,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          '•',
-                          style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                        ),
-                        const SizedBox(width: 5),
-                      ] else ...[
-                        Icon(
-                          Icons.link_rounded,
-                          size: 11,
-                          color: themeColors.textSecondary,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          'linked',
-                          style: RythemTypography.labelSmall.copyWith(
+                          const SizedBox(width: 5),
+                        ] else ...[
+                          Icon(
+                            isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
+                            size: 11,
                             color: themeColors.textSecondary,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            isYt ? 'video' : 'linked',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textSecondary,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '•',
+                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                          ),
+                          const SizedBox(width: 5),
+                        ],
+                        Text(
+                          '${beat.effortWeight.toStringAsFixed(1)} effort',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textTertiary,
                             fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          '•',
-                          style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                        ),
-                        const SizedBox(width: 5),
                       ],
-                      Text(
-                        '${beat.effortWeight.toStringAsFixed(1)} effort',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textTertiary,
-                          fontSize: 9.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -447,11 +456,6 @@ class _AccordionBeatTile extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
               ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: themeColors.textTertiary,
-            ),
           ],
         ),
 
@@ -542,7 +546,6 @@ class _AccordionBeatTile extends StatelessWidget {
         ],
       ],
     ),
-  ),
-);
-  }
+  );
+}
 }

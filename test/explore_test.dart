@@ -271,13 +271,8 @@ void main() {
       expect(toggledBeat?.id, 'b1');
       expect(toggledVal, false);
 
-      // Test Archive Track button
-      final archiveBtn = find.byIcon(Icons.archive_outlined);
-      expect(archiveBtn, findsOneWidget);
-      await tester.tap(archiveBtn);
-      await tester.pump();
-
-      expect(archivedRm?.id, 'rm_1');
+      // Verify archive button is removed from visible UI
+      expect(find.byIcon(Icons.archive_outlined), findsNothing);
     });
 
     testWidgets('chapter accordion expands and collapses on tap', (tester) async {
