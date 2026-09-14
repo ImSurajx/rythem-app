@@ -127,20 +127,7 @@ class YoutubeExtractorService implements IYoutubeClient {
     final videoId = parseVideoId(cleanUrl);
 
     if (playlistId != null) {
-      try {
-        final pl = await extractPlaylist(cleanUrl);
-        if (pl.items.isNotEmpty) {
-          return pl;
-        }
-      } catch (e) {
-        debugPrint('Playlist extraction error: $e');
-        // If the URL also contained an individual video ID, fall back to extracting that video
-        if (videoId != null) {
-          debugPrint('Falling back to single video extraction ($videoId)');
-          return await extractVideo(cleanUrl);
-        }
-        rethrow;
-      }
+      return await extractPlaylist(cleanUrl);
     }
 
     if (videoId != null) {
@@ -251,8 +238,9 @@ class YoutubeExtractorService implements IYoutubeClient {
             }),
           );
         } else {
+          final uri = Uri.parse('https://www.youtube.com/youtubei/v1/browse?continuation=$continuationToken');
           resp = await _httpClient.post(
-            Uri.parse('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false'),
+            uri,
             headers: {
               'Content-Type': 'application/json',
               'User-Agent':
@@ -282,9 +270,8 @@ class YoutubeExtractorService implements IYoutubeClient {
         final jsonMap = jsonDecode(resp.body) as Map<String, dynamic>;
         continuationToken = null;
 
-        void parseNodes(dynamic node) {
+        void parseNodes(dynamic node, String path) {
           if (node is Map<String, dynamic>) {
-            // 1. Modern YouTube Lockup View Model
             if (node.containsKey('lockupViewModel')) {
               final lvm = node['lockupViewModel'] as Map<String, dynamic>;
               final videoId = lvm['contentId']?.toString() ?? '';
@@ -325,7 +312,6 @@ class YoutubeExtractorService implements IYoutubeClient {
                 ));
               }
             } else if (node.containsKey('playlistVideoRenderer')) {
-              // 2. Legacy Playlist Video Renderer
               final pvr = node['playlistVideoRenderer'] as Map<String, dynamic>;
               final videoId = pvr['videoId']?.toString() ?? '';
               final titleRuns = pvr['title']?['runs'] as List?;
@@ -343,7 +329,6 @@ class YoutubeExtractorService implements IYoutubeClient {
                 ));
               }
             } else if (node.containsKey('gridVideoRenderer') || node.containsKey('videoRenderer')) {
-              // 3. Grid / Standard Video Renderer
               final vr = (node['gridVideoRenderer'] ?? node['videoRenderer']) as Map<String, dynamic>;
               final videoId = vr['videoId']?.toString() ?? '';
               final titleRuns = vr['title']?['runs'] as List?;
@@ -364,22 +349,28 @@ class YoutubeExtractorService implements IYoutubeClient {
               final cir = node['continuationItemRenderer'] as Map<String, dynamic>;
               final token = cir['continuationEndpoint']?['continuationCommand']?['token']?.toString() ??
                   cir['button']?['buttonRenderer']?['command']?['continuationCommand']?['token']?.toString();
-              if (token != null && token.isNotEmpty) {
+              // Only pick continuation tokens that belong to the video section/list, not the page/sectionList
+              if (token != null &&
+                  token.isNotEmpty &&
+                  (path.contains('itemSectionRenderer') ||
+                      path.contains('playlistVideoListRenderer') ||
+                      path.contains('onResponseReceivedActions') ||
+                      path.contains('appendContinuationItemsAction'))) {
                 continuationToken = token;
               }
             }
 
-            for (final val in node.values) {
-              parseNodes(val);
+            for (final entry in node.entries) {
+              parseNodes(entry.value, '$path.${entry.key}');
             }
           } else if (node is List) {
-            for (final item in node) {
-              parseNodes(item);
+            for (int i = 0; i < node.length; i++) {
+              parseNodes(node[i], '$path[$i]');
             }
           }
         }
 
-        parseNodes(jsonMap);
+        parseNodes(jsonMap, 'root');
       } while (continuationToken != null && continuationToken!.isNotEmpty && items.length < 1000);
     } catch (e) {
       debugPrint('Error parsing Innertube playlist: $e');

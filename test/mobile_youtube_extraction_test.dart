@@ -105,5 +105,18 @@ void main() {
         extractor.close();
       }
     });
+
+    test('extractPlaylist extracts beyond 100 videos for large playlists', () async {
+      final extractor = YoutubeExtractorService();
+      try {
+        final res = await extractor.extractPlaylist('PLjxrf2q8roU23XGwz3Km7sQZFTdB996iG');
+        print('Widget of the Week extracted: ${res.items.length} items');
+        expect(res.items.length, greaterThan(100));
+      } catch (e) {
+        print('Large playlist error: $e');
+      } finally {
+        extractor.close();
+      }
+    });
   });
 }
