@@ -100,24 +100,6 @@ class _FlowScreenState extends State<FlowScreen> {
         ? widget.allRoadmaps
         : (widget.activeRoadmap != null ? [widget.activeRoadmap!] : <RoadmapEntity>[]);
 
-    // Compute mission totals across all tracks
-    int totalMissionBeats = 0;
-    int completedMissionBeats = 0;
-
-    for (final rm in roadmaps) {
-      final budget = widget.budgetsByRoadmap?[rm.id] ??
-          (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
-      final mission = budget?.todaysBeats ?? [];
-      totalMissionBeats += mission.length;
-      completedMissionBeats += mission.where((b) => b.isCompleted).length;
-    }
-
-    final bool hasMission = totalMissionBeats > 0;
-    final bool isEveningUnlocked =
-        hasMission && completedMissionBeats == totalMissionBeats;
-    final double missionProgressRatio =
-        hasMission ? (completedMissionBeats / totalMissionBeats) : 0.0;
-
     // Filter roadmaps based on selection pill
     final displayedRoadmaps = _selectedTrackFilter == 'all'
         ? roadmaps
@@ -257,10 +239,19 @@ class _FlowScreenState extends State<FlowScreen> {
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
+
+          // Streak Calendar (7-day glass round cells + notification badges)
+          _FlowStreakCalendar(
+            streakDays: widget.streakDays,
+            allBeats: widget.allBeats,
+            themeColors: themeColors,
+            isDark: isDark,
+          ),
 
           // Sustained Lag Non-Punitive Recalibration Banner
           if (laggingRoadmap != null && laggingBudget != null) ...[
+            const SizedBox(height: 16),
             _SustainedLagRecalibrationBanner(
               roadmap: laggingRoadmap,
               pacingBudget: laggingBudget,
@@ -279,16 +270,6 @@ class _FlowScreenState extends State<FlowScreen> {
               },
             ),
           ],
-
-          // Evening Unlock Indicator Banner
-          _EveningUnlockBanner(
-            isUnlocked: isEveningUnlocked,
-            completedCount: completedMissionBeats,
-            totalCount: totalMissionBeats,
-            progressRatio: missionProgressRatio,
-            themeColors: themeColors,
-            isDark: isDark,
-          ),
 
           const SizedBox(height: 18),
 
@@ -612,23 +593,51 @@ class _TrackTodoListCard extends StatelessWidget {
                   return b.completedAt != null && b.completedAt!.isAfter(todayStart);
                 }).toList();
 
-                final missionBeats = allBeats.where((b) => todaysBeatIds.contains(b.id)).toList();
-                final List<BeatEntity> flowBeats;
-                if (missionBeats.isNotEmpty) {
-                  final seenIds = <String>{};
-                  final combined = <BeatEntity>[];
-                  for (final b in [...completedToday, ...missionBeats]) {
-                    if (seenIds.add(b.id)) combined.add(b);
+                // Sort beats strictly by chapter order first, then beat sort order
+                final chapterOrderMap = <String, int>{};
+                for (int c = 0; c < chapters.length; c++) {
+                  chapterOrderMap[chapters[c].id] = chapters[c].sortOrder;
+                }
+
+                final sortedAllBeats = List<BeatEntity>.from(allBeats)
+                  ..sort((a, b) {
+                    final chA = chapterOrderMap[a.chapterId] ?? 999;
+                    final chB = chapterOrderMap[b.chapterId] ?? 999;
+                    if (chA != chB) return chA.compareTo(chB);
+                    return a.sortOrder.compareTo(b.sortOrder);
+                  });
+
+                // Find active chapter with unfinished beats
+                String? activeChapterId;
+                for (final ch in chapters) {
+                  final hasIncomplete = sortedAllBeats.any((b) => b.chapterId == ch.id && !b.isCompleted);
+                  if (hasIncomplete) {
+                    activeChapterId = ch.id;
+                    break;
                   }
-                  flowBeats = combined;
-                } else {
-                  final pending = allBeats.where((b) => !b.isCompleted).take(3).toList();
-                  final seenIds = <String>{};
-                  final combined = <BeatEntity>[];
-                  for (final b in [...completedToday, ...pending]) {
-                    if (seenIds.add(b.id)) combined.add(b);
-                  }
-                  flowBeats = combined.isNotEmpty ? combined : allBeats.take(3).toList();
+                }
+
+                // Sequential queue from the active chapter first
+                final pendingFromActive = sortedAllBeats
+                    .where((b) => !b.isCompleted && (activeChapterId == null || b.chapterId == activeChapterId))
+                    .take(3)
+                    .toList();
+                final remainingCount = 3 - pendingFromActive.length;
+                final pendingNext = remainingCount > 0
+                    ? sortedAllBeats
+                        .where((b) => !b.isCompleted && b.chapterId != activeChapterId)
+                        .take(remainingCount)
+                        .toList()
+                    : <BeatEntity>[];
+                final pendingBeats = [...pendingFromActive, ...pendingNext];
+
+                final seenIds = <String>{};
+                final flowBeats = <BeatEntity>[];
+                for (final b in [...completedToday, ...pendingBeats]) {
+                  if (seenIds.add(b.id)) flowBeats.add(b);
+                }
+                if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty) {
+                  flowBeats.addAll(sortedAllBeats.take(3));
                 }
 
                 return Column(
@@ -766,67 +775,184 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
   }
 }
 
-/// Evening Unlock Indicator Banner: small, meaningful state indicator
-class _EveningUnlockBanner extends StatelessWidget {
-  final bool isUnlocked;
-  final int completedCount;
-  final int totalCount;
-  final double progressRatio;
+/// 7-day Ambient Glass Streak Calendar with circular cells and notification badges
+class _FlowStreakCalendar extends StatelessWidget {
+  final int streakDays;
+  final List<BeatEntity> allBeats;
   final RythemColorTokens themeColors;
   final bool isDark;
 
-  const _EveningUnlockBanner({
-    required this.isUnlocked,
-    required this.completedCount,
-    required this.totalCount,
-    required this.progressRatio,
+  const _FlowStreakCalendar({
+    required this.streakDays,
+    required this.allBeats,
     required this.themeColors,
     required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final pct = (progressRatio * 100).toInt();
+    final now = DateTime.now();
+    // Monday as start of week (weekday: Mon=1..Sun=7)
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    const weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: themeColors.rowBackground,
-        borderRadius: BorderRadius.circular(14),
+        color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isUnlocked
-              ? (isDark ? themeColors.glassBorderHighlight : const Color(0x28000000))
-              : themeColors.rowBorder,
+          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+          width: 0.8,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                isUnlocked ? Icons.nightlight_round : Icons.lock_outline_rounded,
-                size: 15,
-                color: isUnlocked ? themeColors.textPrimary : themeColors.textTertiary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isUnlocked ? 'Evening unlocked' : 'Evening locked',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: isUnlocked ? themeColors.textPrimary : themeColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
+              Flexible(
+                child: Text(
+                  'STREAK CALENDAR',
+                  overflow: TextOverflow.ellipsis,
+                  style: RythemTypography.labelSmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
                 ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.offline_bolt_rounded,
+                    size: 13,
+                    color: themeColors.textPrimary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$streakDays day${streakDays == 1 ? '' : 's'} active',
+                    style: RythemTypography.labelSmall.copyWith(
+                      color: themeColors.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          Text(
-            isUnlocked ? 'Complete' : '$pct% complete',
-            style: RythemTypography.bodySmall.copyWith(
-              color: isUnlocked ? themeColors.textPrimary : themeColors.textTertiary,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(7, (i) {
+              final dayDate = monday.add(Duration(days: i));
+              final isToday = dayDate.day == now.day &&
+                  dayDate.month == now.month &&
+                  dayDate.year == now.year;
+              final isPastOrToday = !dayDate.isAfter(DateTime(now.year, now.month, now.day));
+
+              // Count beats completed on this day
+              final completedOnDay = allBeats.where((b) {
+                if (!b.isCompleted || b.completedAt == null) return false;
+                final c = b.completedAt!;
+                return c.year == dayDate.year && c.month == dayDate.month && c.day == dayDate.day;
+              }).length;
+
+              final isStreakMark = completedOnDay > 0 || (isToday && streakDays > 0);
+
+              return Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      weekDaysLabels[i],
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: isToday ? themeColors.textPrimary : themeColors.textTertiary,
+                        fontSize: 10,
+                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isStreakMark
+                                ? (isDark ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.12))
+                                : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+                            border: Border.all(
+                              color: isToday
+                                  ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
+                                  : (isStreakMark
+                                      ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
+                                      : (isDark ? themeColors.glassBorder : const Color(0x10000000))),
+                              width: isToday ? 1.5 : (isStreakMark ? 1.0 : 0.6),
+                            ),
+                            boxShadow: isStreakMark
+                                ? [
+                                    BoxShadow(
+                                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
+                                      blurRadius: 6,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${dayDate.day}',
+                              style: TextStyle(
+                                color: isStreakMark || isToday
+                                    ? themeColors.textPrimary
+                                    : (isPastOrToday ? themeColors.textSecondary : themeColors.textTertiary),
+                                fontSize: 11,
+                                fontWeight: isStreakMark || isToday ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Top-right notification dot badge with total beats
+                        if (completedOnDay > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF181818) : Colors.white,
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$completedOnDay',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
           ),
         ],
       ),

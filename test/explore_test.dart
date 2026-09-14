@@ -261,6 +261,8 @@ void main() {
       expect(find.text('MENTOR EXTRA'), findsOneWidget);
 
       // Toggle a beat checkbox
+      await tester.ensureVisible(find.byIcon(Icons.check_rounded).first);
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.check_rounded).first);
       await tester.pump();
 

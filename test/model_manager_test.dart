@@ -169,6 +169,16 @@ void main() {
         );
       ''');
       await testDb.execute('''
+        CREATE TABLE chapters (
+          id TEXT PRIMARY KEY,
+          roadmap_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+      ''');
+      await testDb.execute('''
         CREATE TABLE beats (
           id TEXT PRIMARY KEY,
           chapter_id TEXT NOT NULL,
