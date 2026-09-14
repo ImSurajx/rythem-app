@@ -1698,12 +1698,17 @@ class _DesignSystemShowcaseScreenState
               if (info.tier != ModelTier.fallback) ...[
                 const SizedBox(width: 10),
                 if (!isDownloaded)
-                  GlassButton(
-                    label: 'Download',
-                    icon: Icons.download_rounded,
-                    height: 28,
-                    variant: GlassButtonVariant.secondary,
-                    onPressed: onDownload,
+                  GestureDetector(
+                    onTap: onDownload,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.download_rounded,
+                        size: 17,
+                        color: themeColors.textPrimary,
+                      ),
+                    ),
                   )
                 else ...[
                   if (!isActive)
