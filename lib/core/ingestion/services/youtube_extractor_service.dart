@@ -154,10 +154,20 @@ class YoutubeExtractorService implements IYoutubeClient {
       debugPrint('Notice: standard playlist metadata fetch fell back: $e');
     }
 
-    // 1. Primary: Direct Innertube browse API with pagination (handles 100, 200, 500+ videos)
+    // 1. Primary: Direct Innertube browse API with pagination (handles 100, 200 items)
     var rawItems = await _fetchPlaylistVideosViaInnertube(playlistId);
 
-    // 2. Fallback: Direct HTML scrape of playlist page
+    // 2. Beyond 200 items: When YouTube Browse API caps at 200 items,
+    // query the playlist player endpoint (/youtubei/v1/next) anchored on video 200
+    // to retrieve the full playlist (videos 201 to 500+).
+    if (rawItems.isNotEmpty && rawItems.length >= 200) {
+      final nextItems = await _fetchPlaylistVideosViaNextEndpoint(playlistId, rawItems.last);
+      if (nextItems.length > rawItems.length) {
+        rawItems = nextItems;
+      }
+    }
+
+    // 3. Fallback: Direct HTML scrape of playlist page
     if (rawItems.isEmpty) {
       rawItems = await _fetchPlaylistVideosViaHtmlScrape(playlistId);
     }
@@ -383,6 +393,96 @@ class YoutubeExtractorService implements IYoutubeClient {
     }
 
     return items;
+  }
+
+  /// Retrieves playlist videos beyond the 200-item Browse API limit
+  /// by querying the /youtubei/v1/next player playlist panel anchored on the last video.
+  Future<List<RawResourceItem>> _fetchPlaylistVideosViaNextEndpoint(
+    String playlistId,
+    RawResourceItem anchorVideo,
+  ) async {
+    final anchorId = parseVideoId(anchorVideo.sourceUrl) ?? '';
+    if (anchorId.isEmpty) return [];
+
+    try {
+      final resp = await _httpClient.post(
+        Uri.parse('https://www.youtube.com/youtubei/v1/next?prettyPrint=false'),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'X-YouTube-Client-Name': '1',
+          'X-YouTube-Client-Version': '2.20231201.00.00',
+        },
+        body: jsonEncode({
+          'context': {
+            'client': {
+              'clientName': 'WEB',
+              'clientVersion': '2.20231201.00.00',
+              'hl': 'en',
+              'gl': 'US',
+            },
+          },
+          'playlistId': playlistId,
+          'videoId': anchorId,
+        }),
+      );
+
+      if (resp.statusCode != 200) return [];
+      final jsonMap = jsonDecode(resp.body) as Map<String, dynamic>;
+      final items = <RawResourceItem>[];
+      final seenVideoIds = <String>{};
+
+      void parseNext(dynamic node) {
+        if (node is Map<String, dynamic>) {
+          if (node.containsKey('playlistPanelVideoRenderer')) {
+            final vr = node['playlistPanelVideoRenderer'] as Map<String, dynamic>;
+            final videoId = vr['videoId']?.toString() ?? '';
+            final title = vr['title']?['simpleText']?.toString() ??
+                (vr['title']?['runs'] as List?)?.map((r) => r['text']).join('') ?? '';
+            final durationStr = vr['lengthText']?['simpleText']?.toString() ?? '';
+            int seconds = 600;
+            if (durationStr.isNotEmpty) {
+              final parts = durationStr.split(':').map(int.tryParse).toList();
+              if (parts.length == 2 && parts[0] != null && parts[1] != null) {
+                seconds = (parts[0]! * 60) + parts[1]!;
+              } else if (parts.length == 3 && parts[0] != null && parts[1] != null && parts[2] != null) {
+                seconds = (parts[0]! * 3600) + (parts[1]! * 60) + parts[2]!;
+              }
+            }
+
+            final thumbs = vr['thumbnail']?['thumbnails'] as List?;
+            final thumbUrl = (thumbs != null && thumbs.isNotEmpty)
+                ? thumbs.last['url']?.toString() ?? ''
+                : 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
+
+            if (videoId.isNotEmpty && title.isNotEmpty && !seenVideoIds.contains(videoId)) {
+              seenVideoIds.add(videoId);
+              items.add(RawResourceItem(
+                title: title,
+                sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                durationSeconds: seconds,
+                index: items.length,
+                thumbnailUrl: thumbUrl,
+              ));
+            }
+          }
+          for (final val in node.values) {
+            parseNext(val);
+          }
+        } else if (node is List) {
+          for (final val in node) {
+            parseNext(val);
+          }
+        }
+      }
+
+      parseNext(jsonMap);
+      return items;
+    } catch (e) {
+      debugPrint('Notice: next endpoint playlist fetch fell back: $e');
+      return [];
+    }
   }
 
   /// Scrapes playlist HTML page to extract ytInitialData when browse API is unreachable.
