@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
       - name: Analyze project
         run: flutter analyze
 
