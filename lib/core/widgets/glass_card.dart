@@ -19,8 +19,8 @@ class GlassCard extends StatefulWidget {
     this.padding = const EdgeInsets.all(20),
     this.margin,
     this.borderRadius,
-    this.blur = 16.0,
-    this.opacity = 0.08,
+    this.blur = 24.0,
+    this.opacity = 0.09,
     this.borderColor,
   });
 
@@ -37,10 +37,10 @@ class _GlassCardState extends State<GlassCard> with SingleTickerProviderStateMix
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 120),
+      duration: const Duration(milliseconds: 140),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.982).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
     );
   }
 

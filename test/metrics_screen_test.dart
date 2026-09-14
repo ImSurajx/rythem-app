@@ -85,8 +85,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('RHYTHM & METRICS'), findsOneWidget);
-      expect(find.text('Pacing & Velocity'), findsOneWidget);
+      expect(find.text('METRICS'), findsOneWidget);
+      expect(find.text('Activity & Momentum'), findsOneWidget);
       expect(find.text('COMPLETED BEATS'), findsNWidgets(2));
       expect(find.text('1'), findsWidgets); // 1 completed beat
       expect(find.text('FLOW STREAK'), findsOneWidget);

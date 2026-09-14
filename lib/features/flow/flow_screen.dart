@@ -135,9 +135,11 @@ class _FlowScreenState extends State<FlowScreen> {
       }
     }
 
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 64, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -210,7 +212,7 @@ class _FlowScreenState extends State<FlowScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${roadmaps.length} track${roadmaps.length == 1 ? '' : 's'} in progress • felt, not measured',
+                      '${roadmaps.length} active track${roadmaps.length == 1 ? '' : 's'}',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textTertiary,
                         fontSize: 11.5,
@@ -242,7 +244,7 @@ class _FlowScreenState extends State<FlowScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Streak: ${widget.streakDays} Day${widget.streakDays == 1 ? '' : 's'}',
+                      '${widget.streakDays} Day Streak',
                       style: RythemTypography.labelSmall.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -323,7 +325,7 @@ class _FlowScreenState extends State<FlowScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "TODAY'S MISSION & TRACK TODO LISTS",
+                "TODAY'S FOCUS",
                 style: RythemTypography.labelSmall.copyWith(
                   color: themeColors.textTertiary,
                   fontWeight: FontWeight.w700,
@@ -331,7 +333,7 @@ class _FlowScreenState extends State<FlowScreen> {
                 ),
               ),
               Text(
-                'Full Checklist',
+                'Queue',
                 style: RythemTypography.labelSmall.copyWith(
                   color: themeColors.textTertiary,
                   fontSize: 10,
@@ -916,7 +918,8 @@ class _FlowBeatChecklistTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
@@ -933,13 +936,16 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                       width: 1.5,
                     ),
                   ),
-                  child: beat.isCompleted
-                      ? Icon(
-                          Icons.check,
-                          size: 15,
-                          color: isDark ? Colors.black : Colors.white,
-                        )
-                      : null,
+                  child: AnimatedScale(
+                    scale: beat.isCompleted ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutBack,
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 15,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -967,7 +973,7 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            "TODAY'S MISSION",
+                            "MISSION",
                             style: RythemTypography.labelSmall.copyWith(
                               fontSize: 8.5,
                               fontWeight: FontWeight.w700,

@@ -118,7 +118,7 @@ void main() {
 
       // Verify Header & New Track Button
       expect(find.text('EXPLORE'), findsOneWidget);
-      expect(find.text('Curricula & Tracks'), findsOneWidget);
+      expect(find.text('All Tracks'), findsOneWidget);
       expect(find.text('New Track'), findsOneWidget);
 
       // Verify Roadmap Cards
@@ -251,11 +251,10 @@ void main() {
       );
 
       // Header info
-      expect(find.text('ROADMAP DETAIL'), findsOneWidget);
-      expect(find.text('Distributed Systems Architecture'), findsOneWidget);
+      expect(find.text('Distributed Systems Architecture'), findsWidgets);
       expect(find.text('ENGINEERING'), findsOneWidget);
       expect(find.text('1 of 3 beats completed'), findsOneWidget);
-      expect(find.text('Attach Resource'), findsOneWidget);
+      expect(find.text('Add'), findsOneWidget);
 
       // Chapter 1 beats visible (first chapter expanded by default)
       expect(find.text('Consensus & Raft Protocol'), findsOneWidget);
@@ -266,7 +265,7 @@ void main() {
       expect(find.text('MENTOR EXTRA'), findsOneWidget);
 
       // Toggle a beat checkbox
-      await tester.tap(find.byIcon(Icons.check).first);
+      await tester.tap(find.byIcon(Icons.check_rounded).first);
       await tester.pump();
 
       expect(toggledBeat?.id, 'b1');

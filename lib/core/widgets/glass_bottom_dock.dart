@@ -41,34 +41,33 @@ class GlassBottomDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final themeColors = isDark ? RythemColors.dark : RythemColors.light;
+    final themeColors = RythemColors.of(context);
+    final effectiveBorderGradient = themeColors.specularBorderGradient;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 22),
       height: 68,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(34),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.08),
-            blurRadius: 24,
+            color: isDark ? Colors.black.withOpacity(0.65) : const Color(0xFF0E1420).withOpacity(0.12),
+            blurRadius: 30,
             offset: const Offset(0, 10),
           ),
         ],
+        gradient: effectiveBorderGradient,
       ),
+      padding: const EdgeInsets.all(1.0),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
+        borderRadius: BorderRadius.circular(33),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xB2141414) : const Color(0xCCFFFFFF),
-              borderRadius: BorderRadius.circular(34),
-              border: Border.all(
-                color: isDark ? themeColors.glassBorder : const Color(0x28000000),
-                width: 1.0,
-              ),
+              color: isDark ? const Color(0xB8121316) : const Color(0xCCFFFFFF),
+              borderRadius: BorderRadius.circular(33),
             ),
             child: Row(
               children: List.generate(_items.length, (index) {

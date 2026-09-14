@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/database/database.dart';
@@ -1013,71 +1014,20 @@ class _DesignSystemShowcaseScreenState
   Widget build(BuildContext context) {
     final themeColors = RythemColors.of(context);
     final isDark = themeColors.isDark;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: themeColors.background,
+      backgroundColor: Colors.transparent,
       extendBody: true,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: themeColors.canvasGradient,
+        ),
+        child: Stack(
           children: [
-            // Top Bar with Brand Logo & Theme Mode Toggle (always accessible)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'RYTHEM',
-                        style: RythemTypography.brandLogo.copyWith(
-                          color: themeColors.textPrimary,
-                          letterSpacing: 3.5,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        'beats over clocks • felt, not measured',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textTertiary,
-                          fontSize: 9.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Settings Glass Button
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      setState(() => _currentTabIndex = 3);
-                    },
-                    child: GlassContainer(
-                      width: 40,
-                      height: 40,
-                      borderRadius: BorderRadius.circular(20),
-                      padding: EdgeInsets.zero,
-                      child: Center(
-                        child: Icon(
-                          Icons.settings_outlined,
-                          color: _currentTabIndex == 3
-                              ? themeColors.textPrimary
-                              : themeColors.textSecondary,
-                          size: 19,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Persistent 4-Tab Indexed Stack
-            Expanded(
-              child: IndexedStack(
+            // Persistent 4-Tab Smooth Animated Stack with Content Blur Passthrough
+            Positioned.fill(
+              child: FadeIndexedStack(
                 index: _currentTabIndex,
                 children: [
                   _buildFlowTab(),
@@ -1085,6 +1035,67 @@ class _DesignSystemShowcaseScreenState
                   _buildMetricsTab(themeColors, isDark),
                   _buildSettingsTab(themeColors, isDark),
                 ],
+              ),
+            ),
+
+            // Floating Frosted Glass Header (Apple Safari / Music)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(20, topPadding + 8, 20, 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xB3090A0D) : const Color(0xCCFFFFFF),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isDark ? const Color(0x1FFFFFFF) : const Color(0x18000000),
+                          width: 0.8,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'RYTHEM',
+                          style: RythemTypography.brandLogo.copyWith(
+                            color: themeColors.textPrimary,
+                            letterSpacing: 4.0,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        // Settings Glass Button
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _currentTabIndex = 3);
+                          },
+                          child: GlassContainer(
+                            width: 38,
+                            height: 38,
+                            borderRadius: BorderRadius.circular(19),
+                            padding: EdgeInsets.zero,
+                            child: Center(
+                              child: Icon(
+                                Icons.settings_outlined,
+                                color: _currentTabIndex == 3
+                                    ? themeColors.textPrimary
+                                    : themeColors.textSecondary,
+                                size: 19,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -1274,17 +1285,20 @@ class _DesignSystemShowcaseScreenState
   }
 
   Widget _buildSettingsTab(RythemThemeColors themeColors, bool isDark) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 64, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'SETTINGS & CALIBRATION',
+            'SETTINGS',
             style: RythemTypography.labelSmall.copyWith(
               color: themeColors.textTertiary,
               letterSpacing: 1.2,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 12),

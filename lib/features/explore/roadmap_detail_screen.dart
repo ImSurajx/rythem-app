@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/database_event_bus.dart';
@@ -507,51 +508,68 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top App Bar with Prominent "Add Resource" Button (Requirement 5)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: themeColors.textPrimary, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'ROADMAP DETAIL',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textTertiary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: themeColors.canvasGradient,
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Top Frosted Glass App Bar
+              ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xB3090A0D) : const Color(0xCCFFFFFF),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isDark ? const Color(0x1AFFFFFF) : const Color(0x14000000),
+                          width: 0.8,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_back_ios_new_rounded,
+                              color: themeColors.textPrimary, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _currentRoadmap.title,
+                            style: RythemTypography.titleSmall.copyWith(
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GlassButton(
+                          label: 'Add',
+                          icon: Icons.link_rounded,
+                          height: 34,
+                          variant: GlassButtonVariant.primary,
+                          onPressed: _showAttachResourceDialog,
+                        ),
+                        const SizedBox(width: 2),
+                        IconButton(
+                          icon: Icon(Icons.archive_outlined,
+                              color: themeColors.textTertiary, size: 20),
+                          tooltip: 'Archive Track',
+                          onPressed: _handleArchive,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  GlassButton(
-                    label: 'Add Resource',
-                    icon: Icons.link_rounded,
-                    height: 36,
-                    variant: GlassButtonVariant.primary,
-                    onPressed: _showAttachResourceDialog,
-                  ),
-                  const SizedBox(width: 2),
-                  IconButton(
-                    icon: Icon(Icons.archive_outlined,
-                        color: themeColors.textTertiary, size: 20),
-                    tooltip: 'Archive Track',
-                    onPressed: _handleArchive,
-                  ),
-                ],
+                ),
               ),
-            ),
 
 
             // Scrollable Content
@@ -864,6 +882,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

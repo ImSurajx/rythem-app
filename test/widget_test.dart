@@ -114,9 +114,9 @@ void main() {
       }
     }
 
-    // Verify brand typography & persistent dock
+    // Verify brand typography, animated stack & persistent dock
     expect(find.text('RYTHEM'), findsOneWidget);
-    expect(find.text('beats over clocks • felt, not measured'), findsOneWidget);
+    expect(find.byType(FadeIndexedStack), findsOneWidget);
     expect(find.byType(GlassBottomDock), findsOneWidget);
 
     // Switch to Explore tab
@@ -131,7 +131,7 @@ void main() {
 
     // Verify Explore screen structure
     expect(find.text('EXPLORE'), findsOneWidget);
-    expect(find.text('Curricula & Tracks'), findsOneWidget);
+    expect(find.text('All Tracks'), findsOneWidget);
     expect(find.text('New Track'), findsOneWidget);
 
     // Switch to Settings tab
@@ -139,7 +139,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify Settings & Pacing Calibration
-    expect(find.text('SETTINGS & CALIBRATION'), findsOneWidget);
+    expect(find.text('SETTINGS'), findsOneWidget);
     expect(find.text('PACING CALIBRATION'), findsOneWidget);
 
     // Verify interactive beat advance button in Settings
