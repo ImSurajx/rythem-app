@@ -173,7 +173,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                           separatorBuilder: (_, __) => const SizedBox(height: 6),
                           itemBuilder: (context, index) {
                             final beat = widget.beats[index];
-                            return _AccordionBeatTile(
+                            return BeatTile(
                               beat: beat,
                               themeColors: themeColors,
                               isDark: isDark,
@@ -215,7 +215,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
   }
 }
 
-class _AccordionBeatTile extends StatelessWidget {
+class BeatTile extends StatelessWidget {
   final BeatEntity beat;
   final RythemColorTokens themeColors;
   final bool isDark;
@@ -226,7 +226,8 @@ class _AccordionBeatTile extends StatelessWidget {
   final VoidCallback? onConfirmMatch;
   final VoidCallback? onRejectMatch;
 
-  const _AccordionBeatTile({
+  const BeatTile({
+    super.key,
     required this.beat,
     required this.themeColors,
     required this.isDark,
