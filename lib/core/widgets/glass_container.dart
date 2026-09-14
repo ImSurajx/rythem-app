@@ -14,6 +14,7 @@ class GlassContainer extends StatelessWidget {
   final Color? borderColor;
   final Gradient? borderGradient;
   final Color? backgroundColor;
+  final bool enableBlur;
 
   const GlassContainer({
     super.key,
@@ -28,6 +29,7 @@ class GlassContainer extends StatelessWidget {
     this.borderColor,
     this.borderGradient,
     this.backgroundColor,
+    this.enableBlur = true,
   });
 
   @override
@@ -42,12 +44,12 @@ class GlassContainer extends StatelessWidget {
         (isDark
             ? Color.fromRGBO(25, 26, 30, opacity.clamp(0.0, 1.0))
                 .withOpacity((opacity * 1.5).clamp(0.04, 0.28))
-            : Colors.white.withOpacity(0.78));
+            : themeColors.glassBackground);
 
     final effectiveBorderGradient = borderGradient ??
         (borderColor != null ? null : themeColors.specularBorderGradient);
     final resolvedBorderColor = borderColor ??
-        (isDark ? themeColors.glassBorder : const Color(0x18000000));
+        (isDark ? themeColors.glassBorder : themeColors.glassBorder);
 
     final resolvedShadow = isDark
         ? [
@@ -59,25 +61,29 @@ class GlassContainer extends StatelessWidget {
           ]
         : [
             BoxShadow(
-              color: const Color(0xFF0E1420).withOpacity(0.07),
+              color: const Color(0xFF0E1420).withOpacity(0.06),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
           ];
 
+    final containerBody = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: resolvedBg,
+        borderRadius: effectiveRadius,
+      ),
+      child: child,
+    );
+
     final innerContent = ClipRRect(
       borderRadius: effectiveRadius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: resolvedBg,
-            borderRadius: effectiveRadius,
-          ),
-          child: child,
-        ),
-      ),
+      child: enableBlur
+          ? BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: containerBody,
+            )
+          : containerBody,
     );
 
     return Container(

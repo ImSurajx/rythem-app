@@ -5,7 +5,6 @@ import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
-import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'confusing_beat_dialog.dart';
 
@@ -399,21 +398,20 @@ class _FocusBeatTile extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isActive
                   ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
-                  : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
+                  : themeColors.rowBorder,
               width: isActive ? 1.4 : 0.8,
             ),
             color: isActive
-                ? (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
-                : Colors.transparent,
+                ? (isDark ? Colors.white.withOpacity(0.09) : Colors.black.withOpacity(0.04))
+                : themeColors.rowBackground,
           ),
-          child: GlassCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
+          child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Checkbox
@@ -534,7 +532,6 @@ class _FocusBeatTile extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

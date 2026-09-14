@@ -45,29 +45,31 @@ class GlassBottomDock extends StatelessWidget {
     final effectiveBorderGradient = themeColors.specularBorderGradient;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 22),
-      height: 68,
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      height: 62,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(34),
+        borderRadius: BorderRadius.circular(31),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.65) : const Color(0xFF0E1420).withOpacity(0.12),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
+            color: isDark
+                ? Colors.black.withOpacity(0.55)
+                : const Color(0xFF0E1420).withOpacity(0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
         gradient: effectiveBorderGradient,
       ),
       padding: const EdgeInsets.all(1.0),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(33),
+        borderRadius: BorderRadius.circular(30),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xB8121316) : const Color(0xCCFFFFFF),
-              borderRadius: BorderRadius.circular(33),
+              color: isDark ? const Color(0xCC121316) : themeColors.glassBackground,
+              borderRadius: BorderRadius.circular(30),
             ),
             child: Row(
               children: List.generate(_items.length, (index) {

@@ -163,9 +163,9 @@ void main() {
         ),
       );
 
-      // Evening Unlocked banner
-      expect(find.text('EVENING UNLOCKED'), findsOneWidget);
-      expect(find.text("Today's mission quota complete. Rest without guilt or catch up on sleep."), findsOneWidget);
+      // Evening Unlocked indicator
+      expect(find.text('Evening unlocked'), findsOneWidget);
+      expect(find.text('Complete'), findsOneWidget);
     });
   });
 

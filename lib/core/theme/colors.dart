@@ -19,19 +19,18 @@ class RythemColors {
   static const Color darkActionOnPrimary = Color(0xFF000000);
 
   // -------------------------------------------------------------
-  // Light Palette (Apple Control Center Frosted Glass)
-  // Soft ambient platinum canvas with frosted glass plates
+  // Light Palette (Predominantly White + Apple Translucent Frosted Glass)
   // -------------------------------------------------------------
-  static const Color lightBackground = Color(0xFFE8EAEE);
-  static const Color lightSurface = Color(0xFFF3F4F6);
-  static const Color lightSurfaceElevated = Color(0xFFDFE2E8);
-  static const Color lightGlassBackground = Color(0xBAFFFFFF); // 73% frosted white plate
-  static const Color lightGlassBorder = Color(0x1F000000); // 12% black border
+  static const Color lightBackground = Color(0xFFFFFFFF);
+  static const Color lightSurface = Color(0xFFF7F8FA);
+  static const Color lightSurfaceElevated = Color(0xFFEEEEF2);
+  static const Color lightGlassBackground = Color(0xB8FFFFFF); // 72% frosted translucent white
+  static const Color lightGlassBorder = Color(0x12000000); // 7% subtle gray border
   static const Color lightGlassBorderHighlight = Color(0x80FFFFFF); // 50% specular top light
-  static const Color lightTextPrimary = Color(0xFF141415); // Rich obsidian
-  static const Color lightTextSecondary = Color(0xFF55555C); // Muted graphite
+  static const Color lightTextPrimary = Color(0xFF111113); // Deep obsidian
+  static const Color lightTextSecondary = Color(0xFF6E6E73); // Apple secondary label
   static const Color lightTextTertiary = Color(0xFF8E8E93); // Apple tertiary gray
-  static const Color lightActionPrimary = Color(0xFF141415); // Obsidian button
+  static const Color lightActionPrimary = Color(0xFF111113); // Obsidian button
   static const Color lightActionOnPrimary = Color(0xFFFFFFFF); // White text
 
   // -------------------------------------------------------------
@@ -65,10 +64,10 @@ class RythemColors {
     end: Alignment.bottomCenter,
     colors: [
       Color(0xFFFFFFFF),
-      Color(0xFFF1F3F7),
-      Color(0xFFE6E9EE),
+      Color(0xFFF9FAFB),
+      Color(0xFFF2F4F7),
     ],
-    stops: [0.0, 0.4, 1.0],
+    stops: [0.0, 0.45, 1.0],
   );
 
   static const LinearGradient darkSpecularBorder = LinearGradient(
@@ -85,9 +84,9 @@ class RythemColors {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      Color(0xB3FFFFFF), // 70% specular top light
-      Color(0x33000000), // 20% side
-      Color(0x1A000000), // 10% bottom shadow
+      Color(0xE6FFFFFF), // specular top light
+      Color(0x18000000), // 9% side
+      Color(0x0A000000), // 4% bottom shadow
     ],
   );
 
@@ -120,6 +119,8 @@ class RythemColors {
     progressFill: Color(0xFFFFFFFF),
     canvasGradient: darkCanvasGradient,
     specularBorderGradient: darkSpecularBorder,
+    rowBackground: Color(0x0AFFFFFF),
+    rowBorder: Color(0x12FFFFFF),
   );
 
   static const RythemThemeColors lightThemeColors = RythemThemeColors(
@@ -135,11 +136,13 @@ class RythemColors {
     textTertiary: lightTextTertiary,
     actionPrimary: lightActionPrimary,
     actionOnPrimary: lightActionOnPrimary,
-    cardShadow: Color(0x14000000),
-    progressTrack: Color(0x12000000),
-    progressFill: Color(0xFF141415),
+    cardShadow: Color(0x0D000000),
+    progressTrack: Color(0x0F000000),
+    progressFill: Color(0xFF111113),
     canvasGradient: lightCanvasGradient,
     specularBorderGradient: lightSpecularBorder,
+    rowBackground: Color(0x06000000),
+    rowBorder: Color(0x0D000000),
   );
 }
 
@@ -161,6 +164,8 @@ class RythemThemeColors {
   final Color progressFill;
   final LinearGradient canvasGradient;
   final LinearGradient specularBorderGradient;
+  final Color rowBackground;
+  final Color rowBorder;
 
   const RythemThemeColors({
     required this.isDark,
@@ -180,6 +185,8 @@ class RythemThemeColors {
     required this.progressFill,
     required this.canvasGradient,
     required this.specularBorderGradient,
+    required this.rowBackground,
+    required this.rowBorder,
   });
 }
 

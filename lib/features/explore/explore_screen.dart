@@ -167,34 +167,42 @@ class _ExploreScreenState extends State<ExploreScreen> {
               style: TextStyle(
                 color: themeColors.textPrimary,
                 fontSize: 13.5,
-                height: 1.2,
               ),
               decoration: InputDecoration(
-                isDense: true,
+                isCollapsed: true,
                 hintText: 'Search tracks by title or category...',
                 hintStyle: TextStyle(
                   color: themeColors.textTertiary,
-                  fontSize: 13,
-                  height: 1.2,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w400,
                 ),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: themeColors.textSecondary,
-                  size: 20,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: themeColors.textSecondary,
+                    size: 19,
+                  ),
                 ),
                 prefixIconConstraints: const BoxConstraints(
-                  minWidth: 46,
-                  minHeight: 46,
+                  minWidth: 42,
+                  minHeight: 42,
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear,
-                            color: themeColors.textTertiary, size: 18),
-                        onPressed: () {
+                    ? GestureDetector(
+                        onTap: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
                         },
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Icon(
+                            Icons.clear,
+                            color: themeColors.textTertiary,
+                            size: 16,
+                          ),
+                        ),
                       )
                     : null,
                 suffixIconConstraints: const BoxConstraints(
@@ -202,7 +210,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   minHeight: 42,
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
