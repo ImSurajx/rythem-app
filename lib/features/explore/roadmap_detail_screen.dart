@@ -35,7 +35,7 @@ class RoadmapDetailScreen extends StatefulWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
-  final Future<void> Function(String roadmapId, String resourceUrl)? onAttachResource;
+  final Future<void> Function(String roadmapId, String resourceUrl, {String? chapterId})? onAttachResource;
   final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
 
   const RoadmapDetailScreen({
@@ -167,140 +167,212 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     }
   }
 
-  void _showAttachResourceDialog() {
+  void _showAttachResourceDialog({String? initialChapterId}) {
     final controller = TextEditingController();
+    String? selectedChapterId = initialChapterId ??
+        (_currentChapters.isNotEmpty ? _currentChapters.first.id : null);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final theme = Theme.of(ctx);
-        final isDark = theme.brightness == Brightness.dark;
-        final themeColors = isDark ? RythemColors.dark : RythemColors.light;
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            final theme = Theme.of(dialogCtx);
+            final isDark = theme.brightness == Brightness.dark;
+            final themeColors = isDark ? RythemColors.dark : RythemColors.light;
 
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xF0181818) : const Color(0xF5FFFFFF),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border.all(
-                color: isDark ? themeColors.glassBorder : const Color(0x20000000),
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(dialogCtx).viewInsets.bottom,
               ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xF0181818) : const Color(0xF5FFFFFF),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border.all(
+                    color: isDark ? themeColors.glassBorder : const Color(0x20000000),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'ATTACH RESOURCE',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, size: 20, color: themeColors.textSecondary),
+                          onPressed: () => Navigator.pop(dialogCtx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      'ATTACH RESOURCE',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+                      'Link a YouTube playlist or video. Videos are ingested in exact mentor sequence while the AI audits benchmark syllabus topic coverage.',
+                      style: RythemTypography.bodySmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 11.5,
                       ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.close, size: 20, color: themeColors.textSecondary),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Link a YouTube playlist, crash course video, or documentation link to ingest and align into beats.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 11.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'https://youtube.com/playlist?list=... or video URL',
-                    hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
-                    filled: true,
-                    fillColor: isDark
-                        ? Colors.white.withOpacity(0.06)
-                        : Colors.black.withOpacity(0.04),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: themeColors.glassBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: themeColors.glassBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark ? themeColors.glassBorderHighlight : Colors.black87,
+                    const SizedBox(height: 16),
+                    if (_currentChapters.length > 1) ...[
+                      Text(
+                        'TARGET SUBJECT / MODULE',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: GlassButton(
-                    label: _isAttaching ? 'Ingesting Resource...' : 'Ingest Resource',
-                    icon: Icons.link_rounded,
-                    height: 48,
-                    variant: GlassButtonVariant.secondary,
-                    isLoading: _isAttaching,
-                    onPressed: _isAttaching
-                        ? () {}
-                        : () async {
-                            final url = controller.text.trim();
-                            if (url.isNotEmpty) {
-                              Navigator.pop(ctx);
-                              setState(() => _isAttaching = true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Extracting playlist and dividing into chapters...'),
-                                  duration: Duration(seconds: 3),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.06)
+                              : Colors.black.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: themeColors.glassBorder),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedChapterId,
+                            isExpanded: true,
+                            dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                            style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                            icon: Icon(Icons.arrow_drop_down_rounded, color: themeColors.textSecondary),
+                            items: _currentChapters.map((ch) {
+                              return DropdownMenuItem<String>(
+                                value: ch.id,
+                                child: Text(
+                                  ch.title,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               );
-                              try {
-                                await widget.onAttachResource?.call(_currentRoadmap.id, url);
-                                await _reloadFromDb();
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Ingested ${_currentBeats.length} videos across ${_currentChapters.length} chapters!'),
-                                      duration: const Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Failed to attach resource: $e'),
-                                      duration: const Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              } finally {
-                                if (mounted) setState(() => _isAttaching = false);
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDialogState(() => selectedChapterId = val);
                               }
-                            }
-                          },
-                  ),
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    Text(
+                      'RESOURCE URL',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: controller,
+                      style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'https://youtube.com/playlist?list=... or video URL',
+                        hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.black.withOpacity(0.04),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: themeColors.glassBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: themeColors.glassBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isDark ? themeColors.glassBorderHighlight : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: GlassButton(
+                        label: _isAttaching ? 'Ingesting Resource...' : 'Ingest Resource',
+                        icon: Icons.link_rounded,
+                        height: 48,
+                        variant: GlassButtonVariant.secondary,
+                        isLoading: _isAttaching,
+                        onPressed: _isAttaching
+                            ? () {}
+                            : () async {
+                                final url = controller.text.trim();
+                                if (url.isNotEmpty) {
+                                  Navigator.pop(dialogCtx);
+                                  setState(() => _isAttaching = true);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Extracting playlist and running AI audit...'),
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                  try {
+                                    await widget.onAttachResource?.call(
+                                      _currentRoadmap.id,
+                                      url,
+                                      chapterId: selectedChapterId,
+                                    );
+                                    await _reloadFromDb();
+                                    if (mounted) {
+                                      final targetCh = _currentChapters
+                                          .where((c) => c.id == selectedChapterId)
+                                          .firstOrNull;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Attached playlist to ${targetCh?.title ?? "Subject"}! AI audit complete.',
+                                          ),
+                                          duration: const Duration(seconds: 4),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Failed to attach resource: $e'),
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) setState(() => _isAttaching = false);
+                                  }
+                                }
+                              },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -887,6 +959,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           onAttachResource: _showAttachResourceToBeatDialog,
                           onConfirmMatch: _handleConfirmMatch,
                           onRejectMatch: _handleRejectMatch,
+                          onAttachResourceToChapter: (ch) {
+                            _showAttachResourceDialog(initialChapterId: ch.id);
+                          },
                           onFlagBeat: (beat) {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },

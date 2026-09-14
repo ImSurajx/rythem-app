@@ -1178,12 +1178,24 @@ class _DesignSystemShowcaseScreenState
     await _loadDatabaseState();
   }
 
-  Future<void> _handleAttachResource(String roadmapId, String resourceUrl) async {
+  Future<void> _handleAttachResource(
+    String roadmapId,
+    String resourceUrl, {
+    String? chapterId,
+  }) async {
     try {
-      await _ingestionService.attachResourceToRoadmap(
-        roadmapId: roadmapId,
-        resourceUrl: resourceUrl,
-      );
+      if (chapterId != null) {
+        await _ingestionService.attachResourceToSubject(
+          roadmapId: roadmapId,
+          chapterId: chapterId,
+          resourceUrl: resourceUrl,
+        );
+      } else {
+        await _ingestionService.attachResourceToRoadmap(
+          roadmapId: roadmapId,
+          resourceUrl: resourceUrl,
+        );
+      }
       await _loadDatabaseState();
     } catch (e) {
       debugPrint('Error attaching resource: $e');

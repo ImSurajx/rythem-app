@@ -1,5 +1,6 @@
 import 'dart:math';
 import '../models/model_tier.dart';
+import '../models/curriculum_audit_result.dart';
 import 'model_download_manager.dart';
 import '../../ingestion/services/syllabus_matcher_service.dart';
 import '../../database/repositories/roadmap_repository.dart';
@@ -482,5 +483,129 @@ Confusing superficial syntax with structural understanding. Focus on state flow,
     }
 
     return 0.0;
+  }
+
+  /// Performs an on-device AI audit between a Subject's benchmark syllabus topics
+  /// and the videos of an attached playlist.
+  ///
+  /// Guarantees:
+  /// - Videos remain in exact original order 0..N-1.
+  /// - Dynamic Topic Sequencing: Syllabus topics are re-ordered according to the mentor's
+  ///   chronological teaching flow (first appearance in the video playlist).
+  /// - Uncovered syllabus topics are flagged as Gaps at the end.
+  /// - Videos with no syllabus match are tagged as Mentor Extras (enrichment).
+  /// - Produces a structured [CurriculumAuditResult] with an AI-generated Markdown audit summary.
+  Future<CurriculumAuditResult> auditSubjectResource({
+    required String subjectTitle,
+    required List<String> syllabusTopics,
+    required List<String> videoTitles,
+  }) async {
+    final tier = await activeTier;
+    final info = ModelInfo.forTier(tier);
+
+    final mappings = <VideoTopicMapping>[];
+    final firstSeenIndex = <String, int>{};
+    final topicToVideos = <String, List<int>>{};
+    final mentorExtras = <String>[];
+
+    for (int i = 0; i < videoTitles.length; i++) {
+      final videoTitle = videoTitles[i];
+      String? bestTopic;
+      double bestScore = 0.0;
+
+      for (final topic in syllabusTopics) {
+        final score = await scoreTopicSimilarity(videoTitle, topic);
+        if (score > bestScore) {
+          bestScore = score;
+          bestTopic = topic;
+        }
+      }
+
+      if (bestTopic != null && bestScore >= SyllabusMatcherService.ambiguousConfidenceThreshold) {
+        mappings.add(VideoTopicMapping(
+          videoIndex: i,
+          videoTitle: videoTitle,
+          matchedTopicId: bestTopic,
+          matchedTopicTitle: bestTopic,
+          confidence: bestScore,
+          isMentorExtra: false,
+        ));
+
+        firstSeenIndex.putIfAbsent(bestTopic, () => i);
+        topicToVideos.putIfAbsent(bestTopic, () => []).add(i + 1);
+      } else {
+        mentorExtras.add(videoTitle);
+        mappings.add(VideoTopicMapping(
+          videoIndex: i,
+          videoTitle: videoTitle,
+          confidence: bestScore,
+          isMentorExtra: true,
+        ));
+      }
+    }
+
+    // Determine mentor-driven syllabus sequence
+    final coveredTopics = syllabusTopics.where((t) => firstSeenIndex.containsKey(t)).toList()
+      ..sort((a, b) => firstSeenIndex[a]!.compareTo(firstSeenIndex[b]!));
+
+    final uncoveredGaps = syllabusTopics.where((t) => !firstSeenIndex.containsKey(t)).toList();
+    final orderedSyllabusTopics = [...coveredTopics, ...uncoveredGaps];
+
+    final totalTopics = syllabusTopics.length;
+    final coveragePercent = totalTopics > 0
+        ? double.parse(((coveredTopics.length / totalTopics) * 100).toStringAsFixed(1))
+        : 100.0;
+
+    // Generate AI Narrative Markdown
+    final tierHeader = tier == ModelTier.fallback
+        ? '🤖 **On-Device Curriculum Audit**'
+        : '🤖 **AI Mentor (${info.displayName}) • Curriculum Audit**';
+
+    final buffer = StringBuffer();
+    buffer.writeln('$tierHeader\n');
+    buffer.writeln('### **$subjectTitle: Coverage & Sequence Analysis**\n');
+    buffer.writeln('• **Coverage Score**: **${coveredTopics.length} / $totalTopics topics covered** ($coveragePercent%).');
+    buffer.writeln('• **Videos Ingested**: **${videoTitles.length} videos** preserved in mentor chronological order.');
+    if (mentorExtras.isNotEmpty) {
+      buffer.writeln('• **Mentor Extras**: **${mentorExtras.length} bonus/enrichment videos** identified.');
+    }
+    buffer.writeln();
+
+    buffer.writeln('#### 🧭 **Mentor Teaching Sequence**');
+    if (coveredTopics.isEmpty) {
+      buffer.writeln('_No direct topic correlations identified._');
+    } else {
+      for (int t = 0; t < coveredTopics.length; t++) {
+        final top = coveredTopics[t];
+        final vids = topicToVideos[top] ?? [];
+        final vidRange = vids.length == 1
+            ? 'Video #${vids.first}'
+            : 'Videos #${vids.first}–#${vids.last} (${vids.length} videos)';
+        buffer.writeln('${t + 1}. **$top** — $vidRange');
+      }
+    }
+    buffer.writeln();
+
+    buffer.writeln('#### ⚠️ **Curriculum Gaps (Uncovered Topics)**');
+    if (uncoveredGaps.isEmpty) {
+      buffer.writeln('🎉 **Complete Coverage**: The attached playlist satisfies all required benchmark topics in this subject without missing concepts.');
+    } else {
+      buffer.writeln('The following **${uncoveredGaps.length} benchmark topics** were not detected in this playlist:');
+      for (final gap in uncoveredGaps) {
+        buffer.writeln('• **$gap** — _0 matching videos. Consider attaching a supplementary video or resource._');
+      }
+    }
+
+    return CurriculumAuditResult(
+      subjectTitle: subjectTitle,
+      orderedSyllabusTopics: orderedSyllabusTopics,
+      coveredTopics: coveredTopics,
+      uncoveredGaps: uncoveredGaps,
+      mentorExtras: mentorExtras,
+      mappings: mappings,
+      coveragePercentage: coveragePercent,
+      auditSummaryMarkdown: buffer.toString(),
+      evaluatedTier: tier,
+    );
   }
 }
