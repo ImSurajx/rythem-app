@@ -405,6 +405,7 @@ class CurriculumIngestionService {
 
     // Atomically replace chapters & beats
     await _chapterRepo.deleteChaptersByRoadmapId(roadmapId);
+    await _beatRepo.deleteBeatsByRoadmapId(roadmapId);
 
     final now = DateTime.now();
     final chapterEntities = <ChapterEntity>[];

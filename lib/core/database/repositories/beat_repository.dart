@@ -199,4 +199,13 @@ class BeatRepository {
       roadmapId: beat.roadmapId,
     ));
   }
+
+  Future<void> deleteBeatsByRoadmapId(String roadmapId) async {
+    final db = await _db;
+    await db.delete(
+      DatabaseTables.beats,
+      where: '${BeatColumns.roadmapId} = ?',
+      whereArgs: [roadmapId],
+    );
+  }
 }
