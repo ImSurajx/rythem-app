@@ -230,7 +230,6 @@ void main() {
     testWidgets('renders chapters with first chapter expanded and mentor extra badge', (tester) async {
       BeatEntity? toggledBeat;
       bool? toggledVal;
-      RoadmapEntity? archivedRm;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -242,9 +241,6 @@ void main() {
             onBeatToggled: (beat, val) async {
               toggledBeat = beat;
               toggledVal = val;
-            },
-            onArchiveRoadmap: (rm) async {
-              archivedRm = rm;
             },
           ),
         ),
