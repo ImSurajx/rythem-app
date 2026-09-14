@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -114,9 +115,9 @@ void main() {
       }
     }
 
-    // Verify brand typography, animated stack & persistent dock
+    // Verify brand typography, immediate stack & persistent dock
     expect(find.text('RYTHEM'), findsOneWidget);
-    expect(find.byType(FadeIndexedStack), findsOneWidget);
+    expect(find.byType(IndexedStack), findsWidgets);
     expect(find.byType(GlassBottomDock), findsOneWidget);
 
     // Switch to Explore tab
@@ -141,19 +142,13 @@ void main() {
     // Verify Settings & Pacing Calibration
     expect(find.text('SETTINGS'), findsOneWidget);
     expect(find.text('PACING CALIBRATION'), findsOneWidget);
+    expect(find.text('APPEARANCE'), findsOneWidget);
 
-    // Verify interactive beat advance button in Settings
-    final advanceButton = find.text('Advance Beat');
-    expect(advanceButton, findsOneWidget);
+    // Verify interactive calibration preset in Settings
+    final normalPreset = find.text('Normal');
+    expect(normalPreset, findsOneWidget);
 
-    await tester.ensureVisible(advanceButton);
-    await tester.pump();
-    await tester.tap(advanceButton);
-    
-    // Allow real async database operations to finish and rebuild UI
-    for (int i = 0; i < 30; i++) {
-      await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
-      await tester.pump();
-    }
+    await tester.tap(normalPreset);
+    await tester.pumpAndSettle();
   });
 }

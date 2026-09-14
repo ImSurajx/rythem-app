@@ -139,57 +139,61 @@ class MetricsScreen extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // Top 4 Metric Tiles Grid
-          Row(
-            children: [
-              Expanded(
-                child: _MetricTile(
-                  title: 'COMPLETED BEATS',
-                  value: '$completedBeats',
-                  subtitle: 'of $totalBeats total',
-                  icon: Icons.check_circle_outline_rounded,
-                  themeColors: themeColors,
-                  isDark: isDark,
+          // Primary Metric Hero: Completed Beats
+          GlassCard(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'COMPLETED BEATS',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    Text(
+                      '$completedBeats of $totalBeats total',
+                      style: RythemTypography.bodySmall.copyWith(
+                        color: themeColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricTile(
-                  title: 'EFFORT COMPLETED',
-                  value: completedEffort.toStringAsFixed(1),
-                  subtitle: 'of ${totalEffort.toStringAsFixed(1)} weight',
-                  icon: Icons.fitness_center_rounded,
-                  themeColors: themeColors,
-                  isDark: isDark,
+                const SizedBox(height: 10),
+                Text(
+                  '$completedBeats',
+                  style: RythemTypography.displayMedium.copyWith(
+                    color: themeColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 40,
+                    height: 1.0,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricTile(
-                  title: 'FLOW STREAK',
-                  value: '$currentStreak Day${currentStreak == 1 ? '' : 's'}',
-                  subtitle: currentStreak > 0 ? 'momentum steady' : 'start today',
-                  icon: Icons.offline_bolt_outlined,
-                  themeColors: themeColors,
-                  isDark: isDark,
+                const SizedBox(height: 16),
+                Divider(
+                  height: 1,
+                  color: isDark ? themeColors.glassBorder : const Color(0x10000000),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricTile(
-                  title: '7-DAY VELOCITY',
-                  value: '${recentVelocity.toStringAsFixed(1)}/d',
-                  subtitle: 'avg beats daily',
-                  icon: Icons.speed_rounded,
-                  themeColors: themeColors,
-                  isDark: isDark,
+                const SizedBox(height: 14),
+                // Supporting Metrics Row: Streak · Effort · Velocity
+                Row(
+                  children: [
+                    _buildSupportingStat('Streak', '$currentStreak d', themeColors),
+                    _buildStatDivider(themeColors),
+                    _buildSupportingStat('Effort', '${completedEffort.toStringAsFixed(1)} / ${totalEffort.toStringAsFixed(1)}', themeColors),
+                    _buildStatDivider(themeColors),
+                    _buildSupportingStat('Velocity', '${recentVelocity.toStringAsFixed(1)} /d', themeColors),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           const SizedBox(height: 22),
@@ -270,67 +274,44 @@ class MetricsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MetricTile extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final RythemColorTokens themeColors;
-  final bool isDark;
-
-  const _MetricTile({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.themeColors,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
+  Widget _buildSupportingStat(
+    String label,
+    String value,
+    RythemThemeColors themeColors,
+  ) {
+    return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.6,
-                ),
-              ),
-              Icon(icon, size: 14, color: themeColors.textTertiary),
-            ],
-          ),
-          const SizedBox(height: 8),
           Text(
-            value,
-            style: RythemTypography.headlineMedium.copyWith(
-              color: themeColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
-              letterSpacing: -0.5,
+            label.toUpperCase(),
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textTertiary,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
-            subtitle,
-            style: RythemTypography.bodySmall.copyWith(
-              color: themeColors.textSecondary,
-              fontSize: 10.5,
+            value,
+            style: RythemTypography.titleSmall.copyWith(
+              color: themeColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatDivider(RythemThemeColors themeColors) {
+    return Container(
+      width: 1,
+      height: 24,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      color: themeColors.rowBorder,
     );
   }
 }

@@ -8,7 +8,6 @@ import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
-import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
 import 'widgets/backlog_decision_sheet.dart';
@@ -591,7 +590,7 @@ class _TrackTodoListCard extends StatelessWidget {
             color: isDark ? themeColors.glassBorder : const Color(0x10000000),
           ),
 
-          // Whole Todo List of Beats
+          // Actionable Focus Beats (Flow Focus)
           if (allBeats.isEmpty)
             Padding(
               padding: const EdgeInsets.all(20),
@@ -604,32 +603,69 @@ class _TrackTodoListCard extends StatelessWidget {
                 ),
               ),
             )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              itemCount: allBeats.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
-              itemBuilder: (context, index) {
-                final beat = allBeats[index];
-                final chapter = chapterMap[beat.chapterId];
-                final isTodayMission = todaysBeatIds.contains(beat.id) && !beat.isCompleted;
+          else ...[
+            Builder(
+              builder: (context) {
+                // Focus on today's mission beats first; if none or all done, show up to 3 next pending beats
+                final missionBeats = allBeats.where((b) => todaysBeatIds.contains(b.id)).toList();
+                final List<BeatEntity> flowBeats;
+                if (missionBeats.isNotEmpty) {
+                  flowBeats = missionBeats;
+                } else {
+                  final pending = allBeats.where((b) => !b.isCompleted).take(3).toList();
+                  flowBeats = pending.isNotEmpty ? pending : allBeats.take(3).toList();
+                }
 
-                return _FlowBeatChecklistTile(
-                  beat: beat,
-                  chapterTitle: chapter?.title ?? 'Chapter ${beat.sortOrder + 1}',
-                  isTodayMission: isTodayMission,
-                  themeColors: themeColors,
-                  isDark: isDark,
-                  onToggle: (val) => onBeatToggled(beat, val),
-                  onTap: () => onOpenFocusSession(beat),
-                  onFlag: () {
-                    ConfusingBeatDialog.show(context, beat: beat);
-                  },
+                return Column(
+                  children: [
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      itemCount: flowBeats.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final beat = flowBeats[index];
+                        final chapter = chapterMap[beat.chapterId];
+                        final isTodayMission = todaysBeatIds.contains(beat.id) && !beat.isCompleted;
+
+                        return _FlowBeatChecklistTile(
+                          beat: beat,
+                          chapterTitle: chapter?.title ?? 'Chapter ${beat.sortOrder + 1}',
+                          isTodayMission: isTodayMission,
+                          themeColors: themeColors,
+                          isDark: isDark,
+                          onToggle: (val) => onBeatToggled(beat, val),
+                          onTap: () => onOpenFocusSession(beat),
+                          onFlag: () {
+                            ConfusingBeatDialog.show(context, beat: beat);
+                          },
+                        );
+                      },
+                    ),
+                    if (allBeats.length > flowBeats.length)
+                      GestureDetector(
+                        onTap: onOpenDetail,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+                          child: Center(
+                            child: Text(
+                              'View full tracker (${allBeats.length} beats) →',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
+          ],
         ],
       ),
     );
@@ -654,83 +690,68 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E1A16).withOpacity(0.9)
-            : const Color(0xFFFFF9F2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? const Color(0x60FF9500)
-              : const Color(0x40FF9500),
-          width: 1.1,
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onRecalibrate();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: themeColors.rowBackground,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? const Color(0x33FFFFFF) : const Color(0x20000000),
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark
-                  ? Colors.white.withOpacity(0.12)
-                  : Colors.black.withOpacity(0.06),
-            ),
-            child: Icon(
-              Icons.tune_rounded,
-              size: 20,
-              color: themeColors.textPrimary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
-                Text(
-                  'PACING RECALIBRATION AVAILABLE',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
+                Icon(
+                  Icons.schedule_outlined,
+                  size: 15,
+                  color: themeColors.textSecondary,
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(width: 8),
                 Text(
-                  'Pace has softened over the past ${pacingBudget.lagStreakDays > 0 ? pacingBudget.lagStreakDays : 3} days. Tap to adjust dates or scope—zero guilt.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textSecondary,
-                    fontSize: 11,
-                    height: 1.3,
+                  "You're falling behind",
+                  style: RythemTypography.titleSmall.copyWith(
+                    color: themeColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          GlassButton(
-            label: 'Adjust',
-            icon: Icons.chevron_right_rounded,
-            onPressed: onRecalibrate,
-          ),
-        ],
+            Row(
+              children: [
+                Text(
+                  'Review plan',
+                  style: RythemTypography.labelSmall.copyWith(
+                    color: themeColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 13,
+                  color: themeColors.textSecondary,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Evening Unlock Indicator Banner per `docs/design.md` §2
+/// Evening Unlock Indicator Banner: small, meaningful state indicator
 class _EveningUnlockBanner extends StatelessWidget {
   final bool isUnlocked;
   final int completedCount;
@@ -750,114 +771,47 @@ class _EveningUnlockBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isUnlocked) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          gradient: LinearGradient(
-            colors: isDark
-                ? [
-                    Colors.white.withOpacity(0.14),
-                    Colors.white.withOpacity(0.04),
-                  ]
-                : [
-                    Colors.black.withOpacity(0.08),
-                    Colors.black.withOpacity(0.02),
-                  ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          border: Border.all(
-            color: isDark ? themeColors.glassBorderHighlight : const Color(0x30000000),
-            width: 1.2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.08),
-              ),
-              child: Icon(
-                Icons.nightlight_round,
-                size: 22,
-                color: themeColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'EVENING UNLOCKED',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Today\'s mission quota complete. Rest without guilt or catch up on sleep.',
-                    style: RythemTypography.bodySmall.copyWith(
-                      color: themeColors.textSecondary,
-                      fontSize: 11.5,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final pct = (progressRatio * 100).toInt();
 
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: themeColors.rowBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isUnlocked
+              ? (isDark ? themeColors.glassBorderHighlight : const Color(0x28000000))
+              : themeColors.rowBorder,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.flag_outlined,
-                    size: 16,
-                    color: themeColors.textPrimary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    totalCount == 0
-                        ? 'MISSION CLEARED'
-                        : '$completedCount OF $totalCount TODAY\'S MISSION BEATS DONE',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
+              Icon(
+                isUnlocked ? Icons.nightlight_round : Icons.lock_outline_rounded,
+                size: 15,
+                color: isUnlocked ? themeColors.textPrimary : themeColors.textTertiary,
               ),
+              const SizedBox(width: 8),
               Text(
-                '${(progressRatio * 100).toInt()}%',
+                isUnlocked ? 'Evening unlocked' : 'Evening locked',
                 style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textPrimary,
-                  fontWeight: FontWeight.w700,
+                  color: isUnlocked ? themeColors.textPrimary : themeColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          GlassProgressBar(
-            progress: progressRatio,
-            height: 6,
+          Text(
+            isUnlocked ? 'Complete' : '$pct% complete',
+            style: RythemTypography.bodySmall.copyWith(
+              color: isUnlocked ? themeColors.textPrimary : themeColors.textTertiary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

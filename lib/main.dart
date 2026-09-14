@@ -646,29 +646,6 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  Future<void> _advanceNextBeat() async {
-    final pending = await _beatRepo.getPendingBeats(_roadmapId);
-    if (pending.isNotEmpty) {
-      final nextBeat = pending.first;
-      await _beatRepo.toggleBeatCompletion(nextBeat.id, isCompleted: true);
-    } else {
-      // Loop over: reset all beats to uncompleted
-      for (final b in _beats) {
-        await _beatRepo.toggleBeatCompletion(b.id, isCompleted: false);
-      }
-    }
-    await _loadDatabaseState();
-  }
-
-  Future<void> _resetAndReseedDatabase() async {
-    await _roadmapRepo.deleteRoadmap(_roadmapId);
-    _simulatedNow = null;
-    await _seedSampleData();
-    await _loadDatabaseState();
-    HapticFeedback.mediumImpact();
-    _showToast('Reset database to demo starter track');
-  }
-
   void _switchRoadmap(RoadmapEntity rm) {
     setState(() {
       _roadmapId = rm.id;
@@ -1025,9 +1002,9 @@ class _DesignSystemShowcaseScreenState
         ),
         child: Stack(
           children: [
-            // Persistent 4-Tab Smooth Animated Stack with Content Blur Passthrough
+            // Persistent 4-Tab Immediate Stack with zero lag & preserved scroll states
             Positioned.fill(
-              child: FadeIndexedStack(
+              child: IndexedStack(
                 index: _currentTabIndex,
                 children: [
                   _buildFlowTab(),
@@ -1038,7 +1015,7 @@ class _DesignSystemShowcaseScreenState
               ),
             ),
 
-            // Floating Frosted Glass Header (Apple Safari / Music)
+            // Floating Frosted Glass Header
             Positioned(
               top: 0,
               left: 0,
@@ -1057,42 +1034,16 @@ class _DesignSystemShowcaseScreenState
                         ),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'RYTHEM',
-                          style: RythemTypography.brandLogo.copyWith(
-                            color: themeColors.textPrimary,
-                            letterSpacing: 4.0,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
+                    child: Center(
+                      child: Text(
+                        'RYTHEM',
+                        style: RythemTypography.brandLogo.copyWith(
+                          color: themeColors.textPrimary,
+                          letterSpacing: 4.0,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
-                        // Settings Glass Button
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            setState(() => _currentTabIndex = 3);
-                          },
-                          child: GlassContainer(
-                            width: 38,
-                            height: 38,
-                            borderRadius: BorderRadius.circular(19),
-                            padding: EdgeInsets.zero,
-                            child: Center(
-                              child: Icon(
-                                Icons.settings_outlined,
-                                color: _currentTabIndex == 3
-                                    ? themeColors.textPrimary
-                                    : themeColors.textSecondary,
-                                size: 19,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -1297,186 +1248,90 @@ class _DesignSystemShowcaseScreenState
             'SETTINGS',
             style: RythemTypography.labelSmall.copyWith(
               color: themeColors.textTertiary,
-              letterSpacing: 1.2,
+              letterSpacing: 1.5,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
 
-          // Appearance / Theme Mode Card
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.palette_outlined, size: 18, color: themeColors.textPrimary),
-                    const SizedBox(width: 10),
-                    Text(
-                      'APPEARANCE',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Customize app theme. Follows your device system appearance by default.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 11,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _buildThemeModeOption(
-                  mode: ThemeMode.system,
-                  title: 'System Default (Recommended)',
-                  subtitle: 'Automatically sync with your device dark / light mode.',
-                  icon: Icons.brightness_auto_rounded,
-                  themeColors: themeColors,
-                  isDark: isDark,
-                ),
-                _buildThemeModeOption(
-                  mode: ThemeMode.dark,
-                  title: 'Dark Theme',
-                  subtitle: 'Deep pitch charcoal with frosted glass accents.',
-                  icon: Icons.dark_mode_outlined,
-                  themeColors: themeColors,
-                  isDark: isDark,
-                ),
-                _buildThemeModeOption(
-                  mode: ThemeMode.light,
-                  title: 'Light Theme',
-                  subtitle: 'Crisp daylight contrast with luminous glass tinting.',
-                  icon: Icons.light_mode_outlined,
-                  themeColors: themeColors,
-                  isDark: isDark,
-                ),
-              ],
+          // 1. Appearance (Compact Segmented Control)
+          Text(
+            'APPEARANCE',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _buildAppearanceSegmented(themeColors, isDark),
+          const SizedBox(height: 24),
 
-          // Pacing Calibration Card (design.md §0 Step 4 & §5)
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.tune_outlined, size: 18, color: themeColors.textPrimary),
-                    const SizedBox(width: 10),
-                    Text(
-                      'PACING CALIBRATION',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Controls your daily effort budget rate. Zero minutes, hours, or stopwatch times shown.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 11,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _buildCalibrationOption(
-                  'light',
-                  'Light',
-                  'Gentle effort quota. Best for busy weeks or secondary study tracks.',
-                  themeColors,
-                  isDark,
-                ),
-                _buildCalibrationOption(
-                  'normal',
-                  'Normal',
-                  'Balanced mentor-paced queue flow. Recommended standard.',
-                  themeColors,
-                  isDark,
-                ),
-                _buildCalibrationOption(
-                  'intense',
-                  'Intense',
-                  'Accelerated budget allocation for focused immersion sprints.',
-                  themeColors,
-                  isDark,
-                ),
-              ],
+          // 2. Pacing Calibration (Preset Selector: Light 45d / Normal 30d / Intense 14d)
+          Text(
+            'PACING CALIBRATION',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _buildCalibrationSegmented(themeColors, isDark),
+          const SizedBox(height: 24),
 
-          // On-Device AI & Model Manager (docs/design.md §9 & user-flow.md Flow 8)
+          // 3. On-Device AI Manager
+          Text(
+            'ON-DEVICE AI',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 8),
           GlassCard(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.psychology_outlined, size: 20, color: themeColors.textPrimary),
-                        const SizedBox(width: 10),
-                        Text(
-                          'ON-DEVICE AI & MODEL MANAGER',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Local Intelligence Engine',
+                      style: RythemTypography.titleSmall.copyWith(
+                        color: themeColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: _activeModelTier == ModelTier.fallback
-                            ? (isDark ? Colors.white10 : Colors.black12)
-                            : (isDark ? Colors.white : Colors.black),
+                        color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         _activeModelTier == ModelTier.fallback
-                            ? 'FALLBACK (0 MB)'
+                            ? 'FALLBACK'
                             : _activeModelTier.name.toUpperCase(),
                         style: RythemTypography.labelSmall.copyWith(
-                          color: _activeModelTier == ModelTier.fallback
-                              ? themeColors.textSecondary
-                              : (isDark ? Colors.black : Colors.white),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
+                          color: themeColors.textSecondary,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Run intelligence 100% offline from your pinned GitHub Release. Zero cloud APIs, zero tracking.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 11,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-                // Live Download Progress Bar
+                // Live Download Progress Bar (only visible when actively downloading)
                 ValueListenableBuilder<DownloadProgress?>(
                   valueListenable: _modelDownloadManager.downloadProgressNotifier,
                   builder: (context, progress, _) {
@@ -1601,91 +1456,16 @@ class _DesignSystemShowcaseScreenState
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
 
-          // Local Database & Architecture Status
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.storage_outlined, size: 18, color: themeColors.textPrimary),
-                    const SizedBox(width: 10),
-                    Text(
-                      'LOCAL-FIRST PERSISTENCE',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Database: SQLite [rythem.db]\nReactive Stream: Active\nNetwork Dependency: Zero for offline learning',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GlassButton(
-                        label: 'Advance Beat',
-                        variant: GlassButtonVariant.secondary,
-                        onPressed: _advanceNextBeat,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GlassButton(
-                        label: 'Reseed DB',
-                        variant: GlassButtonVariant.secondary,
-                        onPressed: _resetAndReseedDatabase,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // App Philosophy Card
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'RYTHEM PHILOSOPHY',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textTertiary,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Beats over clocks. Felt, not measured. Learning happens in sequence, not in arbitrary stopwatch sessions.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Rythem v1.0.0 • Pure Math Pacing • Local First',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
+          // Quiet Version Metadata
+          Center(
+            child: Text(
+              'Rythem • Local First • v1.0.0',
+              style: RythemTypography.labelSmall.copyWith(
+                color: themeColors.textTertiary.withOpacity(0.6),
+                fontSize: 10.5,
+              ),
             ),
           ),
         ],
@@ -1693,67 +1473,147 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  Widget _buildCalibrationOption(
+  Widget _buildAppearanceSegmented(RythemThemeColors themeColors, bool isDark) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0x1FFFFFFF) : const Color(0x12000000),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildSegmentButton('System', ThemeMode.system, themeColors, isDark),
+          _buildSegmentButton('Dark', ThemeMode.dark, themeColors, isDark),
+          _buildSegmentButton('Light', ThemeMode.light, themeColors, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton(
+    String label,
+    ThemeMode mode,
+    RythemThemeColors themeColors,
+    bool isDark,
+  ) {
+    final isSelected = widget.themeMode == mode;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          widget.onThemeModeChanged(mode);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? Colors.white.withOpacity(0.14) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: isSelected && !isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    )
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: RythemTypography.labelSmall.copyWith(
+              color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalibrationSegmented(RythemThemeColors themeColors, bool isDark) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0x1FFFFFFF) : const Color(0x12000000),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildCalibrationPill('light', 'Light', '45d', themeColors, isDark),
+          _buildCalibrationPill('normal', 'Normal', '30d', themeColors, isDark),
+          _buildCalibrationPill('intense', 'Intense', '14d', themeColors, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalibrationPill(
     String option,
     String label,
-    String description,
+    String pace,
     RythemThemeColors themeColors,
     bool isDark,
   ) {
     final isSelected = _pacingCalibration == option;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() => _pacingCalibration = option);
-        _showToast('Pacing calibration updated to $label');
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
-              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _pacingCalibration = option);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
             color: isSelected
-                ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
-                : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-            width: isSelected ? 1.2 : 0.8,
+                ? (isDark ? Colors.white.withOpacity(0.14) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: isSelected && !isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    )
+                  ]
+                : null,
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              size: 16,
-              color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: RythemTypography.titleSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: RythemTypography.bodySmall.copyWith(
-                      color: themeColors.textTertiary,
-                      fontSize: 10.5,
-                    ),
-                  ),
-                ],
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: RythemTypography.labelSmall.copyWith(
+                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 11.5,
+                ),
               ),
-            ),
-          ],
+              Text(
+                pace,
+                style: RythemTypography.bodySmall.copyWith(
+                  color: isSelected ? themeColors.textSecondary : themeColors.textTertiary,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1927,75 +1787,6 @@ class _DesignSystemShowcaseScreenState
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildThemeModeOption({
-    required ThemeMode mode,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required RythemThemeColors themeColors,
-    required bool isDark,
-  }) {
-    final isSelected = widget.themeMode == mode;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        widget.onThemeModeChanged(mode);
-        _showToast('Theme set to ${mode == ThemeMode.system ? "System Default" : mode == ThemeMode.dark ? "Dark Theme" : "Light Theme"}');
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
-              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
-                : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-            width: isSelected ? 1.2 : 0.8,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: RythemTypography.titleSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: RythemTypography.bodySmall.copyWith(
-                      color: themeColors.textTertiary,
-                      fontSize: 10.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle_rounded, size: 18, color: themeColors.textPrimary),
-          ],
-        ),
       ),
     );
   }

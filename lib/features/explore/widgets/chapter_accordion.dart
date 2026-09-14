@@ -68,11 +68,11 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
+        color: themeColors.rowBackground,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-          width: 1.0,
+          color: themeColors.rowBorder,
+          width: 0.8,
         ),
       ),
       child: Column(
@@ -249,12 +249,10 @@ class _AccordionBeatTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withOpacity(0.03)
-              : Colors.black.withOpacity(0.015),
+          color: themeColors.rowBackground,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+            color: themeColors.rowBorder,
             width: 0.7,
           ),
         ),
