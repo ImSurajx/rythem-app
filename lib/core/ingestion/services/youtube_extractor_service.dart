@@ -349,14 +349,20 @@ class YoutubeExtractorService implements IYoutubeClient {
               final cir = node['continuationItemRenderer'] as Map<String, dynamic>;
               final token = cir['continuationEndpoint']?['continuationCommand']?['token']?.toString() ??
                   cir['button']?['buttonRenderer']?['command']?['continuationCommand']?['token']?.toString();
-              // Only pick continuation tokens that belong to the video section/list, not the page/sectionList
-              if (token != null &&
-                  token.isNotEmpty &&
-                  (path.contains('itemSectionRenderer') ||
+              // Strictly exclude engagement panels (comments), sidebars, and recommendation sections
+              final isEngagementOrComment = path.contains('engagementPanel') ||
+                  path.contains('panels') ||
+                  path.contains('comments') ||
+                  (path.contains('sectionListRenderer') && !path.contains('contents[0]'));
+
+              final isVideoListContinuation = !isEngagementOrComment &&
+                  (path.contains('contents[0]') ||
                       path.contains('playlistVideoListRenderer') ||
                       path.contains('onResponseReceivedActions') ||
-                      path.contains('appendContinuationItemsAction'))) {
-                continuationToken = token;
+                      path.contains('appendContinuationItemsAction'));
+
+              if (token != null && token.isNotEmpty && isVideoListContinuation) {
+                continuationToken ??= token;
               }
             }
 
