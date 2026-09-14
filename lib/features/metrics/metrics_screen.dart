@@ -244,7 +244,7 @@ class MetricsScreen extends StatelessWidget {
                   (rm.id == activeBudget?.roadmapId ? activeBudget : null);
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: 14),
                 child: _TrackOverviewCard(
                   roadmap: rm,
                   totalBeats: beats.length,
@@ -257,7 +257,7 @@ class MetricsScreen extends StatelessWidget {
               );
             }),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
 
           // Pacing Engine Math & Simulation Box
           _PacingSimulatorExpander(

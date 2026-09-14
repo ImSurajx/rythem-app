@@ -678,8 +678,11 @@ class _NewTrackModalState extends State<NewTrackModal> {
               SizedBox(
                 width: double.infinity,
                 child: GlassButton(
-                  label: _isLoading ? 'Creating Track...' : 'Create Track',
+                  label: _isLoading ? 'Creating Track...' : 'Create New Track',
                   icon: Icons.add_rounded,
+                  height: 48,
+                  variant: GlassButtonVariant.primary,
+                  isLoading: _isLoading,
                   onPressed: _isLoading ? () {} : _submit,
                 ),
               ),

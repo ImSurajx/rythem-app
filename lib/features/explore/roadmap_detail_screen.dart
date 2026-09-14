@@ -252,8 +252,11 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: GlassButton(
-                    label: _isAttaching ? 'Extracting & Ingesting...' : 'Attach & Ingest',
+                    label: _isAttaching ? 'Ingesting Resource...' : 'Ingest Resource',
                     icon: Icons.link_rounded,
+                    height: 48,
+                    variant: GlassButtonVariant.secondary,
+                    isLoading: _isAttaching,
                     onPressed: _isAttaching
                         ? () {}
                         : () async {
@@ -712,14 +715,15 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                           const SizedBox(height: 14),
 
-                          // Attach Resource Action Button
+                          // Attach Resource Action Button (Primary Action)
                           Row(
                             children: [
                               Expanded(
                                 child: GlassButton(
                                   label: 'Attach Resource',
                                   icon: Icons.link_rounded,
-                                  variant: GlassButtonVariant.secondary,
+                                  height: 48,
+                                  variant: GlassButtonVariant.primary,
                                   onPressed: _showAttachResourceDialog,
                                 ),
                               ),
@@ -728,7 +732,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // "Up Next" Topic Highlight (Direct Resource Launch)
                     if (nextPendingBeat != null)
@@ -746,7 +750,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         },
                         behavior: HitTestBehavior.opaque,
                         child: Container(
-                          margin: const EdgeInsets.only(bottom: 16),
+                          margin: const EdgeInsets.only(bottom: 14),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
