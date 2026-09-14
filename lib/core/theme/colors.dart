@@ -49,6 +49,48 @@ class RythemColors {
   static const Color actionPrimary = darkActionPrimary;
   static const Color actionOnPrimary = darkActionOnPrimary;
 
+  static const LinearGradient darkCanvasGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFF121316),
+      Color(0xFF050506),
+      Color(0xFF000000),
+    ],
+    stops: [0.0, 0.45, 1.0],
+  );
+
+  static const LinearGradient lightCanvasGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFFFFFFF),
+      Color(0xFFF1F3F7),
+      Color(0xFFE6E9EE),
+    ],
+    stops: [0.0, 0.4, 1.0],
+  );
+
+  static const LinearGradient darkSpecularBorder = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0x4DFFFFFF), // 30% specular top light
+      Color(0x1AFFFFFF), // 10% side
+      Color(0x0DFFFFFF), // 5% bottom shadow
+    ],
+  );
+
+  static const LinearGradient lightSpecularBorder = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xB3FFFFFF), // 70% specular top light
+      Color(0x33000000), // 20% side
+      Color(0x1A000000), // 10% bottom shadow
+    ],
+  );
+
   // -------------------------------------------------------------
   // Context-Aware Palette Resolver
   // -------------------------------------------------------------
@@ -76,6 +118,8 @@ class RythemColors {
     cardShadow: Color(0x73000000),
     progressTrack: darkSurfaceElevated,
     progressFill: Color(0xFFFFFFFF),
+    canvasGradient: darkCanvasGradient,
+    specularBorderGradient: darkSpecularBorder,
   );
 
   static const RythemThemeColors lightThemeColors = RythemThemeColors(
@@ -94,6 +138,8 @@ class RythemColors {
     cardShadow: Color(0x14000000),
     progressTrack: Color(0x12000000),
     progressFill: Color(0xFF141415),
+    canvasGradient: lightCanvasGradient,
+    specularBorderGradient: lightSpecularBorder,
   );
 }
 
@@ -113,6 +159,8 @@ class RythemThemeColors {
   final Color cardShadow;
   final Color progressTrack;
   final Color progressFill;
+  final LinearGradient canvasGradient;
+  final LinearGradient specularBorderGradient;
 
   const RythemThemeColors({
     required this.isDark,
@@ -130,6 +178,8 @@ class RythemThemeColors {
     required this.cardShadow,
     required this.progressTrack,
     required this.progressFill,
+    required this.canvasGradient,
+    required this.specularBorderGradient,
   });
 }
 

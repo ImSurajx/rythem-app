@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
@@ -66,7 +67,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final beats = widget.beatsByRoadmap[roadmap.id] ?? [];
 
     Navigator.of(context).push(
-      MaterialPageRoute(
+      CupertinoPageRoute(
         builder: (_) => RoadmapDetailScreen(
           roadmap: roadmap,
           chapters: chapters,
@@ -106,9 +107,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
       return title.contains(query) || category.contains(query);
     }).toList();
 
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 64, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -130,7 +133,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Curricula & Tracks',
+                    'All Tracks',
                     style: RythemTypography.headlineMedium.copyWith(
                       color: themeColors.textPrimary,
                       fontWeight: FontWeight.w700,

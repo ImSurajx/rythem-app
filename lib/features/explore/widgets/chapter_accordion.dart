@@ -203,7 +203,10 @@ class _ChapterAccordionState extends State<ChapterAccordion>
             crossFadeState: _isExpanded
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 240),
+            firstCurve: Curves.easeInOutCubic,
+            secondCurve: Curves.easeInOutCubic,
+            sizeCurve: Curves.easeInOutCubic,
           ),
         ],
       ),
@@ -271,7 +274,8 @@ class _AccordionBeatTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
@@ -286,13 +290,16 @@ class _AccordionBeatTile extends StatelessWidget {
                       width: 1.5,
                     ),
                   ),
-                  child: beat.isCompleted
-                      ? Icon(
-                          Icons.check,
-                          size: 13,
-                          color: isDark ? Colors.black : Colors.white,
-                        )
-                      : null,
+                  child: AnimatedScale(
+                    scale: beat.isCompleted ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutBack,
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 13,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),

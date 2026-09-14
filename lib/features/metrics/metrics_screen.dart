@@ -75,15 +75,17 @@ class MetricsScreen extends StatelessWidget {
             ? recentActivity.map((e) => e.count).reduce((a, b) => a + b) / 7.0
             : 0.0);
 
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 64, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Sub-header
           Text(
-            'RHYTHM & METRICS',
+            'METRICS',
             style: RythemTypography.labelSmall.copyWith(
               color: themeColors.textTertiary,
               letterSpacing: 1.2,
@@ -97,7 +99,7 @@ class MetricsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Pacing & Velocity',
+                'Activity & Momentum',
                 style: RythemTypography.headlineMedium.copyWith(
                   color: themeColors.textPrimary,
                   fontWeight: FontWeight.w700,
