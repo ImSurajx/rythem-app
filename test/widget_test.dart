@@ -87,6 +87,14 @@ void main() {
       ),
     );
     DatabaseService.instance.setDatabaseForTesting(db);
+    await db.insert(
+      DatabaseTables.appSettings,
+      {
+        AppSettingsColumns.key: 'has_completed_onboarding',
+        AppSettingsColumns.value: 'true',
+        AppSettingsColumns.updatedAt: DateTime.now().toIso8601String(),
+      },
+    );
   });
 
   tearDown(() {

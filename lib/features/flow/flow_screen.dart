@@ -11,6 +11,7 @@ import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
+import 'widgets/backlog_decision_sheet.dart';
 
 /// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
 /// - Today's date & streak indicator
@@ -33,6 +34,7 @@ class FlowScreen extends StatefulWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final VoidCallback? onExploreTracks;
   final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
+  final Future<void> Function(RoadmapEntity roadmap, PacingDecision decision)? onApplyPacingDecision;
 
   const FlowScreen({
     super.key,
@@ -49,6 +51,7 @@ class FlowScreen extends StatefulWidget {
     required this.onBeatToggled,
     this.onExploreTracks,
     this.onOpenRoadmapDetail,
+    this.onApplyPacingDecision,
   });
 
   @override
@@ -118,6 +121,19 @@ class _FlowScreenState extends State<FlowScreen> {
     final displayedRoadmaps = _selectedTrackFilter == 'all'
         ? roadmaps
         : roadmaps.where((r) => r.id == _selectedTrackFilter).toList();
+
+    // Check for sustained lag in any active roadmap
+    RoadmapEntity? laggingRoadmap;
+    PacingBudget? laggingBudget;
+    for (final rm in roadmaps) {
+      final budget = widget.budgetsByRoadmap?[rm.id] ??
+          (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
+      if (budget?.isSustainedLag == true) {
+        laggingRoadmap = rm;
+        laggingBudget = budget;
+        break;
+      }
+    }
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -239,6 +255,27 @@ class _FlowScreenState extends State<FlowScreen> {
           ),
 
           const SizedBox(height: 18),
+
+          // Sustained Lag Non-Punitive Recalibration Banner
+          if (laggingRoadmap != null && laggingBudget != null) ...[
+            _SustainedLagRecalibrationBanner(
+              roadmap: laggingRoadmap,
+              pacingBudget: laggingBudget,
+              themeColors: themeColors,
+              isDark: isDark,
+              onRecalibrate: () {
+                BacklogDecisionSheet.show(
+                  context,
+                  roadmap: laggingRoadmap!,
+                  pacingBudget: laggingBudget!,
+                  allRoadmaps: roadmaps,
+                  onDecisionSelected: (decision) {
+                    widget.onApplyPacingDecision?.call(laggingRoadmap!, decision);
+                  },
+                );
+              },
+            ),
+          ],
 
           // Evening Unlock Indicator Banner
           _EveningUnlockBanner(
@@ -591,6 +628,100 @@ class _TrackTodoListCard extends StatelessWidget {
                 );
               },
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Non-punitive recalibration notification banner when sustained shortfall occurs.
+class _SustainedLagRecalibrationBanner extends StatelessWidget {
+  final RoadmapEntity roadmap;
+  final PacingBudget pacingBudget;
+  final VoidCallback onRecalibrate;
+  final RythemColorTokens themeColors;
+  final bool isDark;
+
+  const _SustainedLagRecalibrationBanner({
+    required this.roadmap,
+    required this.pacingBudget,
+    required this.onRecalibrate,
+    required this.themeColors,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E1A16).withOpacity(0.9)
+            : const Color(0xFFFFF9F2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? const Color(0x60FF9500)
+              : const Color(0x40FF9500),
+          width: 1.1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark
+                  ? Colors.white.withOpacity(0.12)
+                  : Colors.black.withOpacity(0.06),
+            ),
+            child: Icon(
+              Icons.tune_rounded,
+              size: 20,
+              color: themeColors.textPrimary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PACING RECALIBRATION AVAILABLE',
+                  style: RythemTypography.labelSmall.copyWith(
+                    color: themeColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Pace has softened over the past ${pacingBudget.lagStreakDays > 0 ? pacingBudget.lagStreakDays : 3} days. Tap to adjust dates or scope—zero guilt.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textSecondary,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GlassButton(
+            label: 'Adjust',
+            icon: Icons.chevron_right_rounded,
+            onPressed: onRecalibrate,
+          ),
         ],
       ),
     );
