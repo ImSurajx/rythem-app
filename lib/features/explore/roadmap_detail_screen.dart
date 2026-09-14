@@ -153,6 +153,48 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     Navigator.of(context).pop();
   }
 
+  Future<void> _handleConfirmMatch(BeatEntity beat) async {
+    HapticFeedback.mediumImpact();
+    final updated = beat.copyWith(
+      matchConfidence: 1.0,
+      updatedAt: DateTime.now(),
+    );
+    await _beatRepo.updateBeat(updated);
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Confirmed: "${beat.title}" linked to ${beat.syllabusTopicId}'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      await _reloadFromDb();
+    }
+  }
+
+  Future<void> _handleRejectMatch(BeatEntity beat) async {
+    HapticFeedback.lightImpact();
+    final updated = beat.copyWith(
+      matchConfidence: null,
+      syllabusTopicId: null,
+      isMentorExtra: true,
+      updatedAt: DateTime.now(),
+    );
+    await _beatRepo.updateBeat(updated);
+    if (mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Marked "${beat.title}" as Mentor Extra'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      await _reloadFromDb();
+    }
+  }
+
   void _showAttachResourceDialog() {
     final controller = TextEditingController();
     showModalBottomSheet(
@@ -808,6 +850,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           onBeatToggled: _handleBeatToggle,
                           onBeatTapped: _openFocusSession,
                           onAttachResource: _showAttachResourceToBeatDialog,
+                          onConfirmMatch: _handleConfirmMatch,
+                          onRejectMatch: _handleRejectMatch,
                           onFlagBeat: (beat) {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },

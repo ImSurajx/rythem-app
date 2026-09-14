@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'core/database/database.dart';
 import 'core/ingestion/ingestion.dart';
 import 'core/pacing/pacing.dart';
+import 'core/ai/ai.dart';
 import 'core/theme/colors.dart';
 import 'core/theme/theme.dart';
 import 'core/theme/typography.dart';
@@ -81,6 +82,11 @@ class _DesignSystemShowcaseScreenState
     beatRepo: _beatRepo,
     beatLogRepo: _beatLogRepo,
   );
+  final _modelDownloadManager = ModelDownloadManager();
+  late final _localInferenceService = LocalInferenceService(
+    downloadManager: _modelDownloadManager,
+  );
+  LocalInferenceService get inferenceService => _localInferenceService;
 
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
@@ -98,6 +104,10 @@ class _DesignSystemShowcaseScreenState
   DateTime? _simulatedNow;
   int _currentTabIndex = 0;
   String _pacingCalibration = 'normal';
+
+  ModelTier _activeModelTier = ModelTier.fallback;
+  bool _compactDownloaded = false;
+  bool _balancedDownloaded = false;
 
   Future<void> _setBeatCompletion(BeatEntity beat, bool isCompleted) async {
     await _beatRepo.toggleBeatCompletion(beat.id, isCompleted: isCompleted);
@@ -322,6 +332,53 @@ class _DesignSystemShowcaseScreenState
         _pacingBudget = budget;
       });
     }
+    await _loadModelStatus();
+  }
+
+  Future<void> _loadModelStatus() async {
+    try {
+      final active = await _modelDownloadManager.getActiveTier();
+      final compact = await _modelDownloadManager.isModelDownloaded(ModelTier.compact);
+      final balanced = await _modelDownloadManager.isModelDownloaded(ModelTier.balanced);
+      if (mounted) {
+        setState(() {
+          _activeModelTier = active;
+          _compactDownloaded = compact;
+          _balancedDownloaded = balanced;
+        });
+      }
+    } catch (e) {
+      debugPrint('Notice: Error loading model status: $e');
+    }
+  }
+
+  Future<void> _handleDownloadModel(ModelTier tier) async {
+    HapticFeedback.mediumImpact();
+    _showToast('Downloading ${ModelInfo.forTier(tier).displayName} from GitHub Release...');
+    try {
+      await _modelDownloadManager.downloadModel(tier);
+      await _loadModelStatus();
+      _showToast('${ModelInfo.forTier(tier).displayName} ready & activated!');
+    } catch (e) {
+      if (mounted) {
+        _showToast('Download interrupted: $e');
+      }
+      await _loadModelStatus();
+    }
+  }
+
+  Future<void> _handleDeleteModel(ModelTier tier) async {
+    HapticFeedback.lightImpact();
+    await _modelDownloadManager.deleteModel(tier);
+    await _loadModelStatus();
+    _showToast('Removed ${ModelInfo.forTier(tier).displayName} from device storage');
+  }
+
+  Future<void> _handleSelectActiveModel(ModelTier tier) async {
+    HapticFeedback.selectionClick();
+    await _modelDownloadManager.setActiveTier(tier);
+    await _loadModelStatus();
+    _showToast('Active engine: ${ModelInfo.forTier(tier).displayName}');
   }
 
   Future<void> _advanceNextBeat() async {
@@ -1250,6 +1307,181 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 16),
 
+          // On-Device AI & Model Manager (docs/design.md §9 & user-flow.md Flow 8)
+          GlassCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.psychology_outlined, size: 20, color: themeColors.textPrimary),
+                        const SizedBox(width: 10),
+                        Text(
+                          'ON-DEVICE AI & MODEL MANAGER',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _activeModelTier == ModelTier.fallback
+                            ? (isDark ? Colors.white10 : Colors.black12)
+                            : (isDark ? Colors.white : Colors.black),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _activeModelTier == ModelTier.fallback
+                            ? 'FALLBACK (0 MB)'
+                            : _activeModelTier.name.toUpperCase(),
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: _activeModelTier == ModelTier.fallback
+                              ? themeColors.textSecondary
+                              : (isDark ? Colors.black : Colors.white),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Run intelligence 100% offline from your pinned GitHub Release. Zero cloud APIs, zero tracking.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Live Download Progress Bar
+                ValueListenableBuilder<DownloadProgress?>(
+                  valueListenable: _modelDownloadManager.downloadProgressNotifier,
+                  builder: (context, progress, _) {
+                    if (progress != null && !progress.isCompleted && progress.error == null) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0x1AFFFFFF) : const Color(0x0E000000),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? themeColors.glassBorderHighlight : const Color(0x24000000),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Downloading ${ModelInfo.forTier(progress.tier).displayName}...',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                    color: themeColors.textPrimary,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    _modelDownloadManager.cancelDownload();
+                                    _showToast('Download cancelled');
+                                  },
+                                  child: Text(
+                                    'Cancel',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: themeColors.textTertiary,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress.progress > 0 ? progress.progress : null,
+                                backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                                valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                                minHeight: 6,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${progress.formattedReceived} / ${progress.formattedTotal}',
+                                  style: RythemTypography.bodySmall.copyWith(
+                                    color: themeColors.textTertiary,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                                Text(
+                                  progress.formattedProgress,
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
+                _buildModelOptionTile(
+                  info: ModelInfo.fallback,
+                  isDownloaded: true,
+                  isActive: _activeModelTier == ModelTier.fallback,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                  onSelect: () => _handleSelectActiveModel(ModelTier.fallback),
+                ),
+                _buildModelOptionTile(
+                  info: ModelInfo.compact,
+                  isDownloaded: _compactDownloaded,
+                  isActive: _activeModelTier == ModelTier.compact,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                  onSelect: () => _handleSelectActiveModel(ModelTier.compact),
+                  onDownload: () => _handleDownloadModel(ModelTier.compact),
+                  onDelete: () => _handleDeleteModel(ModelTier.compact),
+                ),
+                _buildModelOptionTile(
+                  info: ModelInfo.balanced,
+                  isDownloaded: _balancedDownloaded,
+                  isActive: _activeModelTier == ModelTier.balanced,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                  onSelect: () => _handleSelectActiveModel(ModelTier.balanced),
+                  onDownload: () => _handleDownloadModel(ModelTier.balanced),
+                  onDelete: () => _handleDeleteModel(ModelTier.balanced),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Local Database & Architecture Status
           GlassCard(
             padding: const EdgeInsets.all(20),
@@ -1402,6 +1634,178 @@ class _DesignSystemShowcaseScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildModelOptionTile({
+    required ModelInfo info,
+    required bool isDownloaded,
+    required bool isActive,
+    required RythemThemeColors themeColors,
+    required bool isDark,
+    required VoidCallback onSelect,
+    VoidCallback? onDownload,
+    VoidCallback? onDelete,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isActive
+            ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
+            : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isActive
+              ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
+              : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+          width: isActive ? 1.2 : 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: (info.tier == ModelTier.fallback || isDownloaded) ? onSelect : onDownload,
+                child: Icon(
+                  isActive
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  size: 16,
+                  color: isActive ? themeColors.textPrimary : themeColors.textTertiary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        info.displayName,
+                        style: RythemTypography.titleSmall.copyWith(
+                          color: themeColors.textPrimary,
+                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        info.formattedSize,
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textSecondary,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (info.tier != ModelTier.fallback) ...[
+                if (!isDownloaded)
+                  GestureDetector(
+                    onTap: onDownload,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white : Colors.black,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.download_rounded,
+                            size: 12,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Download',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isDark ? Colors.black : Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else ...[
+                  if (!isActive)
+                    GestureDetector(
+                      onTap: onSelect,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white10 : Colors.black12,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Activate',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textPrimary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: onDelete,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 16,
+                        color: themeColors.textTertiary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Text(
+              info.description,
+              style: RythemTypography.bodySmall.copyWith(
+                color: themeColors.textTertiary,
+                fontSize: 10.5,
+                height: 1.3,
+              ),
+            ),
+          ),
+          if (info.tier != ModelTier.fallback && isDownloaded && !isActive)
+            Padding(
+              padding: const EdgeInsets.only(left: 26, top: 4),
+              child: Text(
+                'Downloaded on device. Tap "Activate" to use.',
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textSecondary,
+                  fontSize: 9.5,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -1,0 +1,263 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import '../../database/repositories/app_settings_repository.dart';
+import '../models/model_tier.dart';
+
+class DownloadProgress {
+  final ModelTier tier;
+  final double progress; // 0.0 to 1.0
+  final int receivedBytes;
+  final int totalBytes;
+  final bool isCompleted;
+  final String? error;
+
+  const DownloadProgress({
+    required this.tier,
+    required this.progress,
+    required this.receivedBytes,
+    required this.totalBytes,
+    this.isCompleted = false,
+    this.error,
+  });
+
+  String get formattedProgress => '${(progress * 100).toInt()}%';
+  String get formattedReceived => '${(receivedBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  String get formattedTotal => '${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+}
+
+class ModelDownloadManager {
+  static const String _prefActiveModelTierKey = 'active_model_tier';
+
+  final AppSettingsRepository _settingsRepo;
+  final http.Client _client;
+  String? _overrideModelsDir;
+
+  http.Client? _activeDownloadClient;
+  ModelTier? _downloadingTier;
+  final ValueNotifier<DownloadProgress?> downloadProgressNotifier =
+      ValueNotifier<DownloadProgress?>(null);
+
+  ModelDownloadManager({
+    AppSettingsRepository? settingsRepo,
+    http.Client? client,
+    String? overrideModelsDir,
+  })  : _settingsRepo = settingsRepo ?? AppSettingsRepository(),
+        _client = client ?? http.Client(),
+        _overrideModelsDir = overrideModelsDir;
+
+  @visibleForTesting
+  void setOverrideModelsDir(String? dir) {
+    _overrideModelsDir = dir;
+  }
+
+  bool get isDownloading => _downloadingTier != null;
+  ModelTier? get downloadingTier => _downloadingTier;
+
+  Future<String> getModelsDirectory() async {
+    if (_overrideModelsDir != null) {
+      final dir = Directory(_overrideModelsDir!);
+      if (!dir.existsSync()) {
+        await dir.create(recursive: true);
+      }
+      return _overrideModelsDir!;
+    }
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final modelsDir = Directory(p.join(appDir.path, 'models'));
+      if (!modelsDir.existsSync()) {
+        await modelsDir.create(recursive: true);
+      }
+      return modelsDir.path;
+    } catch (_) {
+      // Fallback for widget test environments where path_provider channel is unmocked
+      return p.join(Directory.systemTemp.path, 'rythem_models');
+    }
+  }
+
+  Future<String?> getModelFilePath(ModelTier tier) async {
+    if (tier == ModelTier.fallback) return null;
+    final info = ModelInfo.forTier(tier);
+    final dir = await getModelsDirectory();
+    return p.join(dir, info.filename);
+  }
+
+  Future<bool> isModelDownloaded(ModelTier tier) async {
+    if (tier == ModelTier.fallback) return true;
+    final path = await getModelFilePath(tier);
+    if (path == null) return false;
+    final file = File(path);
+    if (!file.existsSync()) return false;
+    // Verify file size is reasonably non-empty (> 10MB)
+    final size = await file.length();
+    return size > 10 * 1024 * 1024;
+  }
+
+  Future<int> getDownloadedSize(ModelTier tier) async {
+    if (tier == ModelTier.fallback) return 0;
+    final path = await getModelFilePath(tier);
+    if (path == null) return 0;
+    final file = File(path);
+    if (!file.existsSync()) return 0;
+    return await file.length();
+  }
+
+  Future<ModelTier> getActiveTier() async {
+    final raw = await _settingsRepo.getSetting(_prefActiveModelTierKey);
+    final tier = ModelInfo.fromString(raw).tier;
+    if (tier == ModelTier.fallback) {
+      return ModelTier.fallback;
+    }
+    // Verify file exists on device
+    final downloaded = await isModelDownloaded(tier);
+    if (!downloaded) {
+      await setActiveTier(ModelTier.fallback);
+      return ModelTier.fallback;
+    }
+    return tier;
+  }
+
+  Future<void> setActiveTier(ModelTier tier) async {
+    if (tier != ModelTier.fallback) {
+      final downloaded = await isModelDownloaded(tier);
+      if (!downloaded) {
+        throw StateError('Model for tier $tier is not downloaded.');
+      }
+    }
+    await _settingsRepo.setSetting(_prefActiveModelTierKey, tier.name);
+  }
+
+  Future<void> downloadModel(
+    ModelTier tier, {
+    void Function(DownloadProgress progress)? onProgress,
+  }) async {
+    if (tier == ModelTier.fallback) return;
+    if (_downloadingTier != null) {
+      throw StateError('Another download is already in progress: $_downloadingTier');
+    }
+
+    final info = ModelInfo.forTier(tier);
+    final finalPath = await getModelFilePath(tier);
+    if (finalPath == null) return;
+    final partPath = '$finalPath.part';
+
+    _downloadingTier = tier;
+    final downloadClient = _client;
+    _activeDownloadClient = downloadClient;
+
+    try {
+      final request = http.Request('GET', Uri.parse(info.downloadUrl));
+      request.headers['User-Agent'] = 'Rythem-App/1.0.0';
+
+      final response = await downloadClient.send(request);
+      if (response.statusCode >= 400) {
+        throw HttpException(
+            'Failed to download model asset. HTTP Status: ${response.statusCode}');
+      }
+
+      final totalBytes = response.contentLength ?? info.sizeBytes;
+      int receivedBytes = 0;
+
+      final partFile = File(partPath);
+      if (partFile.existsSync()) {
+        await partFile.delete();
+      }
+      final sink = partFile.openWrite();
+
+      await for (final chunk in response.stream) {
+        sink.add(chunk);
+        receivedBytes += chunk.length;
+        final progress = totalBytes > 0 ? (receivedBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
+
+        final update = DownloadProgress(
+          tier: tier,
+          progress: progress,
+          receivedBytes: receivedBytes,
+          totalBytes: totalBytes,
+        );
+        downloadProgressNotifier.value = update;
+        onProgress?.call(update);
+      }
+
+      await sink.flush();
+      await sink.close();
+
+      // Rename .part file to final .gguf file
+      final finalFile = File(finalPath);
+      if (finalFile.existsSync()) {
+        await finalFile.delete();
+      }
+      await partFile.rename(finalPath);
+
+      final completedUpdate = DownloadProgress(
+        tier: tier,
+        progress: 1.0,
+        receivedBytes: totalBytes,
+        totalBytes: totalBytes,
+        isCompleted: true,
+      );
+      downloadProgressNotifier.value = completedUpdate;
+      onProgress?.call(completedUpdate);
+
+      // Automatically set as active tier upon first successful download
+      await setActiveTier(tier);
+    } catch (e) {
+      final errorUpdate = DownloadProgress(
+        tier: tier,
+        progress: 0.0,
+        receivedBytes: 0,
+        totalBytes: info.sizeBytes,
+        error: e.toString(),
+      );
+      downloadProgressNotifier.value = errorUpdate;
+      onProgress?.call(errorUpdate);
+      rethrow;
+    } finally {
+      _downloadingTier = null;
+      _activeDownloadClient?.close();
+      _activeDownloadClient = null;
+    }
+  }
+
+  void cancelDownload() {
+    if (_activeDownloadClient != null) {
+      _activeDownloadClient!.close();
+      _activeDownloadClient = null;
+    }
+    if (_downloadingTier != null) {
+      final cancelledTier = _downloadingTier!;
+      _downloadingTier = null;
+      downloadProgressNotifier.value = DownloadProgress(
+        tier: cancelledTier,
+        progress: 0.0,
+        receivedBytes: 0,
+        totalBytes: 0,
+        error: 'Download cancelled',
+      );
+    }
+  }
+
+  Future<void> deleteModel(ModelTier tier) async {
+    if (tier == ModelTier.fallback) return;
+
+    final path = await getModelFilePath(tier);
+    if (path != null) {
+      final file = File(path);
+      if (file.existsSync()) {
+        await file.delete();
+      }
+      final partFile = File('$path.part');
+      if (partFile.existsSync()) {
+        await partFile.delete();
+      }
+    }
+
+    final active = await getActiveTier();
+    if (active == tier) {
+      await setActiveTier(ModelTier.fallback);
+    }
+  }
+}
