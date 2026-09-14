@@ -12,14 +12,14 @@ import 'package:rythem_app/core/widgets/glass_button.dart';
 class ConfusingBeatDialog extends StatefulWidget {
   final BeatEntity beat;
   final ValueChanged<String>? onFlagSaved;
-  final LocalInferenceService? inferenceService;
+  final LocalInferenceService inferenceService;
 
-  const ConfusingBeatDialog({
+  ConfusingBeatDialog({
     super.key,
     required this.beat,
     this.onFlagSaved,
-    this.inferenceService,
-  });
+    LocalInferenceService? inferenceService,
+  }) : inferenceService = inferenceService ?? LocalInferenceService();
 
   static Future<void> show(
     BuildContext context, {
@@ -33,7 +33,7 @@ class ConfusingBeatDialog extends StatefulWidget {
       builder: (ctx) => ConfusingBeatDialog(
         beat: beat,
         onFlagSaved: onFlagSaved,
-        inferenceService: inferenceService,
+        inferenceService: inferenceService ?? LocalInferenceService(),
       ),
     );
   }
@@ -60,14 +60,13 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
   }
 
   Future<void> _fetchAiExplanation() async {
-    if (widget.inferenceService == null) return;
     HapticFeedback.mediumImpact();
     setState(() {
       _isLoadingAiExplanation = true;
     });
 
     try {
-      final text = await widget.inferenceService!.explainConfusingBeat(
+      final text = await widget.inferenceService.explainConfusingBeat(
         beatTitle: widget.beat.title,
       );
       if (mounted) {
@@ -163,8 +162,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                     ),
                     const SizedBox(height: 12),
 
-                    if (widget.inferenceService != null) ...[
-                      if (_isLoadingAiExplanation) ...[
+                    if (_isLoadingAiExplanation) ...[
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(12),
@@ -247,8 +245,6 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                           ),
                         ),
                       ],
-                    ],
-
                     TextField(
                       controller: _noteController,
                       maxLines: 3,
