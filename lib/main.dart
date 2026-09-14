@@ -13,6 +13,8 @@ import 'core/ingestion/parsers/syllabus_parser.dart';
 import 'features/flow/flow_screen.dart';
 import 'features/explore/explore_screen.dart';
 import 'features/explore/roadmap_detail_screen.dart';
+import 'features/metrics/metrics_screen.dart';
+import 'features/onboarding/onboarding_wizard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +30,34 @@ class RythemApp extends StatefulWidget {
 
 class _RythemAppState extends State<RythemApp> {
   ThemeMode _themeMode = ThemeMode.system;
+  final _settingsRepo = AppSettingsRepository();
+  bool _isLoading = true;
+  bool _hasCompletedOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    try {
+      final val = await _settingsRepo.getSetting('has_completed_onboarding');
+      if (mounted) {
+        setState(() {
+          _hasCompletedOnboarding = (val == 'true');
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _hasCompletedOnboarding = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   void _setThemeMode(ThemeMode mode) {
     setState(() {
@@ -37,16 +67,39 @@ class _RythemAppState extends State<RythemApp> {
 
   @override
   Widget build(BuildContext context) {
+    Widget home;
+    if (_isLoading) {
+      home = const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
+          ),
+        ),
+      );
+    } else if (!_hasCompletedOnboarding) {
+      home = OnboardingWizardScreen(
+        onFinished: () {
+          setState(() {
+            _hasCompletedOnboarding = true;
+          });
+        },
+      );
+    } else {
+      home = DesignSystemShowcaseScreen(
+        themeMode: _themeMode,
+        onThemeModeChanged: _setThemeMode,
+      );
+    }
+
     return MaterialApp(
       title: 'Rythem',
       debugShowCheckedModeBanner: false,
       theme: RythemTheme.lightTheme,
       darkTheme: RythemTheme.darkTheme,
       themeMode: _themeMode,
-      home: DesignSystemShowcaseScreen(
-        themeMode: _themeMode,
-        onThemeModeChanged: _setThemeMode,
-      ),
+      home: home,
     );
   }
 }
@@ -102,6 +155,7 @@ class _DesignSystemShowcaseScreenState
   Map<String, List<BeatEntity>> _beatsByRoadmap = {};
   Map<String, PacingBudget> _budgetsByRoadmap = {};
   List<RoadmapEntity> _allRoadmaps = [];
+  List<DailyBeatCount> _recentActivity = [];
 
   PacingBudget? _pacingBudget;
   DateTime? _simulatedNow;
@@ -308,6 +362,7 @@ class _DesignSystemShowcaseScreenState
     final chapters = chaptersByRoadmap[_roadmapId] ?? [];
     final beats = beatsByRoadmap[_roadmapId] ?? [];
     final streak = await _beatLogRepo.getCurrentStreak();
+    final recentActivity = await _beatLogRepo.getRecentActivity(daysCount: 7);
 
     // Group beats by their chapter
     final beatsByChapter = <String, List<BeatEntity>>{};
@@ -332,6 +387,7 @@ class _DesignSystemShowcaseScreenState
         _beatsByRoadmap = beatsByRoadmap;
         _budgetsByRoadmap = budgetsByRoadmap;
         _currentStreak = streak > 0 ? streak : 1;
+        _recentActivity = recentActivity;
         _pacingBudget = budget;
       });
     }
@@ -1060,6 +1116,10 @@ class _DesignSystemShowcaseScreenState
       onBeatToggled: _setBeatCompletion,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
+      onApplyPacingDecision: (roadmap, decision) async {
+        await _pacingService.applyPacingDecision(roadmap.id, decision);
+        await _loadDatabaseState();
+      },
     );
   }
 
@@ -1197,190 +1257,19 @@ class _DesignSystemShowcaseScreenState
   }
 
   Widget _buildMetricsTab(RythemThemeColors themeColors, bool isDark) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'PACING ENGINE (PURE MATH • ZERO STOPWATCHES)',
-            style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textTertiary,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          GlassCard(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.tune_outlined, size: 16, color: themeColors.textPrimary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'DAILY EFFORT ALLOCATION',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_simulatedNow != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
-                          ),
-                        ),
-                        child: Text(
-                          'SIMULATED: ${_simulatedNow!.month}/${_simulatedNow!.day}',
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                            color: themeColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // 3 Stat metrics
-                Row(
-                  children: [
-                    Expanded(
-                      child: _pacingMetricTile(
-                        title: "TODAY'S BUDGET",
-                        value: '${_pacingBudget?.formattedBudget ?? "0.0"} effort',
-                        subtitle: 'remaining ÷ days',
-                        themeColors: themeColors,
-                        isDark: isDark,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _pacingMetricTile(
-                        title: 'DAYS LEFT',
-                        value: '${_pacingBudget?.daysLeft ?? 0} days',
-                        subtitle: 'calendar window',
-                        themeColors: themeColors,
-                        isDark: isDark,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _pacingMetricTile(
-                        title: 'PENDING EFFORT',
-                        value: _pacingBudget?.remainingEffort.toStringAsFixed(1) ?? '0.0',
-                        subtitle: 'uncompleted sum',
-                        themeColors: themeColors,
-                        isDark: isDark,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Pacing Status Banner
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: (_pacingBudget?.isRoadmapCompleted ?? false)
-                                ? const Color(0xFF34C759)
-                                : (_pacingBudget?.isDailyQuotaCompleted ?? false)
-                                    ? const Color(0xFF34C759)
-                                    : (_pacingBudget?.isSustainedLag ?? false)
-                                        ? const Color(0xFFFF9500)
-                                        : themeColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          (_pacingBudget?.isRoadmapCompleted ?? false)
-                              ? 'TRACK COMPLETED'
-                              : (_pacingBudget?.isDailyQuotaCompleted ?? false)
-                                  ? "TODAY'S QUOTA COMPLETE"
-                                  : (_pacingBudget?.isSustainedLag ?? false)
-                                      ? 'SUSTAINED LAG (${_pacingBudget!.lagStreakDays} DAYS)'
-                                      : "TODAY'S MISSION: ${_pacingBudget?.todaysBeats.length ?? 0} BEATS ASSIGNED",
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.8,
-                            color: themeColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'felt, not measured',
-                      style: RythemTypography.labelSmall.copyWith(
-                        fontSize: 10,
-                        color: themeColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Interactive Math Simulation Controls
-                Text(
-                  'ON-DEVICE PACING MATH SIMULATORS',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 9.5,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _testPresetChip(
-                      label: '+1 Missed Day (Dilution)',
-                      onTap: _simulateMissedDay,
-                    ),
-                    _testPresetChip(
-                      label: "Complete Today's Mission",
-                      onTap: _completeTodaysQuota,
-                    ),
-                    _testPresetChip(
-                      label: 'Simulate 3-Day Lag (Adaptation)',
-                      onTap: _simulate3DayLag,
-                    ),
-                    if (_simulatedNow != null)
-                      _testPresetChip(
-                        label: 'Reset Clock',
-                        onTap: _resetSimulationClock,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return MetricsScreen(
+      roadmaps: _allRoadmaps,
+      beatsByRoadmap: _beatsByRoadmap,
+      budgetsByRoadmap: _budgetsByRoadmap,
+      activeBudget: _pacingBudget,
+      currentStreak: _currentStreak,
+      recentActivity: _recentActivity,
+      simulatedNow: _simulatedNow,
+      onOpenRoadmapDetail: _openRoadmapDetail,
+      onSimulateMissedDay: _simulateMissedDay,
+      onCompleteTodaysQuota: _completeTodaysQuota,
+      onSimulate3DayLag: _simulate3DayLag,
+      onResetSimulationClock: _resetSimulationClock,
     );
   }
 
@@ -2096,100 +1985,5 @@ class _DesignSystemShowcaseScreenState
       ),
     );
   }
-
-  Widget _pacingMetricTile({
-    required String title,
-    required String value,
-    required String subtitle,
-    required RythemThemeColors themeColors,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textTertiary,
-              fontSize: 8.5,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: RythemTypography.titleMedium.copyWith(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: themeColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: RythemTypography.labelSmall.copyWith(
-              fontSize: 8.5,
-              color: themeColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _testPresetChip({
-    required String label,
-    VoidCallback? onTap,
-  }) {
-    final themeColors = RythemColors.of(context);
-    final isDark = themeColors.isDark;
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        if (onTap != null) {
-          onTap();
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.flash_on_outlined,
-              size: 13,
-              color: themeColors.textSecondary,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: RythemTypography.labelSmall.copyWith(
-                color: themeColors.textPrimary,
-                fontSize: 10.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
+

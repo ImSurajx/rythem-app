@@ -1,7 +1,7 @@
 name: rythem_app
 description: "An ambient, milestone-driven learning operating system and curriculum orchestrator."
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
