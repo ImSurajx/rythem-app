@@ -67,7 +67,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: themeColors.rowBackground,
         borderRadius: BorderRadius.circular(18),
@@ -91,19 +91,15 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Text(
-                              widget.chapter.title,
-                              style: RythemTypography.titleMedium.copyWith(
-                                color: themeColors.textPrimary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                        Text(
+                          widget.chapter.title,
+                          style: RythemTypography.titleMedium.copyWith(
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -364,8 +360,11 @@ class _AccordionBeatTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
-                    Row(
+                    const SizedBox(height: 5),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 5,
+                      runSpacing: 2,
                       children: [
                         if (!hasResource) ...[
                           Text(
@@ -381,28 +380,30 @@ class _AccordionBeatTile extends StatelessWidget {
                             '•',
                             style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                           ),
-                          const SizedBox(width: 5),
                         ] else ...[
-                          Icon(
-                            isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
-                            size: 11,
-                            color: themeColors.textSecondary,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
+                                size: 11,
+                                color: themeColors.textSecondary,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                isYt ? 'video' : 'linked',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 3),
-                          Text(
-                            isYt ? 'video' : 'linked',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textSecondary,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
                           Text(
                             '•',
                             style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                           ),
-                          const SizedBox(width: 5),
                         ],
                         Text(
                           '${beat.effortWeight.toStringAsFixed(1)} effort',

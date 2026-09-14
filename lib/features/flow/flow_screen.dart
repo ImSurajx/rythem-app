@@ -485,7 +485,7 @@ class _TrackTodoListCard extends StatelessWidget {
     final chapterMap = {for (final c in chapters) c.id: c};
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
         borderRadius: BorderRadius.circular(22),
@@ -964,8 +964,11 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  Row(
+                  const SizedBox(height: 5),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 5,
+                    runSpacing: 2,
                     children: [
                       Text(
                         chapterTitle,
@@ -973,36 +976,37 @@ class _FlowBeatChecklistTile extends StatelessWidget {
                           color: themeColors.textTertiary,
                           fontSize: 9.5,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 6),
                       Text(
                         '•',
                         style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                       ),
-                      const SizedBox(width: 6),
                       if (hasResource) ...[
-                        Icon(
-                          isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
-                          size: 11,
-                          color: themeColors.textSecondary,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
+                              size: 11,
+                              color: themeColors.textSecondary,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              isYt ? 'video' : 'resource',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textSecondary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 3),
-                        Text(
-                          isYt ? 'video' : 'resource',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textSecondary,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
                         Text(
                           '•',
                           style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                         ),
-                        const SizedBox(width: 6),
                       ],
                       Text(
                         '${beat.effortWeight.toStringAsFixed(1)} effort',

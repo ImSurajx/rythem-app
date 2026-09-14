@@ -144,6 +144,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               GlassButton(
                 label: 'New Track',
                 icon: Icons.add_rounded,
+                height: 38,
                 variant: GlassButtonVariant.primary,
                 onPressed: _openNewTrackModal,
               ),
@@ -214,7 +215,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
 
           // Track List
           if (filteredRoadmaps.isEmpty)
@@ -226,10 +227,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             )
           else
             ListView.separated(
+              padding: EdgeInsets.zero,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: filteredRoadmaps.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 14),
               itemBuilder: (context, index) {
                 final roadmap = filteredRoadmaps[index];
                 final beats = widget.beatsByRoadmap[roadmap.id] ?? [];
@@ -414,6 +416,8 @@ class _EmptyExploreState extends StatelessWidget {
             GlassButton(
               label: 'Create New Track',
               icon: Icons.add_rounded,
+              height: 48,
+              variant: GlassButtonVariant.primary,
               onPressed: onNewTrack,
             ),
           ],

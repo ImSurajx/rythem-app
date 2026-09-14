@@ -217,8 +217,8 @@ void main() {
       await tester.tap(find.text('Mathematics'));
       await tester.pump();
 
-      // Tap Create Track
-      await tester.tap(find.text('Create Track'));
+      // Tap Create New Track
+      await tester.tap(find.text('Create New Track'));
       await tester.pumpAndSettle();
 
       expect(createdTitle, 'Quantum Computing Basics');
