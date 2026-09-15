@@ -141,17 +141,14 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
-    // Verify Settings & Pacing Calibration
+    // Verify Settings & 7-Day Study Intensity & Backup
     expect(find.text('SETTINGS'), findsOneWidget);
-    expect(find.text('PACING CALIBRATION'), findsOneWidget);
+    expect(find.text('7-DAY STUDY INTENSITY & DAILY GOALS'), findsOneWidget);
     expect(find.text('APPEARANCE'), findsOneWidget);
+    expect(find.text('DATA BACKUP & RESTORE'), findsOneWidget);
+    expect(find.text('Weekly Study Rhythm'), findsOneWidget);
 
-    // Verify interactive calibration preset in Settings
-    final normalPreset = find.text('Normal');
-    expect(normalPreset, findsOneWidget);
-
-    await tester.tap(normalPreset);
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 20; i++) {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
       await tester.pump();
     }

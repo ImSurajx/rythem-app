@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/ai/models/model_tier.dart';
 import '../../core/ai/services/model_download_manager.dart';
 import '../../core/database/repositories/app_settings_repository.dart';
+import '../../core/pacing/models/study_intensity.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/glass_button.dart';
@@ -38,7 +39,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   static const int _totalPages = 4;
 
   // Calibration choices
-  int _selectedTargetDays = 30; // 14, 30, 45
+  String _selectedCadencePreset = 'balanced'; // accelerated, balanced, gentle
   final ModelTier _selectedModelTier = ModelTier.compact;
   bool _downloadAiNow = false;
   bool _isSeeding = false;
@@ -52,7 +53,28 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     try {
       // 1. Save onboarding completion flag in SQLite
       await _settingsRepo.setSetting('has_completed_onboarding', 'true');
-      await _settingsRepo.setSetting('initial_target_days', '$_selectedTargetDays');
+      final schedule = switch (_selectedCadencePreset) {
+        'accelerated' => WeeklyStudySchedule.custom(
+            monday: StudyIntensity.intense,
+            tuesday: StudyIntensity.intense,
+            wednesday: StudyIntensity.intense,
+            thursday: StudyIntensity.intense,
+            friday: StudyIntensity.intense,
+            saturday: StudyIntensity.light,
+            sunday: StudyIntensity.light,
+          ),
+        'gentle' => WeeklyStudySchedule.custom(
+            monday: StudyIntensity.light,
+            tuesday: StudyIntensity.rest,
+            wednesday: StudyIntensity.light,
+            thursday: StudyIntensity.rest,
+            friday: StudyIntensity.light,
+            saturday: StudyIntensity.light,
+            sunday: StudyIntensity.rest,
+          ),
+        _ => WeeklyStudySchedule.defaultSchedule(),
+      };
+      await _settingsRepo.setSetting('study_intensity_schedule', schedule.encode());
       await _settingsRepo.setSetting('preferred_model_tier', _selectedModelTier.name);
 
       // 2. Seed initial starter track if requested
@@ -438,7 +460,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            'SET YOUR INITIAL RHYTHM',
+            'SET YOUR WEEKLY RHYTHM',
             style: RythemTypography.labelSmall.copyWith(
               color: themeColors.textTertiary,
               letterSpacing: 1.4,
@@ -447,7 +469,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Calibrate your target window.',
+            'Calibrate your study cadence.',
             style: RythemTypography.displayMedium.copyWith(
               color: themeColors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -457,7 +479,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Choose your baseline completion timeline. You can recalibrate or extend at any point.',
+            'Choose your baseline weekly intensity. Daily goals dynamically calculate from this schedule, customizable for every weekday in Settings.',
             style: RythemTypography.bodyMedium.copyWith(
               color: themeColors.textSecondary,
               height: 1.4,
@@ -465,35 +487,35 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Pacing Timeline Options
+          // Weekly Rhythm Cadence Options
           _buildPillOption(
-            days: 14,
-            label: 'Accelerated (14 Days)',
-            sublabel: 'Focused, intensive daily beat quota',
-            isSelected: _selectedTargetDays == 14,
+            label: 'Accelerated Rhythm',
+            sublabel: 'High intensity daily focus sessions across the week',
+            badge: '34 beats / wk',
+            isSelected: _selectedCadencePreset == 'accelerated',
             themeColors: themeColors,
             isDark: isDark,
-            onSelect: () => setState(() => _selectedTargetDays = 14),
+            onSelect: () => setState(() => _selectedCadencePreset = 'accelerated'),
           ),
           const SizedBox(height: 10),
           _buildPillOption(
-            days: 30,
-            label: 'Balanced (30 Days) • Recommended',
-            sublabel: 'Sustainable daily rhythm for working professionals',
-            isSelected: _selectedTargetDays == 30,
+            label: 'Balanced Rhythm • Recommended',
+            sublabel: 'Sustainable weekday focus with relaxed weekends',
+            badge: '22 beats / wk',
+            isSelected: _selectedCadencePreset == 'balanced',
             themeColors: themeColors,
             isDark: isDark,
-            onSelect: () => setState(() => _selectedTargetDays = 30),
+            onSelect: () => setState(() => _selectedCadencePreset = 'balanced'),
           ),
           const SizedBox(height: 10),
           _buildPillOption(
-            days: 45,
-            label: 'Gentle (45 Days)',
-            sublabel: 'Low cognitive load with ample slack time',
-            isSelected: _selectedTargetDays == 45,
+            label: 'Gentle Rhythm',
+            sublabel: 'Low cognitive load suited for unpredictable schedules',
+            badge: '8 beats / wk',
+            isSelected: _selectedCadencePreset == 'gentle',
             themeColors: themeColors,
             isDark: isDark,
-            onSelect: () => setState(() => _selectedTargetDays = 45),
+            onSelect: () => setState(() => _selectedCadencePreset = 'gentle'),
           ),
 
           const SizedBox(height: 24),
@@ -511,9 +533,9 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   Widget _buildPillOption({
-    required int days,
     required String label,
     required String sublabel,
+    required String badge,
     required bool isSelected,
     required RythemColorTokens themeColors,
     required bool isDark,
@@ -551,12 +573,32 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: RythemTypography.titleSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        label,
+                        style: RythemTypography.titleSmall.copyWith(
+                          color: themeColors.textPrimary,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badge,
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(

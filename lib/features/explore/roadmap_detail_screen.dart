@@ -35,6 +35,7 @@ class RoadmapDetailScreen extends StatefulWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
+  final Future<void> Function(RoadmapEntity roadmap)? onDeleteRoadmap;
   final Future<void> Function(String roadmapId, String resourceUrl, {String? chapterId})? onAttachResource;
   final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
 
@@ -46,6 +47,7 @@ class RoadmapDetailScreen extends StatefulWidget {
     required this.onBeatToggled,
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
+    this.onDeleteRoadmap,
     this.onAttachResource,
     this.onAttachResourceToBeat,
   });
@@ -505,6 +507,41 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     );
   }
 
+  Future<void> _confirmDeleteCurrentRoadmap() async {
+    HapticFeedback.mediumImpact();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1E1E1E)
+            : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Tracker', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        content: Text(
+          'Are you sure you want to delete "${_currentRoadmap.title}"? All chapters, beats, and progress will be permanently removed.',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && widget.onDeleteRoadmap != null && mounted) {
+      final roadmap = _currentRoadmap;
+      Navigator.of(context).pop(); // Pop detail screen
+      await widget.onDeleteRoadmap!(roadmap);
+    }
+  }
+
   void _openFocusSession(BeatEntity targetBeat) {
     HapticFeedback.lightImpact();
     final chapter = widget.chapters.where((c) => c.id == targetBeat.chapterId).firstOrNull;
@@ -616,6 +653,21 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                             variant: GlassButtonVariant.secondary,
                             onPressed: _showAttachResourceDialog,
                           ),
+                          if (widget.onDeleteRoadmap != null) ...[
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: _confirmDeleteCurrentRoadmap,
+                              behavior: HitTestBehavior.opaque,
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 17,
+                                  color: themeColors.textTertiary,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(width: 4),
                         ],
                       ),

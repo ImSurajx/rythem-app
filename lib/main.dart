@@ -16,6 +16,8 @@ import 'features/explore/explore_screen.dart';
 import 'features/explore/roadmap_detail_screen.dart';
 import 'features/metrics/metrics_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
+import 'core/backup/services/backup_service.dart';
+import 'core/pacing/models/study_intensity.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -126,6 +128,10 @@ class _DesignSystemShowcaseScreenState
   final _chapterRepo = ChapterRepository();
   final _beatRepo = BeatRepository();
   final _beatLogRepo = BeatLogRepository();
+  final _appSettingsRepo = AppSettingsRepository();
+  final _backupService = BackupService();
+  WeeklyStudySchedule _weeklySchedule = WeeklyStudySchedule.defaultSchedule();
+
   late final _ingestionService = CurriculumIngestionService(
     roadmapRepo: _roadmapRepo,
     chapterRepo: _chapterRepo,
@@ -135,6 +141,7 @@ class _DesignSystemShowcaseScreenState
     roadmapRepo: _roadmapRepo,
     beatRepo: _beatRepo,
     beatLogRepo: _beatLogRepo,
+    settingsRepo: _appSettingsRepo,
   );
   final _modelDownloadManager = ModelDownloadManager();
   late final _localInferenceService = LocalInferenceService(
@@ -159,9 +166,7 @@ class _DesignSystemShowcaseScreenState
   List<DailyBeatCount> _recentActivity = [];
 
   PacingBudget? _pacingBudget;
-  DateTime? _simulatedNow;
   int _currentTabIndex = 0;
-  String _pacingCalibration = 'normal';
 
   ModelTier _activeModelTier = ModelTier.fallback;
   bool _compactDownloaded = false;
@@ -350,10 +355,7 @@ class _DesignSystemShowcaseScreenState
       beatsByRoadmap[rm.id] = bts;
 
       try {
-        final b = await _pacingService.computePacingBudget(
-          rm.id,
-          simulatedNow: _simulatedNow,
-        );
+        final b = await _pacingService.computePacingBudget(rm.id);
         budgetsByRoadmap[rm.id] = b;
       } catch (e) {
         debugPrint('Notice: Pacing budget for ${rm.id}: $e');
@@ -378,6 +380,8 @@ class _DesignSystemShowcaseScreenState
     }
 
     final budget = budgetsByRoadmap[_roadmapId];
+    final scheduleJson = await _appSettingsRepo.getSetting('study_intensity_schedule');
+    final weeklySchedule = WeeklyStudySchedule.decode(scheduleJson);
 
     if (mounted) {
       setState(() {
@@ -390,6 +394,7 @@ class _DesignSystemShowcaseScreenState
         _currentStreak = streak > 0 ? streak : 1;
         _recentActivity = recentActivity;
         _pacingBudget = budget;
+        _weeklySchedule = weeklySchedule;
       });
     }
     await _loadModelStatus();
@@ -650,219 +655,8 @@ class _DesignSystemShowcaseScreenState
     setState(() {
       _roadmapId = rm.id;
       _roadmapTitle = rm.title;
-      _simulatedNow = null;
     });
     _loadDatabaseState();
-    HapticFeedback.selectionClick();
-  }
-
-  // --- Pacing Engine Simulation Handlers ---
-
-  Future<void> _simulateMissedDay() async {
-    _simulatedNow = (_simulatedNow ?? DateTime.now()).add(const Duration(days: 1));
-    await _loadDatabaseState();
-    HapticFeedback.mediumImpact();
-    final remainingDays = _pacingBudget?.daysLeft ?? 0;
-    final newBudget = _pacingBudget?.formattedBudget ?? "0.0";
-    _showToast('Simulated +1 Day Missed: Backlog diluted across $remainingDays days ($newBudget effort/day)');
-  }
-
-  Future<void> _completeTodaysQuota() async {
-    if (_pacingBudget != null && _pacingBudget!.todaysBeats.isNotEmpty) {
-      for (final b in _pacingBudget!.todaysBeats) {
-        await _beatRepo.toggleBeatCompletion(b.id, isCompleted: true);
-      }
-      await _loadDatabaseState();
-      HapticFeedback.mediumImpact();
-      _showToast("✓ Completed today's mission! Tomorrow's budget recalculated.");
-    } else {
-      _showToast('No pending beats assigned for today.');
-    }
-  }
-
-  Future<void> _simulate3DayLag() async {
-    _simulatedNow = (_simulatedNow ?? DateTime.now()).add(const Duration(days: 3));
-    await _loadDatabaseState();
-    HapticFeedback.heavyImpact();
-    _showAdaptivePacingModal();
-  }
-
-  Future<void> _resetSimulationClock() async {
-    _simulatedNow = null;
-    await _loadDatabaseState();
-    HapticFeedback.lightImpact();
-    _showToast('Simulation clock reset to current time.');
-  }
-
-  void _showAdaptivePacingModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        final themeColors = RythemColors.of(context);
-        final isDark = themeColors.isDark;
-
-        return GlassContainer(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'ADAPTIVE PACING DECISION',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textTertiary,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: themeColors.textSecondary, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Sustained lag detected (3+ days). Pure-math adaptation offers 4 non-punitive options to recover rhythm without shame.',
-                style: RythemTypography.bodyMedium.copyWith(
-                  color: themeColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _adaptiveOptionCard(
-                title: 'Push Target Date (+7 Days)',
-                description: 'Extends completion date smoothly diluting remaining effort across more days.',
-                icon: Icons.calendar_today_outlined,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pacingService.applyPacingDecision(
-                    _roadmapId,
-                    const PacingDecision.extendDate(7),
-                  );
-                  await _loadDatabaseState();
-                  _showToast('Target completion date extended by 7 days.');
-                },
-                themeColors: themeColors,
-                isDark: isDark,
-              ),
-              const SizedBox(height: 10),
-              _adaptiveOptionCard(
-                title: 'Trim to Core Must-Do Beats',
-                description: 'Focus effort on foundational beats while keeping extras tagged in place.',
-                icon: Icons.filter_list_outlined,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pacingService.applyPacingDecision(
-                    _roadmapId,
-                    const PacingDecision.trimCore(),
-                  );
-                  await _loadDatabaseState();
-                  _showToast('Focus trimmed to core curriculum beats.');
-                },
-                themeColors: themeColors,
-                isDark: isDark,
-              ),
-              const SizedBox(height: 10),
-              _adaptiveOptionCard(
-                title: 'Borrow Slack from Other Tracks',
-                description: 'Rebalance daily effort from tracks that are currently ahead of pace.',
-                icon: Icons.swap_calls_outlined,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pacingService.applyPacingDecision(
-                    _roadmapId,
-                    const PacingDecision.borrow('secondary'),
-                  );
-                  await _loadDatabaseState();
-                  _showToast('Slack borrowed from secondary tracks.');
-                },
-                themeColors: themeColors,
-                isDark: isDark,
-              ),
-              const SizedBox(height: 10),
-              _adaptiveOptionCard(
-                title: 'Accept & Continue',
-                description: 'Keep existing dates and absorb pace naturally across remaining timeline.',
-                icon: Icons.check_circle_outline,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _pacingService.applyPacingDecision(
-                    _roadmapId,
-                    const PacingDecision.accept(),
-                  );
-                  await _loadDatabaseState();
-                  _showToast('Accepted current pace.');
-                },
-                themeColors: themeColors,
-                isDark: isDark,
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _adaptiveOptionCard({
-    required String title,
-    required String description,
-    required IconData icon,
-    required VoidCallback onTap,
-    required RythemThemeColors themeColors,
-    required bool isDark,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: themeColors.textPrimary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: RythemTypography.titleMedium.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: themeColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: RythemTypography.bodyMedium.copyWith(
-                      fontSize: 11,
-                      color: themeColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showRoadmapSelector() {
@@ -1099,6 +893,7 @@ class _DesignSystemShowcaseScreenState
           onBeatToggled: _setBeatCompletion,
           onArchiveRoadmap: _handleArchiveRoadmap,
           onRestoreRoadmap: _handleRestoreRoadmap,
+          onDeleteRoadmap: _handleDeleteRoadmap,
           onAttachResource: _handleAttachResource,
           onAttachResourceToBeat: _handleAttachResourceToBeat,
         ),
@@ -1178,6 +973,22 @@ class _DesignSystemShowcaseScreenState
     await _loadDatabaseState();
   }
 
+  Future<void> _handleDeleteRoadmap(RoadmapEntity roadmap) async {
+    await _roadmapRepo.deleteRoadmap(roadmap.id);
+    if (_roadmapId == roadmap.id) {
+      _roadmapId = '';
+    }
+    await _loadDatabaseState();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Deleted "${roadmap.title}"'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _handleAttachResource(
     String roadmapId,
     String resourceUrl, {
@@ -1225,6 +1036,7 @@ class _DesignSystemShowcaseScreenState
       onCreateTrack: _handleCreateTrack,
       onArchiveRoadmap: _handleArchiveRoadmap,
       onRestoreRoadmap: _handleRestoreRoadmap,
+      onDeleteRoadmap: _handleDeleteRoadmap,
       onAttachResource: _handleAttachResource,
       onAttachResourceToBeat: _handleAttachResourceToBeat,
     );
@@ -1238,12 +1050,7 @@ class _DesignSystemShowcaseScreenState
       activeBudget: _pacingBudget,
       currentStreak: _currentStreak,
       recentActivity: _recentActivity,
-      simulatedNow: _simulatedNow,
       onOpenRoadmapDetail: _openRoadmapDetail,
-      onSimulateMissedDay: _simulateMissedDay,
-      onCompleteTodaysQuota: _completeTodaysQuota,
-      onSimulate3DayLag: _simulate3DayLag,
-      onResetSimulationClock: _resetSimulationClock,
     );
   }
 
@@ -1280,9 +1087,9 @@ class _DesignSystemShowcaseScreenState
           _buildAppearanceSegmented(themeColors, isDark),
           const SizedBox(height: 24),
 
-          // 2. Pacing Calibration (Preset Selector: Light 45d / Normal 30d / Intense 14d)
+          // 2. 7-Day Study Intensity & Daily Goals (Monday - Sunday)
           Text(
-            'PACING CALIBRATION',
+            '7-DAY STUDY INTENSITY & DAILY GOALS',
             style: RythemTypography.labelSmall.copyWith(
               color: themeColors.textSecondary,
               letterSpacing: 1.0,
@@ -1291,7 +1098,7 @@ class _DesignSystemShowcaseScreenState
             ),
           ),
           const SizedBox(height: 8),
-          _buildCalibrationSegmented(themeColors, isDark),
+          _buildStudyIntensityScheduleCard(themeColors, isDark),
           const SizedBox(height: 24),
 
           // 3. On-Device AI Manager
@@ -1470,6 +1277,20 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 24),
 
+          // 4. Data Backup & Restore
+          Text(
+            'DATA BACKUP & RESTORE',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildDataBackupCard(themeColors, isDark),
+          const SizedBox(height: 24),
+
           // Quiet Version Metadata
           Center(
             child: Text(
@@ -1551,84 +1372,303 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  Widget _buildCalibrationSegmented(RythemThemeColors themeColors, bool isDark) {
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0x1FFFFFFF) : const Color(0x12000000),
-        ),
-      ),
-      child: Row(
+  Widget _buildStudyIntensityScheduleCard(RythemThemeColors themeColors, bool isDark) {
+    final days = [
+      (1, 'Mon'),
+      (2, 'Tue'),
+      (3, 'Wed'),
+      (4, 'Thu'),
+      (5, 'Fri'),
+      (6, 'Sat'),
+      (7, 'Sun'),
+    ];
+
+    final totalTargetBeats = _weeklySchedule.totalWeeklyTargetBeats;
+    final activeDays = _weeklySchedule.activeDaysCount;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCalibrationPill('light', 'Light', '45d', themeColors, isDark),
-          _buildCalibrationPill('normal', 'Normal', '30d', themeColors, isDark),
-          _buildCalibrationPill('intense', 'Intense', '14d', themeColors, isDark),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Weekly Study Rhythm',
+                style: RythemTypography.titleSmall.copyWith(
+                  color: themeColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              Text(
+                '$totalTargetBeats beats / wk',
+                style: RythemTypography.labelSmall.copyWith(
+                  color: themeColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap any day to toggle intensity: Rest (0), Light (2), Normal (4), or Deep (6). Your daily pacing quota dynamically follows this schedule.',
+            style: RythemTypography.bodySmall.copyWith(
+              color: themeColors.textTertiary,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: days.map((d) {
+              final weekday = d.$1;
+              final dayLabel = d.$2;
+              final intensity = _weeklySchedule.getIntensity(weekday);
+              final isToday = DateTime.now().weekday == weekday;
+
+              final (intensityColor, icon) = switch (intensity) {
+                StudyIntensity.rest => (themeColors.textTertiary.withOpacity(0.5), Icons.bedtime_outlined),
+                StudyIntensity.light => (const Color(0xFF64B5F6), Icons.wb_twilight_rounded),
+                StudyIntensity.normal => (themeColors.textPrimary, Icons.auto_awesome_rounded),
+                StudyIntensity.intense => (const Color(0xFFFF8A65), Icons.local_fire_department_rounded),
+              };
+
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: GestureDetector(
+                    onTap: () => _cycleStudyIntensity(weekday),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: isToday
+                            ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06))
+                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isToday
+                              ? themeColors.glassBorderHighlight
+                              : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
+                          width: isToday ? 1.4 : 0.8,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            dayLabel,
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isToday ? themeColors.textPrimary : themeColors.textSecondary,
+                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                              fontSize: 10.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Icon(
+                            icon,
+                            size: 15,
+                            color: intensityColor,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            intensity.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: intensityColor,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${intensity.targetBeats}b',
+                            style: RythemTypography.bodySmall.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0x10FFFFFF) : const Color(0x08000000),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Active days: $activeDays/7',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textSecondary,
+                    fontSize: 10.5,
+                  ),
+                ),
+                Text(
+                  'Daily avg: ${(totalTargetBeats / 7).toStringAsFixed(1)} beats',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCalibrationPill(
-    String option,
-    String label,
-    String pace,
-    RythemThemeColors themeColors,
-    bool isDark,
-  ) {
-    final isSelected = _pacingCalibration == option;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _pacingCalibration = option);
-        },
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? Colors.white.withOpacity(0.14) : Colors.white)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-            boxShadow: isSelected && !isDark
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    )
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  Widget _buildDataBackupCard(RythemThemeColors themeColors, bool isDark) {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                label,
-                style: RythemTypography.labelSmall.copyWith(
-                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 11.5,
+                'Data Portability & Backup',
+                style: RythemTypography.titleSmall.copyWith(
+                  color: themeColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
-              Text(
-                pace,
-                style: RythemTypography.bodySmall.copyWith(
-                  color: isSelected ? themeColors.textSecondary : themeColors.textTertiary,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w500,
+              Icon(
+                Icons.shield_outlined,
+                size: 16,
+                color: themeColors.textTertiary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Export your entire learning state (roadmaps, chapters, beats, streaks, logs, and settings) as a portable JSON file, or restore from a previous backup file.',
+            style: RythemTypography.bodySmall.copyWith(
+              color: themeColors.textTertiary,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: GlassButton(
+                  onPressed: _handleExportBackup,
+                  icon: Icons.file_upload_outlined,
+                  label: 'Export Backup',
+                  variant: GlassButtonVariant.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GlassButton(
+                  onPressed: _handleImportBackup,
+                  icon: Icons.file_download_outlined,
+                  label: 'Restore Backup',
+                  variant: GlassButtonVariant.secondary,
                 ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
+  }
+
+  Future<void> _cycleStudyIntensity(int weekday) async {
+    HapticFeedback.selectionClick();
+    final current = _weeklySchedule.getIntensity(weekday);
+    final next = switch (current) {
+      StudyIntensity.rest => StudyIntensity.light,
+      StudyIntensity.light => StudyIntensity.normal,
+      StudyIntensity.normal => StudyIntensity.intense,
+      StudyIntensity.intense => StudyIntensity.rest,
+    };
+    final updated = _weeklySchedule.withIntensity(weekday, next);
+    setState(() => _weeklySchedule = updated);
+    await _appSettingsRepo.setSetting('study_intensity_schedule', updated.encode());
+    await _loadDatabaseState();
+    _showToast('${WeeklyStudySchedule.dayName(weekday)} set to ${next.label} (${next.targetBeats} beats)');
+  }
+
+  Future<void> _handleExportBackup() async {
+    HapticFeedback.mediumImpact();
+    try {
+      final file = await _backupService.exportToFile();
+      _showToast('Backup saved to ${file.path}');
+    } catch (e) {
+      _showToast('Export failed: $e');
+    }
+  }
+
+  Future<void> _handleImportBackup() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+        final colors = isDark ? RythemColors.dark : RythemColors.light;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E22) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Restore Data Backup',
+            style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
+          ),
+          content: Text(
+            'Restoring a backup will replace your current tracks, chapters, beats, streak history, and settings with the contents of the backup file.\n\nDo you want to proceed?',
+            style: RythemTypography.bodyMedium.copyWith(color: colors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel', style: TextStyle(color: colors.textTertiary)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.actionPrimary,
+                foregroundColor: colors.actionOnPrimary,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Select File & Restore'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    HapticFeedback.heavyImpact();
+    try {
+      final success = await _backupService.pickAndRestoreBackup();
+      if (success != null) {
+        await _loadDatabaseState();
+        _showToast('Backup successfully restored!');
+      } else {
+        _showToast('Restore cancelled or failed');
+      }
+    } catch (e) {
+      _showToast('Restore failed: $e');
+    }
   }
 
   Widget _buildModelOptionTile({

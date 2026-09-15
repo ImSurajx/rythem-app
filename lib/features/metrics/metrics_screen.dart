@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../core/database/models/beat_entity.dart';
 import '../../core/database/models/roadmap_entity.dart';
 import '../../core/database/repositories/beat_log_repository.dart';
@@ -15,7 +14,6 @@ import '../../core/widgets/glass_progress_bar.dart';
 /// - Lifetime beat completion & effort weight totals
 /// - 7-day activity bar chart with today highlighted
 /// - Per-roadmap progress cards linking to detail screens
-/// - Discreet pacing engine & simulation tools
 class MetricsScreen extends StatelessWidget {
   final List<RoadmapEntity> roadmaps;
   final Map<String, List<BeatEntity>> beatsByRoadmap;
@@ -23,12 +21,7 @@ class MetricsScreen extends StatelessWidget {
   final PacingBudget? activeBudget;
   final int currentStreak;
   final List<DailyBeatCount> recentActivity;
-  final DateTime? simulatedNow;
   final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
-  final VoidCallback? onSimulateMissedDay;
-  final VoidCallback? onCompleteTodaysQuota;
-  final VoidCallback? onSimulate3DayLag;
-  final VoidCallback? onResetSimulationClock;
 
   const MetricsScreen({
     super.key,
@@ -38,12 +31,7 @@ class MetricsScreen extends StatelessWidget {
     this.activeBudget,
     required this.currentStreak,
     required this.recentActivity,
-    this.simulatedNow,
     this.onOpenRoadmapDetail,
-    this.onSimulateMissedDay,
-    this.onCompleteTodaysQuota,
-    this.onSimulate3DayLag,
-    this.onResetSimulationClock,
   });
 
   @override
@@ -106,26 +94,6 @@ class MetricsScreen extends StatelessWidget {
                   letterSpacing: -0.5,
                 ),
               ),
-              if (simulatedNow != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
-                    ),
-                  ),
-                  child: Text(
-                    'SIMULATED',
-                    style: RythemTypography.labelSmall.copyWith(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: themeColors.textPrimary,
-                    ),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 2),
@@ -257,19 +225,6 @@ class MetricsScreen extends StatelessWidget {
               );
             }),
 
-          const SizedBox(height: 14),
-
-          // Pacing Engine Math & Simulation Box
-          _PacingSimulatorExpander(
-            activeBudget: activeBudget,
-            simulatedNow: simulatedNow,
-            themeColors: themeColors,
-            isDark: isDark,
-            onSimulateMissedDay: onSimulateMissedDay,
-            onCompleteTodaysQuota: onCompleteTodaysQuota,
-            onSimulate3DayLag: onSimulate3DayLag,
-            onResetSimulationClock: onResetSimulationClock,
-          ),
         ],
       ),
     );
@@ -406,8 +361,7 @@ class _SevenDayActivityChart extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         // Visual Bar
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
+                        Container(
                           height: barHeight,
                           width: double.infinity,
                           decoration: BoxDecoration(
@@ -580,218 +534,3 @@ class _TrackOverviewCard extends StatelessWidget {
   }
 }
 
-class _PacingSimulatorExpander extends StatefulWidget {
-  final PacingBudget? activeBudget;
-  final DateTime? simulatedNow;
-  final RythemColorTokens themeColors;
-  final bool isDark;
-  final VoidCallback? onSimulateMissedDay;
-  final VoidCallback? onCompleteTodaysQuota;
-  final VoidCallback? onSimulate3DayLag;
-  final VoidCallback? onResetSimulationClock;
-
-  const _PacingSimulatorExpander({
-    required this.activeBudget,
-    required this.simulatedNow,
-    required this.themeColors,
-    required this.isDark,
-    this.onSimulateMissedDay,
-    this.onCompleteTodaysQuota,
-    this.onSimulate3DayLag,
-    this.onResetSimulationClock,
-  });
-
-  @override
-  State<_PacingSimulatorExpander> createState() => _PacingSimulatorExpanderState();
-}
-
-class _PacingSimulatorExpanderState extends State<_PacingSimulatorExpander> {
-  bool _isExpanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
-            behavior: HitTestBehavior.opaque,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.tune_outlined,
-                      size: 16,
-                      color: widget.themeColors.textPrimary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'PACING SIMULATOR & ENGINE',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: widget.themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-                Icon(
-                  _isExpanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: widget.themeColors.textTertiary,
-                ),
-              ],
-            ),
-          ),
-          if (_isExpanded) ...[
-            const SizedBox(height: 16),
-            // Current Pacing Snapshot
-            Row(
-              children: [
-                Expanded(
-                  child: _simulatorMetricTile(
-                    title: "TODAY'S BUDGET",
-                    value: '${widget.activeBudget?.formattedBudget ?? "0.0"} effort',
-                    subtitle: 'remaining ÷ days',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _simulatorMetricTile(
-                    title: 'DAYS LEFT',
-                    value: '${widget.activeBudget?.daysLeft ?? 0} days',
-                    subtitle: 'calendar window',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _simulatorMetricTile(
-                    title: 'PENDING EFFORT',
-                    value: widget.activeBudget?.remainingEffort.toStringAsFixed(1) ?? '0.0',
-                    subtitle: 'uncompleted sum',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'TEST PRESET ACTIONS',
-              style: RythemTypography.labelSmall.copyWith(
-                color: widget.themeColors.textTertiary,
-                fontSize: 9.5,
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (widget.onSimulateMissedDay != null)
-                  _simulatorChip(
-                    label: '+1 Missed Day (Dilution)',
-                    onTap: widget.onSimulateMissedDay!,
-                  ),
-                if (widget.onCompleteTodaysQuota != null)
-                  _simulatorChip(
-                    label: "Complete Today's Mission",
-                    onTap: widget.onCompleteTodaysQuota!,
-                  ),
-                if (widget.onSimulate3DayLag != null)
-                  _simulatorChip(
-                    label: 'Simulate 3-Day Lag (Adaptation)',
-                    onTap: widget.onSimulate3DayLag!,
-                  ),
-                if (widget.simulatedNow != null && widget.onResetSimulationClock != null)
-                  _simulatorChip(
-                    label: 'Reset Clock',
-                    onTap: widget.onResetSimulationClock!,
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _simulatorMetricTile({
-    required String title,
-    required String value,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x14000000),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: RythemTypography.labelSmall.copyWith(
-              color: widget.themeColors.textTertiary,
-              fontSize: 8.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: RythemTypography.titleMedium.copyWith(
-              color: widget.themeColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: RythemTypography.bodySmall.copyWith(
-              color: widget.themeColors.textTertiary,
-              fontSize: 8.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _simulatorChip({required String label, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000),
-          ),
-        ),
-        child: Text(
-          label,
-          style: RythemTypography.labelSmall.copyWith(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: widget.themeColors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-}

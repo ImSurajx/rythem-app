@@ -123,9 +123,7 @@ void main() {
       expect(tappedRoadmap!.id, 'rm_1');
     });
 
-    testWidgets('pacing simulator expander opens and reveals preset actions', (tester) async {
-      bool simulatedMissedDay = false;
-
+    testWidgets('pacing simulation expander is removed from metrics screen', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -135,28 +133,14 @@ void main() {
               activeBudget: testBudget,
               currentStreak: 5,
               recentActivity: activity,
-              onSimulateMissedDay: () => simulatedMissedDay = true,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('PACING SIMULATOR & ENGINE'), findsOneWidget);
+      expect(find.text('PACING SIMULATOR & ENGINE'), findsNothing);
       expect(find.text('+1 Missed Day (Dilution)'), findsNothing);
-
-      // Tap expander
-      await tester.ensureVisible(find.text('PACING SIMULATOR & ENGINE'));
-      await tester.tap(find.text('PACING SIMULATOR & ENGINE'));
-      await tester.pumpAndSettle();
-
-      final chipFinder = find.text('+1 Missed Day (Dilution)');
-      expect(chipFinder, findsOneWidget);
-      await tester.ensureVisible(chipFinder);
-      await tester.tap(chipFinder);
-      await tester.pumpAndSettle();
-
-      expect(simulatedMissedDay, isTrue);
     });
   });
 }

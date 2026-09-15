@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../../database/database.dart';
 import '../models/pacing_budget.dart';
 import '../models/pacing_decision.dart';
+import '../models/study_intensity.dart';
 import 'pacing_calculator.dart';
 
 /// Orchestrates the Pacing Engine across database entities and repositories.
@@ -12,14 +13,17 @@ class PacingService {
   final RoadmapRepository _roadmapRepo;
   final BeatRepository _beatRepo;
   final BeatLogRepository _beatLogRepo;
+  final AppSettingsRepository _settingsRepo;
 
   PacingService({
     RoadmapRepository? roadmapRepo,
     BeatRepository? beatRepo,
     BeatLogRepository? beatLogRepo,
+    AppSettingsRepository? settingsRepo,
   })  : _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
         _beatRepo = beatRepo ?? BeatRepository(),
-        _beatLogRepo = beatLogRepo ?? BeatLogRepository();
+        _beatLogRepo = beatLogRepo ?? BeatLogRepository(),
+        _settingsRepo = settingsRepo ?? AppSettingsRepository();
 
   /// Computes today's pacing budget for [roadmapId].
   /// 
@@ -42,19 +46,42 @@ class PacingService {
     // 1. Calculate remaining effort across incomplete beats
     final remainingEffort = PacingCalculator.calculateRemainingEffort(pendingBeats);
 
-    // 2. Calculate calendar days left until target completion
+    // 2. Fetch 7-day weekly study schedule to determine today's intensity and target effort
     final now = simulatedNow ?? DateTime.now();
-    final targetDate = roadmap.targetCompletionDate ?? now.add(const Duration(days: 30));
-    final daysLeft = PacingCalculator.calculateDaysLeft(
-      targetDate,
-      now: simulatedNow,
-    );
+    String? scheduleJson;
+    try {
+      scheduleJson = await _settingsRepo.getSetting('study_intensity_schedule');
+    } catch (_) {}
 
-    // 3. Derive today's effort share = remaining ÷ days left
-    final todayEffortShare = PacingCalculator.calculateDailyEffortShare(
-      remainingEffort: remainingEffort,
-      daysLeft: daysLeft,
-    );
+    // Days left derived from roadmap target or weekly pacing velocity
+    final targetDate = roadmap.targetCompletionDate;
+    final int daysLeft;
+    if (targetDate != null) {
+      daysLeft = PacingCalculator.calculateDaysLeft(targetDate, now: simulatedNow);
+    } else {
+      daysLeft = 30;
+    }
+
+    // 3. Derive today's effort share
+    final double todayEffortShare;
+    if (scheduleJson != null && scheduleJson.isNotEmpty) {
+      final schedule = WeeklyStudySchedule.decode(scheduleJson);
+      final todayIntensity = schedule.getIntensity(now.weekday);
+      if (todayIntensity == StudyIntensity.rest) {
+        todayEffortShare = 0.0;
+      } else {
+        todayEffortShare = remainingEffort > 0
+            ? (todayIntensity.targetEffort > remainingEffort
+                ? remainingEffort
+                : todayIntensity.targetEffort)
+            : todayIntensity.targetEffort;
+      }
+    } else {
+      todayEffortShare = PacingCalculator.calculateDailyEffortShare(
+        remainingEffort: remainingEffort,
+        daysLeft: daysLeft,
+      );
+    }
 
     // 4. Check beats completed today
     final todayStart = DateTime(now.year, now.month, now.day);
