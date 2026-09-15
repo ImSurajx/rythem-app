@@ -114,7 +114,11 @@ class _FlowScreenState extends State<FlowScreen> {
     for (final rm in roadmaps) {
       final budget = widget.budgetsByRoadmap?[rm.id] ??
           (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
-      if (budget?.isSustainedLag == true) {
+      if (budget != null &&
+          budget.isSustainedLag &&
+          !budget.isRoadmapCompleted &&
+          budget.shortfallDebt > 0.5 &&
+          budget.lagStreakDays >= 3) {
         laggingRoadmap = rm;
         laggingBudget = budget;
         break;

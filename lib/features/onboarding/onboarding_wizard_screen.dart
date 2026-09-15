@@ -69,27 +69,52 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     }
   }
 
+  bool _isErrorDialogShowing = false;
+
   void _onDownloadProgress() {
     final progress = _modelManager.downloadProgressNotifier.value;
     if (progress == null) return;
 
     if (progress.error != null && mounted) {
-      GlassErrorDialog.show(
-        context,
-        title: 'Model Download Interrupted',
-        message:
-            'The ${_selectedModelTier.name.toUpperCase()} model download could not be completed. Your partial progress is preserved and will resume seamlessly.',
-        details: progress.error,
-        onRetry: () => _startDownload(_selectedModelTier),
+      _showDownloadErrorDialog(
+        'Model Download Interrupted',
+        'The ${_selectedModelTier.name.toUpperCase()} model download could not be completed. Your partial progress is preserved and will resume seamlessly.',
+        progress.error!,
+        () => _startDownload(_selectedModelTier),
       );
     }
 
     if (progress.isCompleted) {
       _checkDownloadedModels();
+      _selectedModelTier = progress.tier;
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted && _modelManager.downloadProgressNotifier.value?.isCompleted == true) {
+          _modelManager.downloadProgressNotifier.value = null;
+          setState(() {});
+        }
+      });
     }
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _showDownloadErrorDialog(String title, String message, String details, VoidCallback onRetry) {
+    if (!mounted || _isErrorDialogShowing) return;
+    _isErrorDialogShowing = true;
+    GlassErrorDialog.show(
+      context,
+      title: title,
+      message: message,
+      details: details,
+      onDismiss: () {
+        _isErrorDialogShowing = false;
+      },
+      onRetry: () {
+        _isErrorDialogShowing = false;
+        onRetry();
+      },
+    );
   }
 
   void _startDownload(ModelTier tier) {
@@ -98,16 +123,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
     _modelManager.downloadModel(tier).catchError((e) {
       debugPrint('Onboarding model download failed: $e');
-      if (mounted) {
-        GlassErrorDialog.show(
-          context,
-          title: 'Model Download Failed',
-          message:
-              'Failed to fetch ${tier.name.toUpperCase()} Mentor model. Please verify your network connection and retry.',
-          details: e.toString(),
-          onRetry: () => _startDownload(tier),
-        );
-      }
     });
   }
 
@@ -502,11 +517,11 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 18),
 
-          // Option 1: Compact Mentor (~1.2 GB)
+          // Option 1: Compact Mentor (468.6 MB)
           _buildModelCard(
             tier: ModelTier.compact,
             title: 'Compact Mentor',
-            subtitle: 'Qwen 2.5 0.5B Instruct • ~1.2 GB',
+            subtitle: 'Qwen 2.5 0.5B Instruct • ${ModelInfo.compact.formattedSize}',
             description: 'Ultra-fast, low battery consumption. Ideal for standard mobile hardware (~600 MB RAM).',
             badge: 'RECOMMENDED',
             isDownloaded: _compactDownloaded,
@@ -518,11 +533,11 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Option 2: Balanced Mentor (~2.4 GB)
+          // Option 2: Balanced Mentor (1.04 GB)
           _buildModelCard(
             tier: ModelTier.balanced,
             title: 'Balanced Mentor',
-            subtitle: 'Qwen 2.5 1.5B Instruct • ~2.4 GB',
+            subtitle: 'Qwen 2.5 1.5B Instruct • ${ModelInfo.balanced.formattedSize}',
             description: 'Deep mathematical reasoning, advanced code explanations, and richer syllabus gap analysis (~1.3 GB RAM).',
             badge: 'DEEP REASONING',
             isDownloaded: _balancedDownloaded,
@@ -856,8 +871,8 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 10),
           _buildPillOption(
-            label: 'Balanced Rhythm • Recommended',
-            sublabel: 'Sustainable weekday focus with relaxed weekends',
+            label: 'Balanced Rhythm',
+            sublabel: 'Sustainable weekday focus with relaxed weekends (Recommended)',
             badge: '22 beats / wk',
             isSelected: _selectedCadencePreset == 'balanced',
             themeColors: themeColors,
@@ -931,15 +946,19 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        label,
-                        style: RythemTypography.titleSmall.copyWith(
-                          color: themeColors.textPrimary,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: RythemTypography.titleSmall.copyWith(
+                            color: themeColors.textPrimary,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(

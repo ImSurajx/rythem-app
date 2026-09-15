@@ -201,6 +201,19 @@ class BeatRepository {
     ));
   }
 
+  Future<void> updateBeatEffortWeight(String beatId, double newWeight) async {
+    final db = await _db;
+    await db.update(
+      DatabaseTables.beats,
+      {
+        BeatColumns.effortWeight: newWeight,
+        BeatColumns.updatedAt: DateTime.now().toIso8601String(),
+      },
+      where: '${BeatColumns.id} = ?',
+      whereArgs: [beatId],
+    );
+  }
+
   Future<void> deleteBeatsByRoadmapId(String roadmapId) async {
     final db = await _db;
     await db.delete(

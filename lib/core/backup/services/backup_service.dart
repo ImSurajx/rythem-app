@@ -60,51 +60,76 @@ class BackupService {
     final dateStr = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
     final fileName = 'rythem_backup_$dateStr.json';
 
-    String? targetPath = customPath;
-
-    if (targetPath == null) {
-      try {
-        final bytes = Uint8List.fromList(utf8.encode(jsonString));
-        final saveUri = await FilePicker.saveFile(
-          dialogTitle: 'Select location to save backup',
-          fileName: fileName,
-          type: FileType.custom,
-          allowedExtensions: ['json'],
-          bytes: bytes,
-        );
-        if (saveUri == null) {
-          return null;
-        }
-        targetPath = saveUri.toFilePath();
-      } catch (e) {
-        // Fallback for environments where native saveFile is unmocked or restricted
-        try {
-          final directory = await getApplicationDocumentsDirectory();
-          targetPath = '${directory.path}/$fileName';
-        } catch (_) {
-          targetPath = fileName;
-        }
+    if (customPath != null && customPath.isNotEmpty) {
+      final target = customPath.endsWith('.json') ? customPath : '$customPath.json';
+      final customFile = File(target);
+      final parent = customFile.parent;
+      if (!parent.existsSync()) {
+        await parent.create(recursive: true);
       }
+      await customFile.writeAsString(jsonString);
+      return customFile;
     }
 
-    if (targetPath.isEmpty) {
-      return null;
+    // Prepare a safe fallback file in the app documents directory
+    File? safeLocalFile;
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      safeLocalFile = File('${directory.path}/$fileName');
+      await safeLocalFile.writeAsString(jsonString);
+    } catch (_) {
+      // In testing environments or headless runners
     }
 
-    if (!targetPath.endsWith('.json')) {
-      targetPath = '$targetPath.json';
-    }
+    try {
+      final bytes = Uint8List.fromList(utf8.encode(jsonString));
+      final pickedResult = await FilePicker.saveFile(
+        dialogTitle: 'Select location to save backup',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: bytes,
+      );
 
-    final file = File(targetPath);
-    final parent = file.parent;
-    if (!parent.existsSync()) {
-      await parent.create(recursive: true);
-    }
+      if (pickedResult == null) {
+        // User explicitly cancelled the picker dialog
+        return null;
+      }
 
-    if (!file.existsSync() || (await file.length()) == 0) {
-      await file.writeAsString(jsonString);
+      // On Android SAF (Storage Access Framework), pickedResult has a 'content' scheme.
+      // The bytes are already written directly to storage by the native platform plugin.
+      // Attempting to write to a content:// path via dart:io File causes a Read-Only File System error.
+      if (pickedResult.scheme == 'content') {
+        return safeLocalFile ?? File(pickedResult.path);
+      }
+
+      // Regular filesystem path (Desktop / iOS / direct POSIX paths)
+      String rawPath;
+      try {
+        rawPath = pickedResult.toFilePath();
+      } catch (_) {
+        rawPath = pickedResult.path;
+      }
+      final destPath = rawPath.endsWith('.json') ? rawPath : '$rawPath.json';
+      final destFile = File(destPath);
+      try {
+        final parent = destFile.parent;
+        if (!parent.existsSync()) {
+          await parent.create(recursive: true);
+        }
+        if (!destFile.existsSync() || (await destFile.length()) == 0) {
+          await destFile.writeAsString(jsonString);
+        }
+        return destFile;
+      } catch (_) {
+        return safeLocalFile ?? destFile;
+      }
+    } catch (e) {
+      if (safeLocalFile != null && safeLocalFile.existsSync()) {
+        return safeLocalFile;
+      }
+      rethrow;
     }
-    return file;
   }
 
   /// Validates and restores the entire database from a JSON backup string.

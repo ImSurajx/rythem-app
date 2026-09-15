@@ -237,6 +237,13 @@ void main() {
                 ${BeatLogColumns.createdAt} TEXT NOT NULL
               );
             ''');
+            batch.execute('''
+              CREATE TABLE ${DatabaseTables.appSettings} (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+              );
+            ''');
             await batch.commit(noResult: true);
           },
         ),

@@ -258,5 +258,99 @@ void main() {
       expect(diagnosis.rootCause, isNotEmpty);
       expect(diagnosis.encouragement, contains('penalty-free'));
     });
+
+    test('Brand new track created today is never flagged with sustained lag', () async {
+      final now = DateTime.now();
+      final roadmapRepo = RoadmapRepository();
+      final beatRepo = BeatRepository();
+      final beatLogRepo = BeatLogRepository();
+      final settingsRepo = AppSettingsRepository();
+      final pacingService = PacingService(
+        roadmapRepo: roadmapRepo,
+        beatRepo: beatRepo,
+        beatLogRepo: beatLogRepo,
+        settingsRepo: settingsRepo,
+      );
+
+      await roadmapRepo.createRoadmap(RoadmapEntity(
+        id: 'rm_fresh',
+        title: 'Brand New Track',
+        targetCompletionDate: now.add(const Duration(days: 14)),
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      await beatRepo.createBeat(BeatEntity(
+        id: 'b_fresh_1',
+        chapterId: 'c1',
+        roadmapId: 'rm_fresh',
+        title: 'Fresh Topic',
+        effortWeight: 1.0,
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      final budget = await pacingService.computePacingBudget('rm_fresh');
+
+      // Must be false because no study days have elapsed since creation!
+      expect(budget.isSustainedLag, isFalse);
+      expect(budget.lagStreakDays, equals(0));
+      expect(budget.shortfallDebt, equals(0.0));
+    });
+
+    test('applyPacingDecision saves recalibration timestamp and executes database changes', () async {
+      final now = DateTime.now();
+      final roadmapRepo = RoadmapRepository();
+      final beatRepo = BeatRepository();
+      final beatLogRepo = BeatLogRepository();
+      final settingsRepo = AppSettingsRepository();
+      final pacingService = PacingService(
+        roadmapRepo: roadmapRepo,
+        beatRepo: beatRepo,
+        beatLogRepo: beatLogRepo,
+        settingsRepo: settingsRepo,
+      );
+
+      final initialTarget = now.add(const Duration(days: 10));
+      await roadmapRepo.createRoadmap(RoadmapEntity(
+        id: 'rm_recal',
+        title: 'Track To Recalibrate',
+        targetCompletionDate: initialTarget,
+        createdAt: now.subtract(const Duration(days: 5)),
+        updatedAt: now,
+      ));
+
+      await beatRepo.createBeat(BeatEntity(
+        id: 'b_recal_mentor',
+        chapterId: 'c1',
+        roadmapId: 'rm_recal',
+        title: 'Mentor Optional Topic',
+        effortWeight: 2.0,
+        sortOrder: 0,
+        isMentorExtra: true,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Apply extend target date decision
+      await pacingService.applyPacingDecision('rm_recal', const PacingDecision.extendDate(7));
+
+      final updatedRoadmap = await roadmapRepo.getRoadmapById('rm_recal');
+      expect(updatedRoadmap!.targetCompletionDate!.difference(initialTarget).inDays, equals(7));
+
+      final recalibratedTimestamp = await settingsRepo.getSetting('last_recalibrated_rm_recal');
+      expect(recalibratedTimestamp, isNotNull);
+
+      // Apply trimToCore decision
+      await pacingService.applyPacingDecision('rm_recal', const PacingDecision.trimCore());
+      final updatedBeat = await beatRepo.getBeatById('b_recal_mentor');
+      expect(updatedBeat!.effortWeight, equals(0.0));
+    });
+
+    test('ModelInfo formattedSize accurately displays compact ~468.6 MB and balanced ~1.04 GB', () {
+      expect(ModelInfo.compact.formattedSize, equals('468.6 MB'));
+      expect(ModelInfo.balanced.formattedSize, equals('1.04 GB'));
+    });
   });
 }

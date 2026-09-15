@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -68,13 +69,9 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
   }
 
   Future<void> _loadAiDiagnosis() async {
-    if (widget.inferenceService == null) {
-      setState(() => _isLoadingDiagnosis = false);
-      return;
-    }
-
     try {
-      final diag = await widget.inferenceService!.diagnoseShortfallAndRecommend(
+      final service = widget.inferenceService ?? LocalInferenceService();
+      final diag = await service.diagnoseShortfallAndRecommend(
         roadmapId: widget.roadmap.id,
         budget: widget.pacingBudget,
       );
@@ -86,9 +83,34 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _isLoadingDiagnosis = false);
+        final dailyPace = max(0.8, widget.pacingBudget.todayEffortShare);
+        final deficitDays = (widget.pacingBudget.shortfallDebt / dailyPace).ceil();
+        final recommendedDays = max(3, min(14, deficitDays == 0 ? 5 : deficitDays + 2));
+        setState(() {
+          _diagnosis = ShortfallDiagnosis(
+            diagnosis:
+                'Your momentum slowed across recent study days with a debt of ${widget.pacingBudget.shortfallDebt.toStringAsFixed(1)} effort units. Recalibrating your timeline (+$recommendedDays days) keeps learning sustainable and penalty-free.',
+            rootCause:
+                '${widget.pacingBudget.lagStreakDays} lagging days accumulated ${widget.pacingBudget.shortfallDebt.toStringAsFixed(1)} units of effort debt.',
+            recommendedExtensionDays: recommendedDays,
+            coreBeatsToFocus: widget.pacingBudget.todaysBeats.take(3).map((b) => b.title).toList(),
+            optionalBeatsToDefer: const [],
+            encouragement:
+                'Rhythm shifts are a natural part of deep mastery. Recalibrating keeps learning sustainable and penalty-free.',
+            shortfallDebt: widget.pacingBudget.shortfallDebt,
+            velocityDeficit: widget.pacingBudget.velocityDeficit,
+          );
+          _isLoadingDiagnosis = false;
+        });
       }
     }
+  }
+
+  void _handleSelectDecision(PacingDecision decision) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    widget.onDecisionSelected(decision);
   }
 
   @override
@@ -250,7 +272,7 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                 badge: 'RECOMMENDED',
                 onTap: () {
                   HapticFeedback.mediumImpact();
-                  widget.onDecisionSelected(const PacingDecision.extendDate(7));
+                  _handleSelectDecision(const PacingDecision.extendDate(7));
                 },
               ),
               const SizedBox(height: 12),
@@ -265,7 +287,7 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                 subtitle: 'Temporarily deprioritizes optional mentor extras, keeping you locked onto primary milestones.',
                 onTap: () {
                   HapticFeedback.mediumImpact();
-                  widget.onDecisionSelected(const PacingDecision.trimCore());
+                  _handleSelectDecision(const PacingDecision.trimCore());
                 },
               ),
               const SizedBox(height: 12),
@@ -281,7 +303,7 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                   subtitle: 'Redistributes effort share across tracks to protect momentum on this roadmap.',
                   onTap: () {
                     HapticFeedback.mediumImpact();
-                    widget.onDecisionSelected(PacingDecision.borrow(otherRoadmaps.first.id));
+                    _handleSelectDecision(PacingDecision.borrow(otherRoadmaps.first.id));
                   },
                 ),
                 const SizedBox(height: 12),
@@ -297,7 +319,7 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                 subtitle: 'Dismiss this reminder. Your daily streak and current schedule remain completely intact.',
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  widget.onDecisionSelected(const PacingDecision.accept());
+                  _handleSelectDecision(const PacingDecision.accept());
                 },
               ),
               const SizedBox(height: 8),
@@ -446,7 +468,7 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                   variant: GlassButtonVariant.primary,
                   onPressed: () {
                     HapticFeedback.heavyImpact();
-                    widget.onDecisionSelected(
+                    _handleSelectDecision(
                       PacingDecision.extendDate(diagnosis.recommendedExtensionDays),
                     );
                   },
