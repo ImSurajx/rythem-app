@@ -1,17 +1,21 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/ai/services/local_inference_service.dart';
 import '../../../../core/database/models/roadmap_entity.dart';
 import '../../../../core/pacing/models/pacing_budget.dart';
 import '../../../../core/pacing/models/pacing_decision.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../core/widgets/glass_button.dart';
 
-/// Non-punitive backlog adaptation sheet per `docs/design.md` §3.
-/// Presents 4 guilt-free recalibration options when sustained lag is detected.
-class BacklogDecisionSheet extends StatelessWidget {
+/// Non-punitive backlog adaptation sheet powered by math and on-device AI.
+/// Presents intelligent diagnosis and guilt-free recalibration options when sustained lag is detected.
+class BacklogDecisionSheet extends StatefulWidget {
   final RoadmapEntity roadmap;
   final PacingBudget pacingBudget;
   final List<RoadmapEntity> allRoadmaps;
+  final LocalInferenceService? inferenceService;
   final ValueChanged<PacingDecision> onDecisionSelected;
 
   const BacklogDecisionSheet({
@@ -19,6 +23,7 @@ class BacklogDecisionSheet extends StatelessWidget {
     required this.roadmap,
     required this.pacingBudget,
     this.allRoadmaps = const [],
+    this.inferenceService,
     required this.onDecisionSelected,
   });
 
@@ -27,6 +32,7 @@ class BacklogDecisionSheet extends StatelessWidget {
     required RoadmapEntity roadmap,
     required PacingBudget pacingBudget,
     List<RoadmapEntity> allRoadmaps = const [],
+    LocalInferenceService? inferenceService,
     required ValueChanged<PacingDecision> onDecisionSelected,
   }) {
     HapticFeedback.lightImpact();
@@ -38,6 +44,7 @@ class BacklogDecisionSheet extends StatelessWidget {
         roadmap: roadmap,
         pacingBudget: pacingBudget,
         allRoadmaps: allRoadmaps,
+        inferenceService: inferenceService,
         onDecisionSelected: (decision) {
           Navigator.of(ctx).pop();
           onDecisionSelected(decision);
@@ -47,12 +54,50 @@ class BacklogDecisionSheet extends StatelessWidget {
   }
 
   @override
+  State<BacklogDecisionSheet> createState() => _BacklogDecisionSheetState();
+}
+
+class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
+  ShortfallDiagnosis? _diagnosis;
+  bool _isLoadingDiagnosis = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAiDiagnosis();
+  }
+
+  Future<void> _loadAiDiagnosis() async {
+    if (widget.inferenceService == null) {
+      setState(() => _isLoadingDiagnosis = false);
+      return;
+    }
+
+    try {
+      final diag = await widget.inferenceService!.diagnoseShortfallAndRecommend(
+        roadmapId: widget.roadmap.id,
+        budget: widget.pacingBudget,
+      );
+      if (mounted) {
+        setState(() {
+          _diagnosis = diag;
+          _isLoadingDiagnosis = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingDiagnosis = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final themeColors = isDark ? RythemColors.dark : RythemColors.light;
 
-    final otherRoadmaps = allRoadmaps.where((r) => r.id != roadmap.id).toList();
+    final otherRoadmaps = widget.allRoadmaps.where((r) => r.id != widget.roadmap.id).toList();
 
     return Padding(
       padding: EdgeInsets.only(
@@ -60,7 +105,7 @@ class BacklogDecisionSheet extends StatelessWidget {
       ),
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
         ),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         decoration: BoxDecoration(
@@ -122,7 +167,7 @@ class BacklogDecisionSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${pacingBudget.lagStreakDays}d lag trend',
+                      '${widget.pacingBudget.lagStreakDays}d lag trend',
                       style: RythemTypography.labelSmall.copyWith(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
@@ -135,14 +180,64 @@ class BacklogDecisionSheet extends StatelessWidget {
               const SizedBox(height: 8),
 
               Text(
-                'Life happens. Rythem recalculates your path without penalty, guilt, or broken streaks.',
+                'Rythem evaluates past momentum mathematically and recalibrates your pace without penalties, guilt, or broken streaks.',
                 style: RythemTypography.bodySmall.copyWith(
                   color: themeColors.textTertiary,
                   fontSize: 11.5,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
+
+              // AI Mentor Diagnosis Card (Maths + AI)
+              if (_isLoadingDiagnosis) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.black.withOpacity(0.06),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 14),
+                      Text(
+                        'Analyzing shortfall metrics with AI Mentor...',
+                        style: RythemTypography.caption.copyWith(
+                          color: themeColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ] else if (_diagnosis != null) ...[
+                _buildAiMentorCard(
+                  context: context,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                  diagnosis: _diagnosis!,
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Manual Recalibration Options
+              Text(
+                'MANUAL OPTIONS',
+                style: RythemTypography.caption.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: themeColors.textTertiary,
+                ),
+              ),
+              const SizedBox(height: 10),
 
               // Option 1: Extend Target Date
               _buildOptionCard(
@@ -155,7 +250,7 @@ class BacklogDecisionSheet extends StatelessWidget {
                 badge: 'RECOMMENDED',
                 onTap: () {
                   HapticFeedback.mediumImpact();
-                  onDecisionSelected(const PacingDecision.extendDate(7));
+                  widget.onDecisionSelected(const PacingDecision.extendDate(7));
                 },
               ),
               const SizedBox(height: 12),
@@ -170,7 +265,7 @@ class BacklogDecisionSheet extends StatelessWidget {
                 subtitle: 'Temporarily deprioritizes optional mentor extras, keeping you locked onto primary milestones.',
                 onTap: () {
                   HapticFeedback.mediumImpact();
-                  onDecisionSelected(const PacingDecision.trimCore());
+                  widget.onDecisionSelected(const PacingDecision.trimCore());
                 },
               ),
               const SizedBox(height: 12),
@@ -186,7 +281,7 @@ class BacklogDecisionSheet extends StatelessWidget {
                   subtitle: 'Redistributes effort share across tracks to protect momentum on this roadmap.',
                   onTap: () {
                     HapticFeedback.mediumImpact();
-                    onDecisionSelected(PacingDecision.borrow(otherRoadmaps.first.id));
+                    widget.onDecisionSelected(PacingDecision.borrow(otherRoadmaps.first.id));
                   },
                 ),
                 const SizedBox(height: 12),
@@ -202,11 +297,162 @@ class BacklogDecisionSheet extends StatelessWidget {
                 subtitle: 'Dismiss this reminder. Your daily streak and current schedule remain completely intact.',
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  onDecisionSelected(const PacingDecision.accept());
+                  widget.onDecisionSelected(const PacingDecision.accept());
                 },
               ),
               const SizedBox(height: 8),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAiMentorCard({
+    required BuildContext context,
+    required RythemThemeColors themeColors,
+    required bool isDark,
+    required ShortfallDiagnosis diagnosis,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  Colors.purpleAccent.withOpacity(0.18),
+                  Colors.cyanAccent.withOpacity(0.10),
+                  Colors.transparent,
+                ]
+              : [
+                  Colors.purple.withOpacity(0.08),
+                  Colors.cyan.withOpacity(0.04),
+                  Colors.white,
+                ],
+        ),
+        border: Border.all(
+          color: isDark ? Colors.purpleAccent.withOpacity(0.35) : Colors.purple.withOpacity(0.25),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.purpleAccent : Colors.purple).withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.purpleAccent.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 16,
+                        color: Colors.purpleAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AI MENTOR DIAGNOSIS',
+                      style: RythemTypography.labelSmall.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: isDark ? Colors.purpleAccent.shade100 : Colors.purple.shade700,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.purpleAccent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Debt: ${diagnosis.shortfallDebt.toStringAsFixed(1)} pts',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.purpleAccent.shade100 : Colors.purple.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Text(
+                  diagnosis.diagnosis,
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                if (diagnosis.coreBeatsToFocus.isNotEmpty) ...[
+                  Text(
+                    'High-Impact Core Focus:',
+                    style: RythemTypography.caption.copyWith(
+                      color: themeColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ...diagnosis.coreBeatsToFocus.map(
+                    (title) => Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 2),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 12, color: themeColors.actionPrimary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: RythemTypography.caption.copyWith(
+                                color: themeColors.textPrimary,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                // 1-Tap Auto Rebalance Button
+                GlassButton(
+                  label: 'Auto-Rebalance (+${diagnosis.recommendedExtensionDays} Days)',
+                  icon: Icons.auto_fix_high_rounded,
+                  variant: GlassButtonVariant.primary,
+                  onPressed: () {
+                    HapticFeedback.heavyImpact();
+                    widget.onDecisionSelected(
+                      PacingDecision.extendDate(diagnosis.recommendedExtensionDays),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -255,29 +501,31 @@ class BacklogDecisionSheet extends StatelessWidget {
                       Expanded(
                         child: Text(
                           title,
-                          style: RythemTypography.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                          style: RythemTypography.titleSmall.copyWith(
                             color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      if (badge != null)
+                      if (badge != null) ...[
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white : Colors.black,
+                            color: themeColors.actionPrimary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             badge,
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 8,
+                            style: TextStyle(
+                              fontSize: 8.5,
                               fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.black : Colors.white,
+                              color: themeColors.actionPrimary,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -286,7 +534,7 @@ class BacklogDecisionSheet extends StatelessWidget {
                     style: RythemTypography.bodySmall.copyWith(
                       color: themeColors.textTertiary,
                       fontSize: 11,
-                      height: 1.3,
+                      height: 1.35,
                     ),
                   ),
                 ],

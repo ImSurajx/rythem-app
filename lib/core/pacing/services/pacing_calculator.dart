@@ -1,6 +1,20 @@
 import 'dart:math' as math;
 import '../../database/database.dart';
 
+class DailyPacingRecord {
+  final DateTime date;
+  final double completedEffort;
+  final double targetEffort;
+  final bool isRestDay;
+
+  const DailyPacingRecord({
+    required this.date,
+    required this.completedEffort,
+    required this.targetEffort,
+    this.isRestDay = false,
+  });
+}
+
 /// Pure deterministic mathematical calculations for the Pacing Engine.
 /// 
 /// Enforces:
@@ -110,6 +124,74 @@ class PacingCalculator {
     return (
       isSustainedLag: isLagging,
       lagDaysCount: consecutiveLagDays,
+    );
+  }
+
+  /// Mathematically evaluates past completed days against configured daily study intensity.
+  /// 
+  /// Enforces:
+  /// - Excludes today (in-progress) from lag streak evaluations.
+  /// - Excludes scheduled rest days without penalizing or breaking streaks.
+  /// - Calculates cumulative shortfall debt and velocity deficit.
+  static ({
+    bool isSustainedLag,
+    int lagDaysCount,
+    double shortfallDebt,
+    double velocityDeficit,
+  }) evaluateShortfallWithSchedule({
+    required List<DailyPacingRecord> pastDaysRecords,
+    required double baseDailyBudget,
+    int lagThresholdDays = 3,
+  }) {
+    if (pastDaysRecords.isEmpty) {
+      return (
+        isSustainedLag: false,
+        lagDaysCount: 0,
+        shortfallDebt: 0.0,
+        velocityDeficit: 0.0,
+      );
+    }
+
+    int consecutiveLagDays = 0;
+    double totalShortfallDebt = 0.0;
+    double totalCompleted = 0.0;
+    double totalTarget = 0.0;
+
+    // pastDaysRecords are evaluated from newest (yesterday) backwards
+    for (final record in pastDaysRecords) {
+      if (record.isRestDay) {
+        // Scheduled rest days are never penalized
+        continue;
+      }
+
+      totalCompleted += record.completedEffort;
+      totalTarget += record.targetEffort;
+
+      final dayDeficit = math.max(0.0, record.targetEffort - record.completedEffort);
+      totalShortfallDebt += dayDeficit;
+
+      // Completed less than 35% of target on an assigned study day
+      if (record.completedEffort < (record.targetEffort * 0.35)) {
+        consecutiveLagDays++;
+      } else if (record.completedEffort >= (record.targetEffort * 0.70)) {
+        // Healthy study day breaks the consecutive lag streak
+        break;
+      }
+    }
+
+    final activeRecords = pastDaysRecords.where((r) => !r.isRestDay).toList();
+    final actualVelocity = activeRecords.isEmpty ? 0.0 : (totalCompleted / activeRecords.length);
+    final requiredVelocity = activeRecords.isEmpty ? baseDailyBudget : (totalTarget / activeRecords.length);
+    final velocityDeficit = math.max(0.0, requiredVelocity - actualVelocity);
+
+    final isSustainedLag = consecutiveLagDays >= lagThresholdDays ||
+        (consecutiveLagDays >= 2 && totalShortfallDebt >= (baseDailyBudget * 1.5));
+
+    return (
+      isSustainedLag: isSustainedLag,
+      lagDaysCount: consecutiveLagDays,
+      shortfallDebt: double.parse(totalShortfallDebt.toStringAsFixed(2)),
+      velocityDeficit: double.parse(velocityDeficit.toStringAsFixed(2)),
     );
   }
 

@@ -121,14 +121,17 @@ class PacingService {
     final isDailyQuotaCompleted = isRoadmapCompleted ||
         (todaysBeats.isNotEmpty && beatsCompletedToday.length >= todaysBeats.length);
 
-    // 6. Trend Analysis over the past 7 days
-    final recentDailyEfforts = await _getRecentDailyEfforts(roadmapId, now);
-    final trend = PacingCalculator.detectShortfallTrend(
-      recentDailyEfforts: recentDailyEfforts,
-      expectedDailyBudget: todayEffortShare,
+    // 6. Trend Analysis over the past 7 completed days using math & weekly schedule
+    final schedule = await _getWeeklySchedule();
+    final pastRecords = await _getRecentDailyRecords(roadmapId, now, schedule, todayEffortShare);
+
+    final trend = PacingCalculator.evaluateShortfallWithSchedule(
+      pastDaysRecords: pastRecords,
+      baseDailyBudget: todayEffortShare,
     );
 
-    final velocity = PacingCalculator.calculateVelocity(recentDailyEfforts);
+    final recentCompletedEfforts = pastRecords.map((r) => r.completedEffort).toList();
+    final velocity = PacingCalculator.calculateVelocity(recentCompletedEfforts);
 
     return PacingBudget(
       roadmapId: roadmapId,
@@ -142,6 +145,8 @@ class PacingService {
       isSustainedLag: trend.isSustainedLag,
       lagStreakDays: trend.lagDaysCount,
       recentVelocity: velocity,
+      shortfallDebt: trend.shortfallDebt,
+      velocityDeficit: trend.velocityDeficit,
     );
   }
 
@@ -174,13 +179,32 @@ class PacingService {
     }
   }
 
-  /// Collects daily completed effort weights across the past 7 days.
-  Future<List<double>> _getRecentDailyEfforts(String roadmapId, DateTime currentDay) async {
-    final dailyEfforts = <double>[];
+  Future<WeeklyStudySchedule> _getWeeklySchedule() async {
+    try {
+      final raw = await _settingsRepo.getSetting('study_intensity_schedule');
+      if (raw == null || raw.isEmpty) {
+        return WeeklyStudySchedule.defaultSchedule();
+      }
+      return WeeklyStudySchedule.decode(raw);
+    } catch (_) {
+      return WeeklyStudySchedule.defaultSchedule();
+    }
+  }
 
-    for (int i = 6; i >= 0; i--) {
+  /// Collects daily completed effort and target records across the past 7 completed days (yesterday backwards).
+  Future<List<DailyPacingRecord>> _getRecentDailyRecords(
+    String roadmapId,
+    DateTime currentDay,
+    WeeklyStudySchedule schedule,
+    double baseDailyBudget,
+  ) async {
+    final records = <DailyPacingRecord>[];
+
+    // Evaluate strictly past completed days: i = 1 (yesterday) to 7 (7 days ago)
+    for (int i = 1; i <= 7; i++) {
       final date = currentDay.subtract(Duration(days: i));
-      final dateStr = '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final dateStr =
+          '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       final logs = await _beatLogRepo.getLogsForRoadmapOnDate(roadmapId, dateStr);
 
       double dayEffort = 0.0;
@@ -190,9 +214,20 @@ class PacingService {
           dayEffort += beat.effortWeight;
         }
       }
-      dailyEfforts.add(double.parse(dayEffort.toStringAsFixed(2)));
+
+      final intensity = schedule.getIntensity(date.weekday);
+      final isRest = intensity == StudyIntensity.rest;
+      // Daily target scaled to intensity (normal = 1.0x baseline, light = 0.5x, intense = 1.5x)
+      final targetEffort = isRest ? 0.0 : (baseDailyBudget * (intensity.targetEffort / 4.0)).clamp(0.5, 12.0);
+
+      records.add(DailyPacingRecord(
+        date: date,
+        completedEffort: double.parse(dayEffort.toStringAsFixed(2)),
+        targetEffort: double.parse(targetEffort.toStringAsFixed(2)),
+        isRestDay: isRest,
+      ));
     }
 
-    return dailyEfforts;
+    return records;
   }
 }

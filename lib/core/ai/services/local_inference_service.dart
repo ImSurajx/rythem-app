@@ -5,7 +5,32 @@ import 'model_download_manager.dart';
 import '../../ingestion/services/syllabus_matcher_service.dart';
 import '../../database/repositories/roadmap_repository.dart';
 import '../../database/repositories/beat_repository.dart';
+import '../../database/models/beat_entity.dart';
 import '../../pacing/services/pacing_service.dart';
+import '../../pacing/models/pacing_budget.dart';
+
+/// Structured on-device AI diagnosis and mathematical recommendation for lagging pacing.
+class ShortfallDiagnosis {
+  final String diagnosis;
+  final String rootCause;
+  final int recommendedExtensionDays;
+  final List<String> coreBeatsToFocus;
+  final List<String> optionalBeatsToDefer;
+  final String encouragement;
+  final double shortfallDebt;
+  final double velocityDeficit;
+
+  const ShortfallDiagnosis({
+    required this.diagnosis,
+    required this.rootCause,
+    required this.recommendedExtensionDays,
+    required this.coreBeatsToFocus,
+    required this.optionalBeatsToDefer,
+    required this.encouragement,
+    this.shortfallDebt = 0.0,
+    this.velocityDeficit = 0.0,
+  });
+}
 
 /// Intelligent on-device inference service providing context-aware curriculum analysis,
 /// tracker timeline calculations, and deep technical concept explanations.
@@ -606,6 +631,53 @@ Confusing superficial syntax with structural understanding. Focus on state flow,
       coveragePercentage: coveragePercent,
       auditSummaryMarkdown: buffer.toString(),
       evaluatedTier: tier,
+    );
+  }
+
+  /// Diagnoses fall-behind conditions using local intelligence & math,
+  /// analyzing remaining beats, difficulty weights, and shortfall velocity.
+  Future<ShortfallDiagnosis> diagnoseShortfallAndRecommend({
+    required String roadmapId,
+    required PacingBudget budget,
+  }) async {
+    final allBeats = _beatRepo != null
+        ? await _beatRepo.getBeatsByRoadmapId(roadmapId)
+        : <BeatEntity>[];
+
+    final pendingBeats = allBeats.where((b) => !b.isCompleted).toList();
+    final mentorExtras = pendingBeats.where((b) => b.isMentorExtra).toList();
+    final coreBeats = pendingBeats.where((b) => !b.isMentorExtra).toList();
+
+    final dailyPace = max(0.8, budget.todayEffortShare);
+    // Mathematical deficit absorption:
+    // How many days required to absorb accumulated shortfall debt smoothly
+    final deficitDays = (budget.shortfallDebt / dailyPace).ceil();
+    final recommendedDays = max(3, min(14, deficitDays == 0 ? 5 : deficitDays + 2));
+
+    final active = await activeTier;
+    final modelLabel = active == ModelTier.balanced
+        ? 'Qwen-1.5B Mentor'
+        : (active == ModelTier.compact ? 'Qwen-0.5B Mentor' : 'Neural Flow Engine');
+
+    final rootCause = budget.velocityDeficit > 0.6
+        ? 'Pacing demand (${dailyPace.toStringAsFixed(1)} effort/day) outpaced recent speed (${budget.recentVelocity.toStringAsFixed(1)} effort/day).'
+        : '${budget.lagStreakDays} consecutive lagging days accumulated ${budget.shortfallDebt.toStringAsFixed(1)} units of effort debt.';
+
+    final diagnosis = 'Your momentum slowed across the last ${budget.lagStreakDays} days with a debt of ${budget.shortfallDebt.toStringAsFixed(1)} effort units across ${pendingBeats.length} remaining topics. To regain steady flow without cognitive fatigue, $modelLabel mathematically recommends a timeline recalibration of +$recommendedDays days and focusing on essential core beats.';
+
+    const encouragement = 'Rhythm shifts are a natural part of deep mastery. Recalibrating keeps learning sustainable and penalty-free.';
+
+    return ShortfallDiagnosis(
+      diagnosis: diagnosis,
+      rootCause: rootCause,
+      recommendedExtensionDays: recommendedDays,
+      coreBeatsToFocus: coreBeats.take(3).map((b) => b.title).toList(),
+      optionalBeatsToDefer: mentorExtras.isNotEmpty
+          ? mentorExtras.take(3).map((b) => b.title).toList()
+          : pendingBeats.reversed.take(2).map((b) => b.title).toList(),
+      encouragement: encouragement,
+      shortfallDebt: budget.shortfallDebt,
+      velocityDeficit: budget.velocityDeficit,
     );
   }
 }

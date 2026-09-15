@@ -130,6 +130,46 @@ class ModelDownloadManager {
     await _settingsRepo.setSetting(_prefActiveModelTierKey, tier.name);
   }
 
+  static const String _prefPendingTierKey = 'model_download_pending_tier';
+  static const String _prefPendingBytesKey = 'model_download_bytes';
+
+  /// Returns the tier of any pending/interrupted download saved in settings.
+  Future<ModelTier?> getPendingDownloadTier() async {
+    final raw = await _settingsRepo.getSetting(_prefPendingTierKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final tier = ModelTier.values.firstWhere((t) => t.name == raw);
+      if (tier != ModelTier.fallback) {
+        final isCompleted = await isModelDownloaded(tier);
+        if (!isCompleted) return tier;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Returns bytes downloaded so far for an incomplete .part file.
+  Future<int> getPartialDownloadedBytes(ModelTier tier) async {
+    if (tier == ModelTier.fallback) return 0;
+    final finalPath = await getModelFilePath(tier);
+    if (finalPath == null) return 0;
+    final partFile = File('$finalPath.part');
+    if (partFile.existsSync()) {
+      return await partFile.length();
+    }
+    return 0;
+  }
+
+  /// Automatically resumes any pending or interrupted model download.
+  Future<void> resumePendingDownload({
+    void Function(DownloadProgress progress)? onProgress,
+  }) async {
+    if (_downloadingTier != null) return;
+    final pendingTier = await getPendingDownloadTier();
+    if (pendingTier != null) {
+      await downloadModel(pendingTier, onProgress: onProgress);
+    }
+  }
+
   Future<void> downloadModel(
     ModelTier tier, {
     void Function(DownloadProgress progress)? onProgress,
@@ -143,29 +183,81 @@ class ModelDownloadManager {
     final finalPath = await getModelFilePath(tier);
     if (finalPath == null) return;
     final partPath = '$finalPath.part';
+    final partFile = File(partPath);
 
     _downloadingTier = tier;
     final downloadClient = _client;
     _activeDownloadClient = downloadClient;
 
+    IOSink? sink;
     try {
+      int existingBytes = 0;
+      if (partFile.existsSync()) {
+        existingBytes = await partFile.length();
+      }
+
       final request = http.Request('GET', Uri.parse(info.downloadUrl));
       request.headers['User-Agent'] = 'Rythem-App/1.0.0';
 
+      // If we have an existing partial download, request Range from existing offset
+      if (existingBytes > 0) {
+        request.headers['Range'] = 'bytes=$existingBytes-';
+      }
+
+      await _settingsRepo.setSetting(_prefPendingTierKey, tier.name);
+      await _settingsRepo.setSetting(_prefPendingBytesKey, existingBytes.toString());
+
       final response = await downloadClient.send(request);
-      if (response.statusCode >= 400) {
+      if (response.statusCode >= 400 && response.statusCode != 416) {
         throw HttpException(
             'Failed to download model asset. HTTP Status: ${response.statusCode}');
       }
 
-      final totalBytes = response.contentLength ?? info.sizeBytes;
-      int receivedBytes = 0;
-
-      final partFile = File(partPath);
-      if (partFile.existsSync()) {
-        await partFile.delete();
+      // If HTTP 416 (Range Not Satisfiable), file might already be complete or corrupted
+      if (response.statusCode == 416) {
+        if (existingBytes >= info.sizeBytes) {
+          final finalFile = File(finalPath);
+          if (finalFile.existsSync()) await finalFile.delete();
+          await partFile.rename(finalPath);
+          await _settingsRepo.removeSetting(_prefPendingTierKey);
+          await _settingsRepo.removeSetting(_prefPendingBytesKey);
+          await setActiveTier(tier);
+          final completed = DownloadProgress(
+            tier: tier,
+            progress: 1.0,
+            receivedBytes: existingBytes,
+            totalBytes: existingBytes,
+            isCompleted: true,
+          );
+          downloadProgressNotifier.value = completed;
+          onProgress?.call(completed);
+          return;
+        } else {
+          // Invalidate corrupted partial file and restart
+          await partFile.delete();
+          existingBytes = 0;
+          return await downloadModel(tier, onProgress: onProgress);
+        }
       }
-      final sink = partFile.openWrite();
+
+      final bool isPartial = response.statusCode == 206;
+      int receivedBytes;
+      int totalBytes;
+
+      if (isPartial) {
+        sink = partFile.openWrite(mode: FileMode.append);
+        receivedBytes = existingBytes;
+        totalBytes = existingBytes + (response.contentLength ?? (info.sizeBytes - existingBytes));
+      } else {
+        if (partFile.existsSync()) {
+          await partFile.delete();
+        }
+        sink = partFile.openWrite(mode: FileMode.write);
+        receivedBytes = 0;
+        totalBytes = response.contentLength ?? info.sizeBytes;
+      }
+
+      int lastCheckpointBytes = receivedBytes;
 
       await for (final chunk in response.stream) {
         sink.add(chunk);
@@ -180,10 +272,17 @@ class ModelDownloadManager {
         );
         downloadProgressNotifier.value = update;
         onProgress?.call(update);
+
+        // Checkpoint periodically to survive background suspension / crash
+        if (receivedBytes - lastCheckpointBytes > 2 * 1024 * 1024) {
+          lastCheckpointBytes = receivedBytes;
+          unawaited(_settingsRepo.setSetting(_prefPendingBytesKey, receivedBytes.toString()));
+        }
       }
 
       await sink.flush();
       await sink.close();
+      sink = null;
 
       // Rename .part file to final .gguf file
       final finalFile = File(finalPath);
@@ -191,6 +290,10 @@ class ModelDownloadManager {
         await finalFile.delete();
       }
       await partFile.rename(finalPath);
+
+      // Clear checkpoint
+      await _settingsRepo.removeSetting(_prefPendingTierKey);
+      await _settingsRepo.removeSetting(_prefPendingBytesKey);
 
       final completedUpdate = DownloadProgress(
         tier: tier,
@@ -205,6 +308,13 @@ class ModelDownloadManager {
       // Automatically set as active tier upon first successful download
       await setActiveTier(tier);
     } catch (e) {
+      if (sink != null) {
+        try {
+          await sink.flush();
+          await sink.close();
+        } catch (_) {}
+      }
+
       final errorUpdate = DownloadProgress(
         tier: tier,
         progress: 0.0,
@@ -217,7 +327,6 @@ class ModelDownloadManager {
       rethrow;
     } finally {
       _downloadingTier = null;
-      _activeDownloadClient?.close();
       _activeDownloadClient = null;
     }
   }

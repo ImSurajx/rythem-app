@@ -41,6 +41,12 @@ class PacingBudget {
   /// Average completed effort per day over recent activity window.
   final double recentVelocity;
 
+  /// Total unabsorbed effort debt accumulated across recent lagging days.
+  final double shortfallDebt;
+
+  /// Required velocity minus actual recent velocity.
+  final double velocityDeficit;
+
   const PacingBudget({
     required this.roadmapId,
     required this.remainingEffort,
@@ -53,6 +59,8 @@ class PacingBudget {
     this.isSustainedLag = false,
     this.lagStreakDays = 0,
     this.recentVelocity = 0.0,
+    this.shortfallDebt = 0.0,
+    this.velocityDeficit = 0.0,
   });
 
   /// Ratio of completed beats today vs total assigned for today.
