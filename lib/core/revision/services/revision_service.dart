@@ -87,9 +87,15 @@ class RevisionService {
     final currentCount = existing?.revisionCount ?? 0;
     final nextCount = currentCount + 1;
 
-    // Expand stability: S_new = S_prev * 1.9 (or reset if previously flagged weak)
+    // Expand stability: S_new = S_prev * 2.2
     final prevStability = existing?.stabilityDays ?? 1.0;
-    final newStability = (prevStability * 1.9).clamp(1.5, 60.0);
+    final newStability = (prevStability * 2.2).clamp(1.5, 90.0);
+
+    final reason = nextCount >= 3
+        ? 'Strongest Mastery Achieved'
+        : (nextCount == 2
+            ? 'Strengthened (2x Revised)'
+            : 'Strengthening (1x Revised)');
 
     final updated = RevisionItem(
       beatId: beat.id,
@@ -102,7 +108,7 @@ class RevisionService {
       revisionCount: nextCount,
       stabilityDays: newStability,
       retentionScore: 1.0,
-      suggestedReason: 'Mastered in Spaced Revision',
+      suggestedReason: reason,
     );
 
     _records[beat.id] = updated;

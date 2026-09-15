@@ -28,140 +28,212 @@ class DailyRevisionBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If no topics to revise, leave it empty as requested by user
     if (revisionItems.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      child: GlassCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : const Color(0xFF0E1420).withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        const Color(0x28FFFFFF),
+                        const Color(0x14FFFFFF),
+                        const Color(0x0AFFFFFF),
+                      ]
+                    : [
+                        const Color(0x99FFFFFF),
+                        const Color(0x66FFFFFF),
+                        const Color(0x40FFFFFF),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.amber.withOpacity(0.18) : Colors.amber.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.history_edu_rounded,
-                    size: 16,
-                    color: Colors.amber,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
+                // Interactive Header matching _TrackTodoListCard
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'DAILY REVISION BOARD',
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
-                              color: themeColors.textPrimary,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(isDark ? 0.2 : 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.history_edu_rounded,
+                                  size: 15,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'DAILY REVISION BOARD',
+                                style: RythemTypography.titleMedium.copyWith(
+                                  color: themeColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.amber.withOpacity(isDark ? 0.22 : 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.amber.withOpacity(isDark ? 0.4 : 0.3),
+                                width: 0.8,
+                              ),
                             ),
                             child: Text(
                               '${revisionItems.length} DUE',
                               style: const TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.amber,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 6),
                       Text(
-                        'Mathematically scheduled recall based on forgetting curve & flagged topics',
+                        'Mathematical Spaced Repetition • Advancing Every Weak Topic to Strongest',
                         style: RythemTypography.caption.copyWith(
                           color: themeColors.textTertiary,
-                          fontSize: 11,
+                          fontSize: 10.5,
                         ),
                       ),
                     ],
                   ),
                 ),
+
+                Divider(
+                  height: 1,
+                  color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                ),
+
+                // Todo-like Revision Items
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
+                    children: List.generate(revisionItems.length, (index) {
+                      final item = revisionItems[index];
+                      return _buildTodoRevisionTile(context, item, index < revisionItems.length - 1);
+                    }),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 14),
-
-            // Revision Item Cards
-            Column(
-              children: List.generate(revisionItems.length, (index) {
-                final item = revisionItems[index];
-                return _buildRevisionItemTile(context, item);
-              }),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildRevisionItemTile(BuildContext context, RevisionItem item) {
-    final isFlagged = item.isFlaggedWeak;
+  Widget _buildTodoRevisionTile(BuildContext context, RevisionItem item, bool showDivider) {
+    final strength = item.strength;
+    Color badgeColor;
+    switch (strength) {
+      case TopicStrength.weak:
+        badgeColor = const Color(0xFFEF4444);
+        break;
+      case TopicStrength.strengthening:
+        badgeColor = Colors.amber;
+        break;
+      case TopicStrength.strong:
+        badgeColor = const Color(0xFF3B82F6);
+        break;
+      case TopicStrength.strongest:
+        badgeColor = const Color(0xFF10B981);
+        break;
+    }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isFlagged
-              ? Colors.amber.withOpacity(isDark ? 0.35 : 0.25)
-              : (isDark ? Colors.white10 : Colors.black12),
-          width: 0.9,
-        ),
+        border: showDivider
+            ? Border(
+                bottom: BorderSide(
+                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                  width: 0.8,
+                ),
+              )
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Mastery / Count indicator
-              Container(
-                width: 24,
-                height: 24,
-                margin: const EdgeInsets.only(top: 2, right: 10),
-                decoration: BoxDecoration(
-                  color: isFlagged
-                      ? Colors.amber.withOpacity(0.2)
-                      : (isDark ? Colors.white12 : Colors.black.withOpacity(0.06)),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '${item.revisionCount}x',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: isFlagged ? Colors.amber : themeColors.textPrimary,
+              // Todo-style Interactive Checkbox / Check Button
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onMarkRevised(item);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        width: 1.4,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 15,
+                        color: themeColors.textTertiary,
+                      ),
                     ),
                   ),
                 ),
               ),
 
-              // Topic details
+              // Title and Track
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,47 +241,39 @@ class DailyRevisionBoard extends StatelessWidget {
                     Text(
                       item.title,
                       style: RythemTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: themeColors.textPrimary,
                         fontSize: 13.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
+                    const SizedBox(height: 3),
+                    Row(
                       children: [
-                        // Tracker badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            item.roadmapTitle,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: themeColors.textSecondary,
-                            ),
+                        Text(
+                          item.roadmapTitle,
+                          style: RythemTypography.caption.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 10.5,
                           ),
                         ),
-                        // Reason badge
+                        const SizedBox(width: 8),
+                        // Strength level pill
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                           decoration: BoxDecoration(
-                            color: isFlagged
-                                ? Colors.amber.withOpacity(isDark ? 0.18 : 0.12)
-                                : (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04)),
+                            color: badgeColor.withOpacity(isDark ? 0.18 : 0.12),
                             borderRadius: BorderRadius.circular(5),
+                            border: Border.all(
+                              color: badgeColor.withOpacity(isDark ? 0.4 : 0.3),
+                              width: 0.7,
+                            ),
                           ),
                           child: Text(
-                            item.suggestedReason,
+                            item.strengthLabel,
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: isFlagged ? FontWeight.w700 : FontWeight.w500,
-                              color: isFlagged ? Colors.amber : themeColors.textTertiary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: badgeColor,
                             ),
                           ),
                         ),
@@ -218,63 +282,64 @@ class DailyRevisionBoard extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Mark Revised check button
-              IconButton(
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  onMarkRevised(item);
-                },
-                tooltip: 'Mark Revised Today',
-                icon: Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 22,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
             ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // Quick Breakdown button that triggers AI Mentor immediately
-          GestureDetector(
-            onTap: () => _showAiMentorBreakdownModal(context, item),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isDark ? Colors.white12 : Colors.black12,
-                  width: 0.8,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.psychology_outlined,
-                    size: 14,
-                    color: themeColors.textPrimary,
+          // Action row: Reason badge + Quick Breakdown from AI Mentor button
+          Padding(
+            padding: const EdgeInsets.only(left: 34),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    item.suggestedReason,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: item.isFlaggedWeak ? Colors.amber : themeColors.textTertiary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Quick Breakdown from AI Mentor',
-                    style: RythemTypography.labelSmall.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: themeColors.textPrimary,
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _showAiMentorBreakdownModal(context, item),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.psychology_outlined,
+                          size: 13,
+                          color: themeColors.textPrimary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Quick Breakdown from AI Mentor',
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: themeColors.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 12,
-                    color: themeColors.textTertiary,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

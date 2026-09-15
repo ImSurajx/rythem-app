@@ -990,6 +990,8 @@ class _FlowStreakCalendar extends StatelessWidget {
     required this.isDark,
   });
 
+  static const _emeraldAccent = Color(0xFF10B981);
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -1057,24 +1059,24 @@ class _FlowStreakCalendar extends StatelessWidget {
                   ),
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.offline_bolt_rounded,
-                    size: 13,
-                    color: themeColors.textPrimary,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: _emeraldAccent.withOpacity(isDark ? 0.2 : 0.12),
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(
+                    color: _emeraldAccent.withOpacity(isDark ? 0.4 : 0.3),
+                    width: 0.8,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$streakDays day${streakDays == 1 ? '' : 's'} active',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textSecondary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
+                ),
+                child: Text(
+                  '🔥 $streakDays day${streakDays == 1 ? '' : 's'} active',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: _emeraldAccent,
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -1122,22 +1124,24 @@ class _FlowStreakCalendar extends StatelessWidget {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isStreakMark
-                                ? (isDark ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.12))
-                                : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+                            color: isToday
+                                ? (isDark ? Colors.white : const Color(0xFF16181D))
+                                : (isStreakMark
+                                    ? (isDark ? _emeraldAccent.withOpacity(0.32) : Colors.teal.shade200)
+                                    : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
                             border: Border.all(
                               color: isToday
-                                  ? (isDark ? themeColors.glassBorderHighlight : Colors.black87)
+                                  ? (isDark ? Colors.white : Colors.black87)
                                   : (isStreakMark
-                                      ? (isDark ? themeColors.glassBorderHighlight : const Color(0x30000000))
+                                      ? (isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
                                       : (isDark ? themeColors.glassBorder : const Color(0x10000000))),
-                              width: isToday ? 1.5 : (isStreakMark ? 1.0 : 0.6),
+                              width: isToday ? 1.5 : (isStreakMark ? 1.2 : 0.6),
                             ),
                             boxShadow: isStreakMark
                                 ? [
                                     BoxShadow(
-                                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
-                                      blurRadius: 6,
+                                      color: _emeraldAccent.withOpacity(isDark ? 0.25 : 0.15),
+                                      blurRadius: 8,
                                       spreadRadius: 1,
                                     ),
                                   ]
@@ -1147,9 +1151,11 @@ class _FlowStreakCalendar extends StatelessWidget {
                             child: Text(
                               '${dayDate.day}',
                               style: TextStyle(
-                                color: isStreakMark || isToday
-                                    ? themeColors.textPrimary
-                                    : (isPastOrToday ? themeColors.textSecondary : themeColors.textTertiary),
+                                color: isToday
+                                    ? (isDark ? Colors.black : Colors.white)
+                                    : (isStreakMark
+                                        ? (isDark ? Colors.white : Colors.teal.shade900)
+                                        : (isPastOrToday ? themeColors.textSecondary : themeColors.textTertiary)),
                                 fontSize: 11,
                                 fontWeight: isStreakMark || isToday ? FontWeight.w700 : FontWeight.w500,
                               ),

@@ -7,7 +7,6 @@ import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
-import 'package:rythem_app/core/widgets/markdown_content_view.dart';
 
 /// Non-punitive dialog to flag confusion or an obstacle on a beat per `docs/design.md` §2.
 /// Allows the user to record friction without penalty, guilt, or breaking streaks.
@@ -46,9 +45,6 @@ class ConfusingBeatDialog extends StatefulWidget {
 
 class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
   late final TextEditingController _noteController;
-  bool _isLoadingAiExplanation = false;
-  String? _aiExplanation;
-
   @override
   void initState() {
     super.initState();
@@ -59,31 +55,6 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
   void dispose() {
     _noteController.dispose();
     super.dispose();
-  }
-
-  Future<void> _fetchAiExplanation() async {
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _isLoadingAiExplanation = true;
-    });
-
-    try {
-      final text = await widget.inferenceService.explainConfusingBeat(
-        beatTitle: widget.beat.title,
-      );
-      if (mounted) {
-        setState(() {
-          _aiExplanation = text;
-          _isLoadingAiExplanation = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLoadingAiExplanation = false;
-        });
-      }
-    }
   }
 
   @override
@@ -163,90 +134,6 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    if (_isLoadingAiExplanation) ...[
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'AI Mentor synthesizing offline explanation...',
-                                style: RythemTypography.bodySmall.copyWith(
-                                  color: themeColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else if (_aiExplanation != null) ...[
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
-                            ),
-                          ),
-                          child: SingleChildScrollView(
-                            child: MarkdownContentView(
-                              content: _aiExplanation!,
-                              isDark: isDark,
-                              themeColors: themeColors,
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        GestureDetector(
-                          onTap: _fetchAiExplanation,
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.psychology_outlined, size: 14, color: themeColors.textPrimary),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Ask AI Mentor for quick breakdown',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    color: themeColors.textPrimary,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
                     TextField(
                       controller: _noteController,
                       maxLines: 3,
