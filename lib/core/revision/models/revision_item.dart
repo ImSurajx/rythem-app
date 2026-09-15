@@ -92,4 +92,32 @@ class RevisionItem {
 
   factory RevisionItem.fromJson(String source) =>
       RevisionItem.fromMap(json.decode(source) as Map<String, dynamic>);
+
+  TopicStrength get strength {
+    if (isFlaggedWeak && revisionCount == 0) return TopicStrength.weak;
+    if (revisionCount == 1) return TopicStrength.strengthening;
+    if (revisionCount == 2) return TopicStrength.strong;
+    if (revisionCount >= 3) return TopicStrength.strongest;
+    return isFlaggedWeak ? TopicStrength.weak : TopicStrength.strengthening;
+  }
+
+  String get strengthLabel {
+    switch (strength) {
+      case TopicStrength.weak:
+        return 'WEAK TOPIC';
+      case TopicStrength.strengthening:
+        return 'STRENGTHENING (1x)';
+      case TopicStrength.strong:
+        return 'STRONG (2x)';
+      case TopicStrength.strongest:
+        return 'STRONGEST (MASTERED 🏆)';
+    }
+  }
+}
+
+enum TopicStrength {
+  weak,
+  strengthening,
+  strong,
+  strongest,
 }
