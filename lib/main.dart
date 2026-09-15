@@ -161,7 +161,7 @@ class _DesignSystemShowcaseScreenState
 
   String _roadmapTitle = 'Deep Learning & Neural Flow';
   String _roadmapId = 'rm_demo';
-  int _currentStreak = 1;
+  int _currentStreak = 3;
   List<ChapterEntity> _chapters = [];
   List<BeatEntity> _beats = [];
   Map<String, List<ChapterEntity>> _chaptersByRoadmap = {};
@@ -543,7 +543,7 @@ class _DesignSystemShowcaseScreenState
         _chaptersByRoadmap = chaptersByRoadmap;
         _beatsByRoadmap = beatsByRoadmap;
         _budgetsByRoadmap = budgetsByRoadmap;
-        _currentStreak = streak > 0 ? streak : 1;
+        _currentStreak = streak >= 3 ? streak : 3;
         _recentActivity = recentActivity;
         _pacingBudget = budget;
         _weeklySchedule = weeklySchedule;

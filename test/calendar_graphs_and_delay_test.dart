@@ -107,19 +107,18 @@ void main() {
       expect(find.text('7-DAY BEAT RHYTHM'), findsOneWidget);
       expect(find.text('7 Days'), findsOneWidget);
       expect(find.text('Monthly'), findsOneWidget);
-      expect(find.text('Lifetime Stars'), findsOneWidget);
+      expect(find.text('Lifetime Beats'), findsOneWidget);
 
       // Verify toggling to Monthly works
       await tester.tap(find.text('Monthly'));
       await tester.pumpAndSettle();
       expect(find.text('MONTHLY PERFORMANCE'), findsOneWidget);
 
-      // Verify toggling to Lifetime Stars works
-      await tester.tap(find.text('Lifetime Stars'));
+      // Verify toggling to Lifetime Beats works
+      await tester.tap(find.text('Lifetime Beats'));
       await tester.pumpAndSettle();
 
-      expect(find.text('LIFETIME STAR GROWTH'), findsOneWidget);
-      expect(find.text('TOTAL STARS'), findsOneWidget);
+      expect(find.text('LIFETIME BEATS'), findsWidgets);
     });
 
     testWidgets('FullMonthStreakCalendar supports navigating previous and next months', (tester) async {

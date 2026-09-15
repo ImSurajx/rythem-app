@@ -46,10 +46,7 @@ class BacklogDecisionSheet extends StatefulWidget {
         pacingBudget: pacingBudget,
         allRoadmaps: allRoadmaps,
         inferenceService: inferenceService,
-        onDecisionSelected: (decision) {
-          Navigator.of(ctx).pop();
-          onDecisionSelected(decision);
-        },
+        onDecisionSelected: onDecisionSelected,
       ),
     );
   }

@@ -281,14 +281,6 @@ class _FlowScreenState extends State<FlowScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Top-of-Flow Daily Revision Board (just after Date header)
-          DailyRevisionBoard(
-            revisionItems: widget.revisionItems,
-            onMarkRevised: (item) => widget.onMarkRevised?.call(item),
-            inferenceService: widget.inferenceService ?? LocalInferenceService(),
-            themeColors: themeColors,
-            isDark: isDark,
-          ),
 
           // Title & Streak
           Row(
@@ -487,6 +479,16 @@ class _FlowScreenState extends State<FlowScreen> {
                     : null,
               );
             }),
+
+          const SizedBox(height: 16),
+          // Moved Daily Revision Board below the todo lists as requested
+          DailyRevisionBoard(
+            revisionItems: widget.revisionItems,
+            onMarkRevised: (item) => widget.onMarkRevised?.call(item),
+            inferenceService: widget.inferenceService ?? LocalInferenceService(),
+            themeColors: themeColors,
+            isDark: isDark,
+          ),
         ],
       ),
     );
@@ -1093,7 +1095,11 @@ class _FlowStreakCalendar extends StatelessWidget {
                 return c.year == dayDate.year && c.month == dayDate.month && c.day == dayDate.day;
               }).length;
 
-              final isStreakMark = completedOnDay > 0 || (isToday && streakDays > 0);
+              final daysDiff = DateTime(now.year, now.month, now.day)
+                  .difference(DateTime(dayDate.year, dayDate.month, dayDate.day))
+                  .inDays;
+              final isWithinStreak = daysDiff >= 0 && daysDiff < streakDays;
+              final isStreakMark = completedOnDay > 0 || isWithinStreak;
 
               return Expanded(
                 child: Column(
