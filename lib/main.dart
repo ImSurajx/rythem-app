@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -171,10 +172,40 @@ class _DesignSystemShowcaseScreenState
   ModelTier _activeModelTier = ModelTier.fallback;
   bool _compactDownloaded = false;
   bool _balancedDownloaded = false;
+  Set<String> _delayedBeatIds = {'beat_delayed_sample'};
 
   Future<void> _setBeatCompletion(BeatEntity beat, bool isCompleted) async {
     await _beatRepo.toggleBeatCompletion(beat.id, isCompleted: isCompleted);
+    if (isCompleted && _delayedBeatIds.contains(beat.id)) {
+      final updated = Set<String>.from(_delayedBeatIds)..remove(beat.id);
+      await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(updated.toList()));
+      if (mounted) {
+        setState(() {
+          _delayedBeatIds = updated;
+        });
+        _showToast('Delayed beat completed: "${beat.title}"! 🎉');
+      }
+    }
     await _loadDatabaseState();
+  }
+
+  Future<void> _handleToggleBeatDelay(BeatEntity beat) async {
+    HapticFeedback.selectionClick();
+    final updated = Set<String>.from(_delayedBeatIds);
+    final wasDelayed = updated.contains(beat.id);
+    if (wasDelayed) {
+      updated.remove(beat.id);
+      _showToast('Resumed "${beat.title}" into active flow');
+    } else {
+      updated.add(beat.id);
+      _showToast('Delayed "${beat.title}" — ready for later testing');
+    }
+    await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(updated.toList()));
+    if (mounted) {
+      setState(() {
+        _delayedBeatIds = updated;
+      });
+    }
   }
 
   @override
@@ -333,9 +364,21 @@ class _DesignSystemShowcaseScreenState
         createdAt: now,
         updatedAt: now,
       ),
+      BeatEntity(
+        id: 'beat_delayed_sample',
+        chapterId: 'ch_foundations',
+        roadmapId: _roadmapId,
+        title: 'Backpropagation Vector Calculus (Delayed Task)',
+        effortWeight: 2.0,
+        sortOrder: 7,
+        isCompleted: false,
+        createdAt: now.subtract(const Duration(days: 2)),
+        updatedAt: now.subtract(const Duration(days: 2)),
+      ),
     ];
 
     await _beatRepo.createBeatsBatch(sampleBeats);
+    await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(['beat_delayed_sample']));
   }
 
   Future<void> _loadDatabaseState() async {
@@ -402,11 +445,51 @@ class _DesignSystemShowcaseScreenState
     final scheduleJson = await _appSettingsRepo.getSetting('study_intensity_schedule');
     final weeklySchedule = WeeklyStudySchedule.decode(scheduleJson);
 
+    Set<String> delayedBeatIds = {};
+    try {
+      final rawDelayed = await _appSettingsRepo.getSetting('delayed_beat_ids');
+      if (rawDelayed != null && rawDelayed.isNotEmpty) {
+        final decoded = jsonDecode(rawDelayed) as List;
+        delayedBeatIds = decoded.map((e) => e.toString()).toSet();
+      } else {
+        delayedBeatIds = {'beat_delayed_sample'};
+        await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(delayedBeatIds.toList()));
+      }
+    } catch (_) {
+      delayedBeatIds = {'beat_delayed_sample'};
+    }
+
+    // Ensure sample delayed task exists in database so user can test delay workflow
+    if (allRoadmaps.isNotEmpty) {
+      final targetRoadmapId = allRoadmaps.first.id;
+      final chs = chaptersByRoadmap[targetRoadmapId] ?? [];
+      if (chs.isNotEmpty) {
+        final existingDelayed = await _beatRepo.getBeatById('beat_delayed_sample');
+        if (existingDelayed == null) {
+          final delayedBeat = BeatEntity(
+            id: 'beat_delayed_sample',
+            chapterId: chs.first.id,
+            roadmapId: targetRoadmapId,
+            title: 'Backpropagation Vector Calculus (Delayed Task)',
+            effortWeight: 2.0,
+            sortOrder: 99,
+            isCompleted: false,
+            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+            updatedAt: DateTime.now().subtract(const Duration(days: 2)),
+          );
+          await _beatRepo.createBeat(delayedBeat);
+          beatsByRoadmap[targetRoadmapId] = await _beatRepo.getBeatsByRoadmapId(targetRoadmapId);
+        }
+      }
+    }
+
+    final finalBeats = beatsByRoadmap[_roadmapId] ?? [];
+
     if (mounted) {
       setState(() {
         _allRoadmaps = allRoadmaps;
         _chapters = chapters;
-        _beats = beats;
+        _beats = finalBeats;
         _chaptersByRoadmap = chaptersByRoadmap;
         _beatsByRoadmap = beatsByRoadmap;
         _budgetsByRoadmap = budgetsByRoadmap;
@@ -414,6 +497,7 @@ class _DesignSystemShowcaseScreenState
         _recentActivity = recentActivity;
         _pacingBudget = budget;
         _weeklySchedule = weeklySchedule;
+        _delayedBeatIds = delayedBeatIds;
       });
     }
     await _loadModelStatus();
@@ -896,6 +980,8 @@ class _DesignSystemShowcaseScreenState
       streakDays: _currentStreak,
       onSwitchRoadmap: _showRoadmapSelector,
       onBeatToggled: _setBeatCompletion,
+      delayedBeatIds: _delayedBeatIds,
+      onToggleDelay: _handleToggleBeatDelay,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onApplyPacingDecision: (roadmap, decision) async {
@@ -1087,6 +1173,7 @@ class _DesignSystemShowcaseScreenState
       activeBudget: _pacingBudget,
       currentStreak: _currentStreak,
       recentActivity: _recentActivity,
+      beatLogRepo: _beatLogRepo,
       onOpenRoadmapDetail: _openRoadmapDetail,
     );
   }

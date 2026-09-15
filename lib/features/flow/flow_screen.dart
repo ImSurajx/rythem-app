@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
@@ -38,6 +39,8 @@ class FlowScreen extends StatefulWidget {
   final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
   final Future<void> Function(RoadmapEntity roadmap, PacingDecision decision)? onApplyPacingDecision;
   final LocalInferenceService? inferenceService;
+  final Set<String> delayedBeatIds;
+  final void Function(BeatEntity beat)? onToggleDelay;
 
   const FlowScreen({
     super.key,
@@ -56,6 +59,8 @@ class FlowScreen extends StatefulWidget {
     this.onOpenRoadmapDetail,
     this.onApplyPacingDecision,
     this.inferenceService,
+    this.delayedBeatIds = const {},
+    this.onToggleDelay,
   });
 
   @override
@@ -361,6 +366,8 @@ class _FlowScreenState extends State<FlowScreen> {
                 pacingBudget: rmBudget,
                 themeColors: themeColors,
                 isDark: isDark,
+                delayedBeatIds: widget.delayedBeatIds,
+                onToggleDelay: widget.onToggleDelay,
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
                 onOpenDetail: widget.onOpenRoadmapDetail != null
@@ -451,6 +458,8 @@ class _TrackTodoListCard extends StatelessWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat) onOpenFocusSession;
   final VoidCallback? onOpenDetail;
+  final Set<String> delayedBeatIds;
+  final void Function(BeatEntity beat)? onToggleDelay;
 
   const _TrackTodoListCard({
     required this.roadmap,
@@ -463,6 +472,8 @@ class _TrackTodoListCard extends StatelessWidget {
     required this.onBeatToggled,
     required this.onOpenFocusSession,
     this.onOpenDetail,
+    this.delayedBeatIds = const {},
+    this.onToggleDelay,
   });
 
   @override
@@ -472,18 +483,49 @@ class _TrackTodoListCard extends StatelessWidget {
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-          width: 1.0,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : const Color(0xFF0E1420).withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        const Color(0x28FFFFFF),
+                        const Color(0x14FFFFFF),
+                        const Color(0x0AFFFFFF),
+                      ]
+                    : [
+                        const Color(0x99FFFFFF),
+                        const Color(0x66FFFFFF),
+                        const Color(0x40FFFFFF),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // Interactive Track Header with title, progress, and detail opener
           InkWell(
             onTap: onOpenDetail,
@@ -641,7 +683,8 @@ class _TrackTodoListCard extends StatelessWidget {
 
                 final seenIds = <String>{};
                 final flowBeats = <BeatEntity>[];
-                for (final b in [...completedToday, ...pendingBeats]) {
+                final delayedBeats = sortedAllBeats.where((b) => !b.isCompleted && delayedBeatIds.contains(b.id)).toList();
+                for (final b in [...delayedBeats, ...completedToday, ...pendingBeats]) {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
                 if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty) {
@@ -663,6 +706,8 @@ class _TrackTodoListCard extends StatelessWidget {
                           beat: beat,
                           themeColors: themeColors,
                           isDark: isDark,
+                          isDelayed: delayedBeatIds.contains(beat.id),
+                          onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
                           onToggle: (val) => onBeatToggled(beat, val),
                           onOpenResource: () => ResourceLauncher.openResource(
                             context,
@@ -700,6 +745,9 @@ class _TrackTodoListCard extends StatelessWidget {
           ],
         ],
       ),
+    ),
+  ),
+),
     );
   }
 }
@@ -729,54 +777,85 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: themeColors.rowBackground,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? const Color(0x33FFFFFF) : const Color(0x20000000),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule_outlined,
-                  size: 15,
-                  color: themeColors.textSecondary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "You're falling behind",
-                  style: RythemTypography.titleSmall.copyWith(
-                    color: themeColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Text(
-                  'Review plan',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 13,
-                  color: themeColors.textSecondary,
-                ),
-              ],
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [
+                          const Color(0x30F59E0B),
+                          const Color(0x18F59E0B),
+                        ]
+                      : [
+                          const Color(0x20F59E0B),
+                          const Color(0x0CF59E0B),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? const Color(0x60F59E0B) : const Color(0x40F59E0B),
+                  width: 0.9,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_outlined,
+                        size: 15,
+                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "You're falling behind",
+                        style: RythemTypography.titleSmall.copyWith(
+                          color: themeColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        'Review plan',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 13,
+                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -805,18 +884,50 @@ class _FlowStreakCalendar extends StatelessWidget {
     const weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-          width: 0.8,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.30)
+                : const Color(0xFF0E1420).withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        const Color(0x28FFFFFF),
+                        const Color(0x14FFFFFF),
+                        const Color(0x0AFFFFFF),
+                      ]
+                    : [
+                        const Color(0x99FFFFFF),
+                        const Color(0x66FFFFFF),
+                        const Color(0x40FFFFFF),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -964,6 +1075,9 @@ class _FlowStreakCalendar extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  ),
+),
     );
   }
 }
