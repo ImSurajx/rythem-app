@@ -7,6 +7,8 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/glass_progress_bar.dart';
+import 'widgets/full_month_streak_calendar.dart';
+import 'widgets/performance_graphs_card.dart';
 
 /// Production Metrics & Pacing Dashboard conforming to `docs/design.md` §5:
 /// - Zero stopwatches or minute counting ("felt, not measured")
@@ -21,6 +23,7 @@ class MetricsScreen extends StatelessWidget {
   final PacingBudget? activeBudget;
   final int currentStreak;
   final List<DailyBeatCount> recentActivity;
+  final BeatLogRepository? beatLogRepo;
   final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
 
   const MetricsScreen({
@@ -31,6 +34,7 @@ class MetricsScreen extends StatelessWidget {
     this.activeBudget,
     required this.currentStreak,
     required this.recentActivity,
+    this.beatLogRepo,
     this.onOpenRoadmapDetail,
   });
 
@@ -107,6 +111,15 @@ class MetricsScreen extends StatelessWidget {
 
           const SizedBox(height: 18),
 
+          // Full Version Navigational Month Calendar (GitHub Streak Style)
+          FullMonthStreakCalendar(
+            beatLogRepo: beatLogRepo,
+            themeColors: themeColors,
+            isDark: isDark,
+          ),
+
+          const SizedBox(height: 18),
+
           // Primary Metric Hero: Completed Beats
           GlassCard(
             padding: const EdgeInsets.all(22),
@@ -169,6 +182,16 @@ class MetricsScreen extends StatelessWidget {
           // 7-Day Monochrome Activity Bar Chart
           _SevenDayActivityChart(
             activity: recentActivity,
+            themeColors: themeColors,
+            isDark: isDark,
+          ),
+
+          const SizedBox(height: 22),
+
+          // Dual Navigational Performance Graphs (Monthly Velocity & Lifetime Repo Star Growth)
+          PerformanceGraphsCard(
+            beatLogRepo: beatLogRepo,
+            recentActivity: recentActivity,
             themeColors: themeColors,
             isDark: isDark,
           ),

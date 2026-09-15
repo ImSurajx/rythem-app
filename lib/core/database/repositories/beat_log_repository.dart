@@ -126,4 +126,48 @@ class BeatLogRepository {
 
     return streak;
   }
+
+  /// Fetches daily counts for an entire calendar month [year]-[month].
+  /// Returns a map of 'YYYY-MM-DD' -> beat count.
+  Future<Map<String, int>> getActivityForMonth(int year, int month) async {
+    final db = await _db;
+    final startStr = '$year-${month.toString().padLeft(2, '0')}-01';
+    final nextMonth = month == 12 ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
+    final endStr = nextMonth.subtract(const Duration(days: 1)).toIso8601String().substring(0, 10);
+
+    final results = await db.rawQuery('''
+      SELECT 
+        ${BeatLogColumns.completedDate} as date,
+        COUNT(*) as count
+      FROM ${DatabaseTables.beatLogs}
+      WHERE ${BeatLogColumns.completedDate} >= ? AND ${BeatLogColumns.completedDate} <= ?
+      GROUP BY ${BeatLogColumns.completedDate}
+      ORDER BY ${BeatLogColumns.completedDate} ASC
+    ''', [startStr, endStr]);
+
+    return {
+      for (final row in results)
+        row['date'] as String: (row['count'] as num).toInt(),
+    };
+  }
+
+  /// Fetches all daily completion aggregates across lifetime for growth curves.
+  Future<List<DailyBeatCount>> getAllDailyActivity() async {
+    final db = await _db;
+    final results = await db.rawQuery('''
+      SELECT 
+        ${BeatLogColumns.completedDate} as date,
+        COUNT(*) as count
+      FROM ${DatabaseTables.beatLogs}
+      GROUP BY ${BeatLogColumns.completedDate}
+      ORDER BY ${BeatLogColumns.completedDate} ASC
+    ''');
+
+    return results
+        .map((r) => DailyBeatCount(
+              date: r['date'] as String,
+              count: (r['count'] as num).toInt(),
+            ))
+        .toList();
+  }
 }

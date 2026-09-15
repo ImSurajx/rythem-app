@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
@@ -22,6 +23,8 @@ class ChapterAccordion extends StatefulWidget {
   final void Function(ChapterEntity chapter)? onAttachResourceToChapter;
   final Future<void> Function(BeatEntity beat)? onConfirmMatch;
   final Future<void> Function(BeatEntity beat)? onRejectMatch;
+  final Set<String>? delayedBeatIds;
+  final void Function(BeatEntity beat)? onToggleDelay;
 
   const ChapterAccordion({
     super.key,
@@ -35,6 +38,8 @@ class ChapterAccordion extends StatefulWidget {
     this.onAttachResourceToChapter,
     this.onConfirmMatch,
     this.onRejectMatch,
+    this.delayedBeatIds,
+    this.onToggleDelay,
   });
 
   @override
@@ -72,16 +77,47 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: themeColors.rowBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: themeColors.rowBorder,
-          width: 0.8,
-        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.32)
+                : const Color(0xFF0E1420).withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        const Color(0x28FFFFFF),
+                        const Color(0x14FFFFFF),
+                        const Color(0x0CFFFFFF),
+                      ]
+                    : [
+                        const Color(0x99FFFFFF),
+                        const Color(0x66FFFFFF),
+                        const Color(0x40FFFFFF),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // Accordion Header Bar
           InkWell(
             onTap: _toggleExpand,
@@ -216,6 +252,9 @@ class _ChapterAccordionState extends State<ChapterAccordion>
           ),
         ],
       ),
+    ),
+  ),
+),
     );
   }
 
@@ -317,6 +356,8 @@ class _ChapterAccordionState extends State<ChapterAccordion>
         beat: beat,
         themeColors: themeColors,
         isDark: isDark,
+        isDelayed: widget.delayedBeatIds?.contains(beat.id) ?? false,
+        onToggleDelay: widget.onToggleDelay != null ? () => widget.onToggleDelay!(beat) : null,
         onToggle: (val) => widget.onBeatToggled(beat, val),
         onOpenResource: () => ResourceLauncher.openResource(
           context,
@@ -354,59 +395,77 @@ class _TopicGroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-          width: 0.8,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-              child: Row(
-                children: [
-                  Icon(icon, size: 14, color: accentColor),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: RythemTypography.titleMedium.copyWith(
-                        color: themeColors.textPrimary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      subtitle,
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textTertiary,
-                        fontSize: 9.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      const Color(0x1AFFFFFF),
+                      const Color(0x0DFFFFFF),
+                    ]
+                  : [
+                      const Color(0x70FFFFFF),
+                      const Color(0x40FFFFFF),
+                    ],
             ),
-            ...children,
-          ],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+              width: 0.8,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 14, color: accentColor),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: RythemTypography.titleMedium.copyWith(
+                            color: themeColors.textPrimary,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          subtitle,
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textTertiary,
+                            fontSize: 9.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ...children,
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -423,6 +482,8 @@ class BeatTile extends StatelessWidget {
   final VoidCallback? onAttachResource;
   final VoidCallback? onConfirmMatch;
   final VoidCallback? onRejectMatch;
+  final bool isDelayed;
+  final VoidCallback? onToggleDelay;
 
   const BeatTile({
     super.key,
@@ -435,6 +496,8 @@ class BeatTile extends StatelessWidget {
     this.onAttachResource,
     this.onConfirmMatch,
     this.onRejectMatch,
+    this.isDelayed = false,
+    this.onToggleDelay,
   });
 
   @override
@@ -446,19 +509,46 @@ class BeatTile extends StatelessWidget {
     final hasResource = beat.sourceUrl != null && beat.sourceUrl!.trim().isNotEmpty;
     final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
 
-    return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: themeColors.rowBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: themeColors.rowBorder,
-            width: 0.7,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      const Color(0x22FFFFFF),
+                      const Color(0x10FFFFFF),
+                    ]
+                  : [
+                      const Color(0x80FFFFFF),
+                      const Color(0x4DFFFFFF),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDelayed
+                  ? (isDark ? const Color(0x80FFB300) : const Color(0x60F57C00))
+                  : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
+              width: isDelayed ? 1.2 : 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withOpacity(0.18)
+                    : const Color(0xFF0E1420).withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -513,6 +603,41 @@ class BeatTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
+                        // Delayed Beat Badge
+                        if (isDelayed) ...[
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0x33FFB300) : const Color(0x20F57C00),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isDark ? const Color(0x80FFB300) : const Color(0x60F57C00),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.more_time_rounded,
+                                  size: 10,
+                                  color: isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'DELAYED • LATER',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100),
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         // Mentor Extra Badge
                         if (beat.isMentorExtra) ...[
                           Container(
@@ -645,6 +770,21 @@ class BeatTile extends StatelessWidget {
               ),
             ],
 
+            if (onToggleDelay != null && !beat.isCompleted)
+              IconButton(
+                icon: Icon(
+                  isDelayed ? Icons.restore_rounded : Icons.more_time_rounded,
+                  size: 15,
+                  color: isDelayed
+                      ? (isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100))
+                      : themeColors.textTertiary,
+                ),
+                onPressed: onToggleDelay,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: isDelayed ? 'Resume beat into active flow' : 'Delay beat for later',
+              ),
+
             if (onFlag != null)
               IconButton(
                 icon: Icon(
@@ -746,6 +886,8 @@ class BeatTile extends StatelessWidget {
         ],
       ],
     ),
-  );
-}
+  ),
+),
+    );
+  }
 }

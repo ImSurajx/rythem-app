@@ -765,73 +765,85 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'REMAINING',
+                                            style: RythemTypography.labelSmall.copyWith(
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: themeColors.textTertiary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '$remainingCount topics',
+                                            style: RythemTypography.labelSmall.copyWith(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: themeColors.textPrimary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'REMAINING',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$remainingCount topics',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: themeColors.textPrimary,
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'RESOURCES',
+                                            style: RythemTypography.labelSmall.copyWith(
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: themeColors.textTertiary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
+                                            style: RythemTypography.labelSmall.copyWith(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: themeColors.textPrimary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'RESOURCES',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: themeColors.textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ),
@@ -873,88 +885,106 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           }
                         },
                         behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
-                              width: 1.0,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 14),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isDark
+                                      ? [
+                                          const Color(0x22FFFFFF),
+                                          const Color(0x0EFFFFFF),
+                                        ]
+                                      : [
+                                          const Color(0x88FFFFFF),
+                                          const Color(0x4DFFFFFF),
+                                        ],
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
+                                    ),
+                                    child: Icon(
+                                      nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                          ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
+                                              ? Icons.play_arrow_rounded
+                                              : Icons.language_rounded)
+                                          : Icons.play_arrow_rounded,
+                                      size: 18,
+                                      color: themeColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'UP NEXT',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            color: themeColors.textTertiary,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.8,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Current Focus: ${nextPendingBeat.title}',
+                                          style: RythemTypography.titleSmall.copyWith(
+                                            color: themeColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GlassButton(
+                                    label: nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                        ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
+                                            ? 'Watch'
+                                            : 'Learn')
+                                        : 'Start',
+                                    icon: nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                        ? Icons.open_in_new_rounded
+                                        : null,
+                                    height: 34,
+                                    variant: GlassButtonVariant.secondary,
+                                    onPressed: () {
+                                      if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
+                                        ResourceLauncher.openResource(
+                                          context,
+                                          url: nextPendingBeat.sourceUrl,
+                                          title: nextPendingBeat.title,
+                                        );
+                                      } else {
+                                        _openFocusSession(nextPendingBeat);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
-                                ),
-                                child: Icon(
-                                  nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                      ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
-                                          ? Icons.play_arrow_rounded
-                                          : Icons.language_rounded)
-                                      : Icons.play_arrow_rounded,
-                                  size: 18,
-                                  color: themeColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'UP NEXT',
-                                      style: RythemTypography.labelSmall.copyWith(
-                                        color: themeColors.textTertiary,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.8,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Current Focus: ${nextPendingBeat.title}',
-                                      style: RythemTypography.titleSmall.copyWith(
-                                        color: themeColors.textPrimary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GlassButton(
-                                label: nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                    ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
-                                        ? 'Watch'
-                                        : 'Learn')
-                                    : 'Start',
-                                icon: nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                    ? Icons.open_in_new_rounded
-                                    : null,
-                                height: 34,
-                                variant: GlassButtonVariant.secondary,
-                                onPressed: () {
-                                  if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
-                                    ResourceLauncher.openResource(
-                                      context,
-                                      url: nextPendingBeat.sourceUrl,
-                                      title: nextPendingBeat.title,
-                                    );
-                                  } else {
-                                    _openFocusSession(nextPendingBeat);
-                                  }
-                                },
-                              ),
-                            ],
                           ),
                         ),
                       ),
