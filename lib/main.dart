@@ -228,12 +228,21 @@ class _DesignSystemShowcaseScreenState
       ),
     );
     if (beat != null) {
-      await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
-      _showToast(
-        'Revised "${item.title}"! Retention interval updated.',
-        icon: Icons.check_circle_outline_rounded,
-        accentColor: const Color(0xFF10B981),
-      );
+      if (item.isCompletedToday) {
+        await _revisionService.unmarkTopicRevised(beat, roadmapTitle: item.roadmapTitle);
+        _showToast(
+          'Reopened "${item.title}" for revision',
+          icon: Icons.history_rounded,
+          accentColor: Colors.amber,
+        );
+      } else {
+        await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
+        _showToast(
+          'Revised "${item.title}"! Retention interval updated.',
+          icon: Icons.check_circle_outline_rounded,
+          accentColor: const Color(0xFF10B981),
+        );
+      }
       final updated = await _revisionService.getDailyRevisionRecommendations(
         roadmaps: _allRoadmaps,
         beatsByRoadmap: _beatsByRoadmap,

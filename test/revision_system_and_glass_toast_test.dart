@@ -195,7 +195,7 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       expect(find.text('Flagged Weak Concept'), findsOneWidget);
 
       // Tap Mark Revised check button
-      final checkButton = find.byIcon(Icons.check_circle_outline_rounded);
+      final checkButton = find.byKey(const Key('revision_check_button_beat_sample'));
       expect(checkButton, findsOneWidget);
       await tester.tap(checkButton);
       await tester.pump();

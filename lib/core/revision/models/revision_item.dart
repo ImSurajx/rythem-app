@@ -13,6 +13,7 @@ class RevisionItem {
   final double stabilityDays;
   final double retentionScore; // 0.0 to 1.0 (calculated using e^(-t/S))
   final String suggestedReason;
+  final bool isCompleted;
 
   const RevisionItem({
     required this.beatId,
@@ -26,7 +27,17 @@ class RevisionItem {
     this.stabilityDays = 1.0,
     this.retentionScore = 1.0,
     required this.suggestedReason,
+    this.isCompleted = false,
   });
+
+  bool get isCompletedToday {
+    if (isCompleted) return true;
+    if (lastRevisedAt == null) return false;
+    final now = DateTime.now();
+    return lastRevisedAt!.year == now.year &&
+        lastRevisedAt!.month == now.month &&
+        lastRevisedAt!.day == now.day;
+  }
 
   RevisionItem copyWith({
     String? beatId,
@@ -40,6 +51,7 @@ class RevisionItem {
     double? stabilityDays,
     double? retentionScore,
     String? suggestedReason,
+    bool? isCompleted,
   }) {
     return RevisionItem(
       beatId: beatId ?? this.beatId,
@@ -53,6 +65,7 @@ class RevisionItem {
       stabilityDays: stabilityDays ?? this.stabilityDays,
       retentionScore: retentionScore ?? this.retentionScore,
       suggestedReason: suggestedReason ?? this.suggestedReason,
+      isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 
@@ -69,6 +82,7 @@ class RevisionItem {
       'stabilityDays': stabilityDays,
       'retentionScore': retentionScore,
       'suggestedReason': suggestedReason,
+      'isCompleted': isCompleted,
     };
   }
 
@@ -85,6 +99,7 @@ class RevisionItem {
       stabilityDays: (map['stabilityDays'] as num?)?.toDouble() ?? 1.0,
       retentionScore: (map['retentionScore'] as num?)?.toDouble() ?? 1.0,
       suggestedReason: map['suggestedReason'] as String? ?? 'Scheduled Review',
+      isCompleted: map['isCompleted'] as bool? ?? false,
     );
   }
 

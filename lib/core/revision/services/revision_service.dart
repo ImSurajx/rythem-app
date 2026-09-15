@@ -109,11 +109,34 @@ class RevisionService {
       stabilityDays: newStability,
       retentionScore: 1.0,
       suggestedReason: reason,
+      isCompleted: true,
     );
 
     _records[beat.id] = updated;
     await _persist();
     return updated;
+  }
+
+  /// Reverts a topic's revision state if toggled off.
+  Future<RevisionItem?> unmarkTopicRevised(BeatEntity beat, {required String roadmapTitle}) async {
+    await init();
+    final existing = _records[beat.id];
+    if (existing != null) {
+      final prevCount = math.max(0, existing.revisionCount - 1);
+      final prevStability = (existing.stabilityDays / 2.2).clamp(1.0, 90.0);
+      final updated = existing.copyWith(
+        lastRevisedAt: null,
+        revisionCount: prevCount,
+        stabilityDays: prevStability,
+        retentionScore: 0.60,
+        suggestedReason: 'Scheduled Review',
+        isCompleted: false,
+      );
+      _records[beat.id] = updated;
+      await _persist();
+      return updated;
+    }
+    return null;
   }
 
   /// Calculates mathematically prioritized revision suggestions for today across all trackers.
@@ -125,7 +148,9 @@ class RevisionService {
     await init();
 
     final today = referenceDate ?? DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
     final List<RevisionItem> candidates = [];
+    final List<RevisionItem> completedTodayItems = [];
     final roadmapMap = {for (final r in roadmaps) r.id: r.title};
 
     // Evaluate all completed beats and explicitly flagged beats
@@ -141,6 +166,29 @@ class RevisionService {
 
         // Candidate must be completed OR explicitly flagged
         if (!isCompleted && !isFlagged) continue;
+
+        // Check if revised today (and not flagged weak): retain on board with completed/strike-through state
+        if (!isFlagged && record?.lastRevisedAt != null && record!.lastRevisedAt!.isAfter(todayStart)) {
+          completedTodayItems.add(
+            RevisionItem(
+              beatId: beat.id,
+              roadmapId: roadmapId,
+              roadmapTitle: roadmapTitle,
+              title: beat.title,
+              isFlaggedWeak: false,
+              flagNote: record.flagNote,
+              lastRevisedAt: record.lastRevisedAt,
+              revisionCount: record.revisionCount,
+              stabilityDays: record.stabilityDays,
+              retentionScore: 1.0,
+              suggestedReason: record.revisionCount >= 3
+                  ? 'Mastered Concept (Revised Today)'
+                  : 'Strengthened (Revised Today)',
+              isCompleted: true,
+            ),
+          );
+          continue;
+        }
 
         // Calculate time elapsed since last revision or completion
         final lastAnchor = record?.lastRevisedAt ?? beat.updatedAt;
@@ -178,16 +226,17 @@ class RevisionService {
             stabilityDays: stability,
             retentionScore: retention,
             suggestedReason: reason,
+            isCompleted: false,
           ),
         );
       }
     }
 
-    if (candidates.isEmpty) {
+    if (candidates.isEmpty && completedTodayItems.isEmpty) {
       return [];
     }
 
-    // Sort by mathematical urgency score:
+    // Sort candidates by mathematical urgency score:
     // 1. Flagged weak gets highest priority (+2.5)
     // 2. Lower retention gets higher urgency ((1 - R) * 2.0)
     // 3. Lower revision count gets slight priority
@@ -197,7 +246,6 @@ class RevisionService {
       return scoreB.compareTo(scoreA);
     });
 
-    // Return top high-yield recommendations (max 4 to keep focus sharp)
     // Only return items that actually need review (flagged OR retention < 0.85 OR daysElapsed >= stability)
     final filtered = candidates.where((item) {
       if (item.isFlaggedWeak) return true;
@@ -207,7 +255,10 @@ class RevisionService {
       return today.difference(lastDate).inHours >= 18; // at least next day or spaced
     }).toList();
 
-    return filtered.take(4).toList();
+    final remainingSlots = math.max(0, 4 - completedTodayItems.length);
+    final pendingToTake = filtered.take(remainingSlots).toList();
+
+    return [...completedTodayItems, ...pendingToTake];
   }
 
   /// Helper to check if a specific beat is flagged as weak
