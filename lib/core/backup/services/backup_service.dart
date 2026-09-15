@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../database/database_service.dart';
@@ -20,7 +21,7 @@ class BackupService {
   })  : _dbService = dbService ?? DatabaseService.instance,
         _eventBus = eventBus ?? DatabaseEventBus.instance;
 
-  /// Generates a comprehensive JSON backup payload containing all 5 database tables.
+  /// Generates the complete backup payload as a pretty-printed JSON string.
   Future<String> exportBackupJson() async {
     final db = await _dbService.database;
 
@@ -52,13 +53,58 @@ class BackupService {
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
-  /// Exports backup JSON to a timestamped file in the documents directory.
-  Future<File> exportToFile() async {
+  /// Exports backup JSON to a file chosen by the user via native file picker dialog.
+  /// If the user cancels the picker, returns null.
+  Future<File?> exportToFile({String? customPath}) async {
     final jsonString = await exportBackupJson();
-    final directory = await getApplicationDocumentsDirectory();
     final dateStr = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
-    final file = File('${directory.path}/rythem_backup_$dateStr.json');
-    return await file.writeAsString(jsonString);
+    final fileName = 'rythem_backup_$dateStr.json';
+
+    String? targetPath = customPath;
+
+    if (targetPath == null) {
+      try {
+        final bytes = Uint8List.fromList(utf8.encode(jsonString));
+        final saveUri = await FilePicker.saveFile(
+          dialogTitle: 'Select location to save backup',
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: ['json'],
+          bytes: bytes,
+        );
+        if (saveUri == null) {
+          return null;
+        }
+        targetPath = saveUri.toFilePath();
+      } catch (e) {
+        // Fallback for environments where native saveFile is unmocked or restricted
+        try {
+          final directory = await getApplicationDocumentsDirectory();
+          targetPath = '${directory.path}/$fileName';
+        } catch (_) {
+          targetPath = fileName;
+        }
+      }
+    }
+
+    if (targetPath.isEmpty) {
+      return null;
+    }
+
+    if (!targetPath.endsWith('.json')) {
+      targetPath = '$targetPath.json';
+    }
+
+    final file = File(targetPath);
+    final parent = file.parent;
+    if (!parent.existsSync()) {
+      await parent.create(recursive: true);
+    }
+
+    if (!file.existsSync() || (await file.length()) == 0) {
+      await file.writeAsString(jsonString);
+    }
+    return file;
   }
 
   /// Validates and restores the entire database from a JSON backup string.

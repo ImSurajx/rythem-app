@@ -85,6 +85,13 @@ class RythemTypography {
     color: RythemColors.textTertiary,
   );
 
+  static TextStyle caption = GoogleFonts.poppins(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.2,
+    color: RythemColors.textTertiary,
+  );
+
   static TextStyle button = GoogleFonts.poppins(
     fontSize: 14,
     fontWeight: FontWeight.w600,

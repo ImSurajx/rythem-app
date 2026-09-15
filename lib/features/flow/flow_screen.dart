@@ -9,6 +9,7 @@ import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/utils/resource_launcher.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
+import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
 import 'widgets/backlog_decision_sheet.dart';
@@ -36,6 +37,7 @@ class FlowScreen extends StatefulWidget {
   final VoidCallback? onExploreTracks;
   final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
   final Future<void> Function(RoadmapEntity roadmap, PacingDecision decision)? onApplyPacingDecision;
+  final LocalInferenceService? inferenceService;
 
   const FlowScreen({
     super.key,
@@ -53,6 +55,7 @@ class FlowScreen extends StatefulWidget {
     this.onExploreTracks,
     this.onOpenRoadmapDetail,
     this.onApplyPacingDecision,
+    this.inferenceService,
   });
 
   @override
@@ -263,6 +266,7 @@ class _FlowScreenState extends State<FlowScreen> {
                   roadmap: laggingRoadmap!,
                   pacingBudget: laggingBudget!,
                   allRoadmaps: roadmaps,
+                  inferenceService: widget.inferenceService,
                   onDecisionSelected: (decision) {
                     widget.onApplyPacingDecision?.call(laggingRoadmap!, decision);
                   },

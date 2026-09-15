@@ -123,7 +123,7 @@ class DesignSystemShowcaseScreen extends StatefulWidget {
 }
 
 class _DesignSystemShowcaseScreenState
-    extends State<DesignSystemShowcaseScreen> {
+    extends State<DesignSystemShowcaseScreen> with WidgetsBindingObserver {
   final _roadmapRepo = RoadmapRepository();
   final _chapterRepo = ChapterRepository();
   final _beatRepo = BeatRepository();
@@ -180,6 +180,7 @@ class _DesignSystemShowcaseScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _eventSubscription = DatabaseEventBus.instance.stream.listen((event) {
       _loadDatabaseState();
     });
@@ -188,12 +189,21 @@ class _DesignSystemShowcaseScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _eventSubscription?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_modelDownloadManager.resumePendingDownload());
+    }
+  }
+
   Future<void> _initDatabaseAndSeed() async {
     try {
+      unawaited(_modelDownloadManager.resumePendingDownload());
       final active = await _roadmapRepo.getActiveRoadmaps();
       if (active.isEmpty) {
         await _seedSampleData();
@@ -419,14 +429,21 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _handleDownloadModel(ModelTier tier) async {
     HapticFeedback.mediumImpact();
-    _showToast('Downloading ${ModelInfo.forTier(tier).displayName} from GitHub Release...');
+    _showToast('Downloading ${ModelInfo.forTier(tier).displayName}...');
     try {
       await _modelDownloadManager.downloadModel(tier);
       await _loadModelStatus();
       _showToast('${ModelInfo.forTier(tier).displayName} ready & activated!');
     } catch (e) {
       if (mounted) {
-        _showToast('Download interrupted: $e');
+        GlassErrorDialog.show(
+          context,
+          title: 'Model Download Interrupted',
+          message:
+              'Failed to download ${ModelInfo.forTier(tier).displayName}. Partial progress is preserved and can resume automatically.',
+          details: e.toString(),
+          onRetry: () => _handleDownloadModel(tier),
+        );
       }
       await _loadModelStatus();
     }
@@ -876,6 +893,7 @@ class _DesignSystemShowcaseScreenState
         await _pacingService.applyPacingDecision(roadmap.id, decision);
         await _loadDatabaseState();
       },
+      inferenceService: _localInferenceService,
     );
   }
 
@@ -1613,6 +1631,10 @@ class _DesignSystemShowcaseScreenState
     HapticFeedback.mediumImpact();
     try {
       final file = await _backupService.exportToFile();
+      if (file == null) {
+        _showToast('Export cancelled');
+        return;
+      }
       _showToast('Backup saved to ${file.path}');
     } catch (e) {
       _showToast('Export failed: $e');
