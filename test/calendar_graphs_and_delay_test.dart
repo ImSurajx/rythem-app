@@ -102,11 +102,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify Dual Performance Graphs card exists
+      // Verify Unified Performance Graphs card exists with 3 modes
       expect(find.byType(PerformanceGraphsCard), findsOneWidget);
-      expect(find.text('MONTHLY PERFORMANCE'), findsOneWidget);
+      expect(find.text('7-DAY BEAT RHYTHM'), findsOneWidget);
+      expect(find.text('7 Days'), findsOneWidget);
       expect(find.text('Monthly'), findsOneWidget);
       expect(find.text('Lifetime Stars'), findsOneWidget);
+
+      // Verify toggling to Monthly works
+      await tester.tap(find.text('Monthly'));
+      await tester.pumpAndSettle();
+      expect(find.text('MONTHLY PERFORMANCE'), findsOneWidget);
 
       // Verify toggling to Lifetime Stars works
       await tester.tap(find.text('Lifetime Stars'));

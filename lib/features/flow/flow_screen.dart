@@ -14,7 +14,10 @@ import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
 import 'widgets/backlog_decision_sheet.dart';
+import 'widgets/daily_revision_board.dart';
 import '../explore/widgets/chapter_accordion.dart';
+import '../../core/revision/models/revision_item.dart';
+import '../../core/widgets/glass_toast.dart';
 
 /// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
 /// - Today's date & streak indicator
@@ -61,7 +64,14 @@ class FlowScreen extends StatefulWidget {
     this.inferenceService,
     this.delayedBeatIds = const {},
     this.onToggleDelay,
+    this.revisionItems = const [],
+    this.onMarkRevised,
+    this.onFlagForRevision,
   });
+
+  final List<RevisionItem> revisionItems;
+  final ValueChanged<RevisionItem>? onMarkRevised;
+  final ValueChanged<BeatEntity>? onFlagForRevision;
 
   @override
   State<FlowScreen> createState() => _FlowScreenState();
@@ -69,6 +79,7 @@ class FlowScreen extends StatefulWidget {
 
 class _FlowScreenState extends State<FlowScreen> {
   String _selectedTrackFilter = 'all';
+  bool _simulateLagState = false;
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +141,22 @@ class _FlowScreenState extends State<FlowScreen> {
       }
     }
 
+    // Support simulated lag state for immediate testing of Backlog Manager & AI Recalibration
+    if (_simulateLagState && laggingRoadmap == null && roadmaps.isNotEmpty) {
+      laggingRoadmap = roadmaps.first;
+      laggingBudget = const PacingBudget(
+        roadmapId: 'simulated_lag',
+        todayEffortShare: 3.5,
+        todaysSelectedEffort: 3.5,
+        remainingEffort: 18.0,
+        daysLeft: 10,
+        todaysBeats: [],
+        isSustainedLag: true,
+        shortfallDebt: 4.5,
+        lagStreakDays: 3,
+      );
+    }
+
     final topPadding = MediaQuery.of(context).padding.top;
 
     return SingleChildScrollView(
@@ -138,53 +165,130 @@ class _FlowScreenState extends State<FlowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Date & Roadmap Selector
+          // Header: Date, Tracks & Delay / Lag Simulator Tester
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                formattedDate,
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              if (roadmaps.length > 1)
-                GestureDetector(
-                  onTap: widget.onSwitchRoadmap,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.black.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.swap_horiz, size: 14, color: themeColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Tracks (${roadmaps.length})',
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 10,
-                            color: themeColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
+              Expanded(
+                child: Text(
+                  formattedDate,
+                  overflow: TextOverflow.ellipsis,
+                  style: RythemTypography.labelSmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 1-Click Lag / Backlog Simulator Test Pill
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _simulateLagState = !_simulateLagState;
+                      });
+                      if (_simulateLagState) {
+                        showGlassToast(
+                          context,
+                          'Simulating Fall Behind lag. Backlog banner active.',
+                          icon: Icons.warning_amber_rounded,
+                          accentColor: Colors.amber,
+                        );
+                      } else {
+                        showGlassToast(
+                          context,
+                          'Lag simulation cleared.',
+                          icon: Icons.check_circle_outline_rounded,
+                        );
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _simulateLagState
+                            ? Colors.amber.withOpacity(isDark ? 0.22 : 0.15)
+                            : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _simulateLagState
+                              ? Colors.amber.withOpacity(isDark ? 0.5 : 0.4)
+                              : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _simulateLagState ? Icons.bolt : Icons.tune_rounded,
+                            size: 13,
+                            color: _simulateLagState ? Colors.amber : themeColors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _simulateLagState ? 'SIMULATING LAG' : 'TEST BACKLOG',
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                              color: _simulateLagState ? Colors.amber : themeColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (roadmaps.length > 1)
+                    GestureDetector(
+                      onTap: widget.onSwitchRoadmap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.swap_horiz, size: 14, color: themeColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Tracks (${roadmaps.length})',
+                              style: RythemTypography.labelSmall.copyWith(
+                                fontSize: 10,
+                                color: themeColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
+
+          // Top-of-Flow Daily Revision Board (just after Date header)
+          DailyRevisionBoard(
+            revisionItems: widget.revisionItems,
+            onMarkRevised: (item) => widget.onMarkRevised?.call(item),
+            inferenceService: widget.inferenceService ?? LocalInferenceService(),
+            themeColors: themeColors,
+            isDark: isDark,
+          ),
 
           // Title & Streak
           Row(
@@ -277,6 +381,14 @@ class _FlowScreenState extends State<FlowScreen> {
                   allRoadmaps: roadmaps,
                   inferenceService: widget.inferenceService,
                   onDecisionSelected: (decision) {
+                    if (_simulateLagState) {
+                      setState(() => _simulateLagState = false);
+                      showGlassToast(
+                        context,
+                        'Pacing recalibrated! Backlog resolved.',
+                        icon: Icons.auto_awesome_rounded,
+                      );
+                    }
                     widget.onApplyPacingDecision?.call(laggingRoadmap!, decision);
                   },
                 );

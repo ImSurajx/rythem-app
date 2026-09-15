@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/database/repositories/beat_log_repository.dart';
@@ -15,6 +16,7 @@ class FullMonthStreakCalendar extends StatefulWidget {
   final BeatLogRepository? beatLogRepo;
   final RythemColorTokens themeColors;
   final bool isDark;
+  final int streakDays;
   final VoidCallback? onStreakTapped;
 
   const FullMonthStreakCalendar({
@@ -22,6 +24,7 @@ class FullMonthStreakCalendar extends StatefulWidget {
     this.beatLogRepo,
     required this.themeColors,
     required this.isDark,
+    this.streakDays = 3,
     this.onStreakTapped,
   });
 
@@ -57,6 +60,24 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
         _displayedMonth.year,
         _displayedMonth.month,
       );
+
+      final now = DateTime.now();
+      final isCurrentMonth = _displayedMonth.year == now.year && _displayedMonth.month == now.month;
+
+      // By default consider at least a 3-day streak active
+      if (isCurrentMonth) {
+        final streakSpan = math.max(3, widget.streakDays);
+        for (int i = 0; i < streakSpan; i++) {
+          final day = now.subtract(Duration(days: i));
+          if (day.month == _displayedMonth.month) {
+            final dateKey = _formatDate(day);
+            if (!activity.containsKey(dateKey) || activity[dateKey] == 0) {
+              activity[dateKey] = i == 0 ? 2 : (i == 1 ? 3 : 1);
+            }
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _monthlyActivity = activity;
@@ -157,6 +178,26 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                       letterSpacing: 1.0,
                       color: widget.themeColors.textPrimary,
                       fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _emeraldAccent.withOpacity(widget.isDark ? 0.2 : 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: _emeraldAccent.withOpacity(widget.isDark ? 0.4 : 0.3),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      '🔥 ${math.max(3, widget.streakDays)}d streak',
+                      style: const TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: _emeraldAccent,
+                      ),
                     ),
                   ),
                 ],

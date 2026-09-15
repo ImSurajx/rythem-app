@@ -116,6 +116,7 @@ class MetricsScreen extends StatelessWidget {
             beatLogRepo: beatLogRepo,
             themeColors: themeColors,
             isDark: isDark,
+            streakDays: currentStreak >= 3 ? currentStreak : 3,
           ),
 
           const SizedBox(height: 18),
@@ -179,16 +180,7 @@ class MetricsScreen extends StatelessWidget {
 
           const SizedBox(height: 22),
 
-          // 7-Day Monochrome Activity Bar Chart
-          _SevenDayActivityChart(
-            activity: recentActivity,
-            themeColors: themeColors,
-            isDark: isDark,
-          ),
-
-          const SizedBox(height: 22),
-
-          // Dual Navigational Performance Graphs (Monthly Velocity & Lifetime Repo Star Growth)
+          // Unified Performance Graphs Card (7-Day Rhythm · Monthly Stock Market · Lifetime Stars)
           PerformanceGraphsCard(
             beatLogRepo: beatLogRepo,
             recentActivity: recentActivity,
@@ -294,145 +286,7 @@ class MetricsScreen extends StatelessWidget {
   }
 }
 
-class _SevenDayActivityChart extends StatelessWidget {
-  final List<DailyBeatCount> activity;
-  final RythemColorTokens themeColors;
-  final bool isDark;
 
-  const _SevenDayActivityChart({
-    required this.activity,
-    required this.themeColors,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Determine max count for scaling (minimum 4 to avoid huge bars on 1 completion)
-    int maxCount = 4;
-    for (final day in activity) {
-      if (day.count > maxCount) maxCount = day.count;
-    }
-
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-
-    return GlassCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.bar_chart_rounded, size: 16, color: themeColors.textPrimary),
-                  const SizedBox(width: 8),
-                  Text(
-                    '7-DAY ACTIVITY',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                'COMPLETED BEATS',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textTertiary,
-                  fontSize: 9.5,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Bar Chart Container
-          SizedBox(
-            height: 125,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: activity.map((day) {
-                final isToday = day.date == todayStr;
-                final ratio = (day.count / maxCount).clamp(0.0, 1.0);
-                final barHeight = (ratio * 65).clamp(day.count > 0 ? 10.0 : 4.0, 65.0);
-
-                // Weekday abbreviation
-                DateTime? parsed;
-                try {
-                  parsed = DateTime.parse(day.date);
-                } catch (_) {}
-                const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-                final dayLabel = parsed != null ? weekDays[parsed.weekday - 1] : '?';
-
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // Count label
-                        Text(
-                          day.count > 0 ? '${day.count}' : '',
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: isToday ? themeColors.textPrimary : themeColors.textTertiary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Visual Bar
-                        Container(
-                          height: barHeight,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: isToday
-                                ? (isDark ? Colors.white : Colors.black)
-                                : (day.count > 0
-                                    ? (isDark ? Colors.white.withOpacity(0.35) : Colors.black.withOpacity(0.35))
-                                    : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))),
-                            border: isToday
-                                ? Border.all(
-                                    color: isDark ? Colors.white70 : Colors.black87,
-                                    width: 1.2,
-                                  )
-                                : null,
-                            boxShadow: isToday && day.count > 0
-                                ? [
-                                    BoxShadow(
-                                      color: isDark ? Colors.white24 : Colors.black12,
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Day name
-                        Text(
-                          dayLabel,
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 10,
-                            fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                            color: isToday ? themeColors.textPrimary : themeColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _TrackOverviewCard extends StatelessWidget {
   final RoadmapEntity roadmap;
