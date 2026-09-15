@@ -184,12 +184,21 @@ class _DesignSystemShowcaseScreenState
     _eventSubscription = DatabaseEventBus.instance.stream.listen((event) {
       _loadDatabaseState();
     });
+    _modelDownloadManager.downloadProgressNotifier.addListener(_onModelDownloadUpdated);
     _initDatabaseAndSeed();
+  }
+
+  void _onModelDownloadUpdated() {
+    final p = _modelDownloadManager.downloadProgressNotifier.value;
+    if (p != null && p.isCompleted) {
+      _loadModelStatus();
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _modelDownloadManager.downloadProgressNotifier.removeListener(_onModelDownloadUpdated);
     _eventSubscription?.cancel();
     super.dispose();
   }
@@ -892,6 +901,16 @@ class _DesignSystemShowcaseScreenState
       onApplyPacingDecision: (roadmap, decision) async {
         await _pacingService.applyPacingDecision(roadmap.id, decision);
         await _loadDatabaseState();
+        if (mounted) {
+          final label = decision.type == PacingDecisionType.extendTargetDate
+              ? 'Timeline extended by ${decision.extensionDays ?? 7} days'
+              : (decision.type == PacingDecisionType.trimToCore
+                  ? 'Deferred mentor extras to focus on core'
+                  : (decision.type == PacingDecisionType.borrowSlack
+                      ? 'Rebalanced pace across tracks'
+                      : 'Pace accepted — rhythm preserved'));
+          _showToast('Recalibrated: $label');
+        }
       },
       inferenceService: _localInferenceService,
     );
@@ -1635,7 +1654,8 @@ class _DesignSystemShowcaseScreenState
         _showToast('Export cancelled');
         return;
       }
-      _showToast('Backup saved to ${file.path}');
+      final name = file.path.split('/').last;
+      _showToast('Backup exported: $name');
     } catch (e) {
       _showToast('Export failed: $e');
     }

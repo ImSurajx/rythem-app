@@ -14,16 +14,19 @@ class PacingService {
   final BeatRepository _beatRepo;
   final BeatLogRepository _beatLogRepo;
   final AppSettingsRepository _settingsRepo;
+  final DatabaseEventBus _eventBus;
 
   PacingService({
     RoadmapRepository? roadmapRepo,
     BeatRepository? beatRepo,
     BeatLogRepository? beatLogRepo,
     AppSettingsRepository? settingsRepo,
+    DatabaseEventBus? eventBus,
   })  : _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
         _beatRepo = beatRepo ?? BeatRepository(),
         _beatLogRepo = beatLogRepo ?? BeatLogRepository(),
-        _settingsRepo = settingsRepo ?? AppSettingsRepository();
+        _settingsRepo = settingsRepo ?? AppSettingsRepository(),
+        _eventBus = eventBus ?? DatabaseEventBus.instance;
 
   /// Computes today's pacing budget for [roadmapId].
   /// 
@@ -165,11 +168,20 @@ class PacingService {
         break;
 
       case PacingDecisionType.trimToCore:
-        // In mentor-extras condition, flags or defers extra beats to lower priority
+        // Lower effort weight of non-completed mentor extra beats to ease cognitive load
+        final allBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
+        final pendingMentorExtras = allBeats.where((b) => b.isMentorExtra && !b.isCompleted);
+        for (final b in pendingMentorExtras) {
+          await _beatRepo.updateBeatEffortWeight(b.id, 0.0);
+        }
         debugPrint('Applied PacingDecision: trimmed track focus to core beats.');
         break;
 
       case PacingDecisionType.borrowSlack:
+        // Extend target date by 4 days to absorb borrowed slack across tracks
+        final baseDate = roadmap.targetCompletionDate ?? DateTime.now();
+        final newTarget = baseDate.add(const Duration(days: 4));
+        await _roadmapRepo.updateRoadmapTargetDate(roadmapId, newTarget);
         debugPrint('Applied PacingDecision: borrowed slack from ${decision.borrowFromRoadmapId}.');
         break;
 
@@ -177,6 +189,16 @@ class PacingService {
         debugPrint('Applied PacingDecision: accepted current pace without alterations.');
         break;
     }
+
+    // Save recalibration timestamp so past shortfall days don't penalize the user
+    await _settingsRepo.setSetting('last_recalibrated_$roadmapId', DateTime.now().toIso8601String());
+
+    // Emit event to update UI and stream listeners
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.roadmapUpdated,
+      entityId: roadmapId,
+      roadmapId: roadmapId,
+    ));
   }
 
   Future<WeeklyStudySchedule> _getWeeklySchedule() async {
@@ -192,17 +214,46 @@ class PacingService {
   }
 
   /// Collects daily completed effort and target records across the past 7 completed days (yesterday backwards).
+  /// Excludes days prior to roadmap creation and days on/prior to user's last recalibration.
   Future<List<DailyPacingRecord>> _getRecentDailyRecords(
     String roadmapId,
     DateTime currentDay,
     WeeklyStudySchedule schedule,
     double baseDailyBudget,
   ) async {
+    final roadmap = await _roadmapRepo.getRoadmapById(roadmapId);
+    if (roadmap == null) return [];
+
+    final trackStart = DateTime(roadmap.createdAt.year, roadmap.createdAt.month, roadmap.createdAt.day);
+
+    DateTime? recalibratedDate;
+    try {
+      final recalibratedStr = await _settingsRepo.getSetting('last_recalibrated_$roadmapId');
+      if (recalibratedStr != null && recalibratedStr.isNotEmpty) {
+        final parsed = DateTime.tryParse(recalibratedStr);
+        if (parsed != null) {
+          recalibratedDate = DateTime(parsed.year, parsed.month, parsed.day);
+        }
+      }
+    } catch (_) {}
+
     final records = <DailyPacingRecord>[];
 
     // Evaluate strictly past completed days: i = 1 (yesterday) to 7 (7 days ago)
     for (int i = 1; i <= 7; i++) {
       final date = currentDay.subtract(Duration(days: i));
+      final dayNormalized = DateTime(date.year, date.month, date.day);
+
+      // Never count days before the roadmap was created!
+      if (dayNormalized.isBefore(trackStart)) {
+        continue;
+      }
+
+      // If user recalibrated, skip days on or prior to the recalibration date!
+      if (recalibratedDate != null && !dayNormalized.isAfter(recalibratedDate)) {
+        continue;
+      }
+
       final dateStr =
           '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       final logs = await _beatLogRepo.getLogsForRoadmapOnDate(roadmapId, dateStr);

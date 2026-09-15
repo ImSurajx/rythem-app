@@ -166,7 +166,11 @@ class ModelDownloadManager {
     if (_downloadingTier != null) return;
     final pendingTier = await getPendingDownloadTier();
     if (pendingTier != null) {
-      await downloadModel(pendingTier, onProgress: onProgress);
+      try {
+        await downloadModel(pendingTier, onProgress: onProgress);
+      } catch (e) {
+        debugPrint('Notice: Background model resume interrupted: $e');
+      }
     }
   }
 
@@ -188,6 +192,14 @@ class ModelDownloadManager {
     _downloadingTier = tier;
     final downloadClient = _client;
     _activeDownloadClient = downloadClient;
+
+    // Reset progress and clear any previous errors
+    downloadProgressNotifier.value = DownloadProgress(
+      tier: tier,
+      progress: 0.0,
+      receivedBytes: 0,
+      totalBytes: info.sizeBytes,
+    );
 
     IOSink? sink;
     try {
