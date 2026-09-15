@@ -607,18 +607,6 @@ class _DesignSystemShowcaseScreenState
     _showToast('Active engine: ${ModelInfo.forTier(tier).displayName}');
   }
 
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   void _switchRoadmap(RoadmapEntity rm) {
     setState(() {
       _roadmapId = rm.id;

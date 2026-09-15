@@ -1069,13 +1069,20 @@ class _FlowStreakCalendar extends StatelessWidget {
                     width: 0.8,
                   ),
                 ),
-                child: Text(
-                  '🔥 $streakDays day${streakDays == 1 ? '' : 's'} active',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: _emeraldAccent,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 10)),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$streakDays day${streakDays == 1 ? '' : 's'} active',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _emeraldAccent,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

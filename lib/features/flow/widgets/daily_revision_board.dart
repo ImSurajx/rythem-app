@@ -5,7 +5,6 @@ import '../../../core/ai/services/local_inference_service.dart';
 import '../../../core/revision/models/revision_item.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
-import '../../../core/widgets/glass_card.dart';
 import '../../../core/widgets/markdown_content_view.dart';
 
 /// Top-of-Flow Daily Revision Board powered by mathematical spaced repetition
