@@ -83,11 +83,11 @@ void main() {
       // Step 3 -> Step 4
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(find.text('SET YOUR INITIAL RHYTHM'), findsOneWidget);
+      expect(find.text('SET YOUR WEEKLY RHYTHM'), findsOneWidget);
       expect(find.text('Enter Daily Flow'), findsOneWidget);
 
-      // Select 14 Days option
-      await tester.tap(find.text('Accelerated (14 Days)'));
+      // Select Accelerated Rhythm option
+      await tester.tap(find.text('Accelerated Rhythm'));
       await tester.pumpAndSettle();
 
       // Finish Onboarding
@@ -102,13 +102,13 @@ void main() {
       expect(finishedCalled, isTrue);
 
       String? hasCompleted;
-      String? targetDays;
+      String? schedule;
       await tester.runAsync(() async {
         hasCompleted = await settingsRepo.getSetting('has_completed_onboarding');
-        targetDays = await settingsRepo.getSetting('initial_target_days');
+        schedule = await settingsRepo.getSetting('study_intensity_schedule');
       });
       expect(hasCompleted, 'true');
-      expect(targetDays, '14');
+      expect(schedule, isNotNull);
     });
 
     testWidgets('skip button completes onboarding immediately', (tester) async {
