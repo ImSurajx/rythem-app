@@ -6,6 +6,7 @@ import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
+import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'confusing_beat_dialog.dart';
 
 /// Focus Mode screen adhering to `docs/design.md` §3:
@@ -132,15 +133,10 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
         );
       } else {
         // All beats finished
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF222222),
-            content: Text(
-              'All chapter beats complete! Returning to Flow...',
-              style: RythemTypography.bodySmall.copyWith(color: Colors.white),
-            ),
-            duration: const Duration(milliseconds: 1500),
-          ),
+        showGlassToast(
+          context,
+          'All chapter beats complete! Returning to Flow...',
+          icon: Icons.check_circle_outline_rounded,
         );
         Future.delayed(const Duration(milliseconds: 600), () {
           if (mounted) Navigator.of(context).pop();

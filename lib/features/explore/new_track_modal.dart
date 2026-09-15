@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
+import 'package:rythem_app/core/widgets/glass_toast.dart';
 
 /// Modal to create a new curriculum track adhering to `docs/design.md` §4
 class NewTrackModal extends StatefulWidget {
@@ -94,11 +95,10 @@ class _NewTrackModalState extends State<NewTrackModal> {
             _syllabusController.text = content!;
           });
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Loaded "${file.name}" from storage'),
-                duration: const Duration(seconds: 2),
-              ),
+            showGlassToast(
+              context,
+              'Loaded "${file.name}" from storage',
+              icon: Icons.folder_open_rounded,
             );
           }
         }
@@ -106,8 +106,11 @@ class _NewTrackModalState extends State<NewTrackModal> {
     } catch (e) {
       debugPrint('Error picking syllabus file: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open file: $e')),
+        showGlassToast(
+          context,
+          'Could not open file: $e',
+          icon: Icons.error_outline_rounded,
+          accentColor: Colors.redAccent,
         );
       }
     }
@@ -122,20 +125,18 @@ class _NewTrackModalState extends State<NewTrackModal> {
         _syllabusController.text = data.text!;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pasted syllabus from clipboard'),
-            duration: Duration(seconds: 2),
-          ),
+        showGlassToast(
+          context,
+          'Pasted syllabus from clipboard',
+          icon: Icons.content_paste_rounded,
         );
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Clipboard is empty'),
-            duration: Duration(seconds: 2),
-          ),
+        showGlassToast(
+          context,
+          'Clipboard is empty',
+          icon: Icons.info_outline_rounded,
         );
       }
     }
@@ -207,8 +208,10 @@ class _NewTrackModalState extends State<NewTrackModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a track title')),
+      showGlassToast(
+        context,
+        'Please enter a track title',
+        icon: Icons.info_outline_rounded,
       );
       return;
     }
@@ -238,8 +241,11 @@ class _NewTrackModalState extends State<NewTrackModal> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating track: $e')),
+        showGlassToast(
+          context,
+          'Error creating track: $e',
+          icon: Icons.error_outline_rounded,
+          accentColor: Colors.redAccent,
         );
       }
     }

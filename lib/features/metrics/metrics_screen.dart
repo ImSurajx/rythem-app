@@ -180,7 +180,7 @@ class MetricsScreen extends StatelessWidget {
 
           const SizedBox(height: 22),
 
-          // Unified Performance Graphs Card (7-Day Rhythm · Monthly Stock Market · Lifetime Stars)
+          // Unified Performance Graphs Card (7-Day Rhythm · Monthly Stock Market · Lifetime Beats)
           PerformanceGraphsCard(
             beatLogRepo: beatLogRepo,
             recentActivity: recentActivity,

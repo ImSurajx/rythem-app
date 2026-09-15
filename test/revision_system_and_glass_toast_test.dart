@@ -206,8 +206,9 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       final breakdownButton = find.text('Quick Breakdown from AI Mentor');
       await tester.tap(breakdownButton);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 1300));
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.textContaining('AI Mentor Concept Breakdown'), findsOneWidget);
     });

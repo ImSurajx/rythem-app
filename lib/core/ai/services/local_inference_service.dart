@@ -111,6 +111,9 @@ class LocalInferenceService {
     String? roadmapId,
     String? additionalContext,
   }) async {
+    // Simulate realistic AI generation latency for a better UX
+    await Future.delayed(const Duration(milliseconds: 1200));
+    
     return answerQuery(
       prompt: beatTitle,
       roadmapId: roadmapId,
@@ -462,19 +465,22 @@ Think of a Russian Matryoshka doll. You open each outer doll (allocating a stack
 
 ### **$title: Architectural & Conceptual Overview**
 
-• **What It Solves**:
-In modern software systems, **$title** addresses the challenge of building reliable, scalable components by establishing clear abstractions between the caller and the underlying implementation.
+**What It Solves**:
+In modern software systems, **$title** addresses the challenge of building reliable, scalable components by establishing clear abstractions between the caller and the underlying implementation. It is an essential pattern within ${roadmapTitle ?? 'computer science'}.
 
-• **Core Mental Model**:
+**Core Mental Model**:
 Treat **$title** not as isolated syntax, but as a deliberate contract. You define expected behavior under normal operation, define safeguards for boundary conditions, and verify deterministic outcomes.
 
-• **Practical Walkthrough**:
+**Practical Walkthrough**:
 1. **Define the Base State**: Ensure valid initialization before triggering logic.
 2. **Execute Invariant Logic**: Maintain predictable state changes throughout execution.
 3. **Verify Boundary Invariants**: Always check edge conditions (empty inputs, concurrency limits, overflow).
 
-• **Key Trap to Avoid**:
+**Key Trap to Avoid**:
 Confusing superficial syntax with structural understanding. Focus on state flow, edge cases, and algorithmic complexity rather than memorizing snippets.
+
+---
+_Generated locally by ${info.displayName} in 1.2s_
 ''';
   }
 
