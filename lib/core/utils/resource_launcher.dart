@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
+import '../widgets/glass_toast.dart';
 
 /// Central utility for opening learning resources directly per design spec:
 /// - YouTube links open directly in YouTube / external browser
@@ -114,33 +115,7 @@ class ResourceLauncher {
   }
 
   static void _showSubtleNotice(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: RythemTypography.bodySmall.copyWith(
-            color: isDark ? Colors.white : Colors.black,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 1800),
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        backgroundColor: isDark ? const Color(0xE61C1D22) : const Color(0xE6F2F3F7),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
-            width: 0.8,
-          ),
-        ),
-      ),
-    );
+    showGlassToast(context, message, icon: Icons.info_outline_rounded);
   }
 
   static Future<void> _showResourcePickerSheet(

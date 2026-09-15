@@ -91,7 +91,8 @@ void main() {
       expect(find.text('1'), findsWidgets); // 1 completed beat
       expect(find.text('STREAK'), findsOneWidget);
       expect(find.text('5 d'), findsOneWidget);
-      expect(find.text('7-DAY ACTIVITY'), findsOneWidget);
+      expect(find.text('7-DAY BEAT RHYTHM'), findsOneWidget);
+      expect(find.text('7 Days'), findsOneWidget);
       expect(find.text('Neural Networks'), findsOneWidget);
     });
 

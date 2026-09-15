@@ -15,6 +15,7 @@ import 'package:rythem_app/core/utils/resource_launcher.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
+import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 import 'package:rythem_app/features/flow/session_detail_screen.dart';
 import 'widgets/chapter_accordion.dart';
@@ -135,13 +136,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     );
     await _beatRepo.updateBeat(updated);
     if (mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Confirmed: "${beat.title}" linked to ${beat.syllabusTopicId}'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
+      showGlassToast(
+        context,
+        'Confirmed: "${beat.title}" linked to ${beat.syllabusTopicId}',
+        icon: Icons.link_rounded,
       );
       await _reloadFromDb();
     }
@@ -157,13 +155,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     );
     await _beatRepo.updateBeat(updated);
     if (mounted) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Marked "${beat.title}" as Mentor Extra'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
+      showGlassToast(
+        context,
+        'Marked "${beat.title}" as Mentor Extra',
+        icon: Icons.psychology_outlined,
       );
       await _reloadFromDb();
     }
@@ -327,11 +322,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                 if (url.isNotEmpty) {
                                   Navigator.pop(dialogCtx);
                                   setState(() => _isAttaching = true);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Extracting playlist and running AI audit...'),
-                                      duration: Duration(seconds: 3),
-                                    ),
+                                  showGlassToast(
+                                    context,
+                                    'Extracting playlist and running AI audit...',
+                                    icon: Icons.sync_rounded,
                                   );
                                   try {
                                     await widget.onAttachResource?.call(
@@ -344,22 +338,20 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                       final targetCh = _currentChapters
                                           .where((c) => c.id == selectedChapterId)
                                           .firstOrNull;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Attached playlist to ${targetCh?.title ?? "Subject"}! AI audit complete.',
-                                          ),
-                                          duration: const Duration(seconds: 4),
-                                        ),
+                                      showGlassToast(
+                                        context,
+                                        'Attached playlist to ${targetCh?.title ?? "Subject"}! AI audit complete.',
+                                        icon: Icons.check_circle_outline_rounded,
+                                        accentColor: const Color(0xFF10B981),
                                       );
                                     }
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Failed to attach resource: $e'),
-                                          duration: const Duration(seconds: 3),
-                                        ),
+                                      showGlassToast(
+                                        context,
+                                        'Failed to attach resource: $e',
+                                        icon: Icons.error_outline_rounded,
+                                        accentColor: Colors.redAccent,
                                       );
                                     }
                                   } finally {
@@ -488,11 +480,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                             _currentBeats[idx] = _currentBeats[idx].copyWith(sourceUrl: url);
                           }
                         });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Attached resource to "${beat.title}"'),
-                            duration: const Duration(seconds: 2),
-                          ),
+                        showGlassToast(
+                          context,
+                          'Attached resource to "${beat.title}"',
+                          icon: Icons.link_rounded,
                         );
                       }
                     },

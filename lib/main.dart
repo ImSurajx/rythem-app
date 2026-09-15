@@ -19,6 +19,8 @@ import 'features/metrics/metrics_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
 import 'core/backup/services/backup_service.dart';
 import 'core/pacing/models/study_intensity.dart';
+import 'core/revision/models/revision_item.dart';
+import 'core/revision/services/revision_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -152,6 +154,8 @@ class _DesignSystemShowcaseScreenState
     pacingService: _pacingService,
   );
   LocalInferenceService get inferenceService => _localInferenceService;
+  late final _revisionService = RevisionService(settingsRepo: _appSettingsRepo);
+  List<RevisionItem> _revisionItems = [];
 
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
@@ -205,6 +209,40 @@ class _DesignSystemShowcaseScreenState
       setState(() {
         _delayedBeatIds = updated;
       });
+    }
+  }
+
+  Future<void> _handleMarkRevised(RevisionItem item) async {
+    final beat = _beatsByRoadmap[item.roadmapId]?.firstWhere(
+      (b) => b.id == item.beatId,
+      orElse: () => BeatEntity(
+        id: item.beatId,
+        chapterId: '',
+        roadmapId: item.roadmapId,
+        title: item.title,
+        effortWeight: 1.0,
+        sortOrder: 0,
+        isCompleted: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    if (beat != null) {
+      await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
+      _showToast(
+        'Revised "${item.title}"! Retention interval updated.',
+        icon: Icons.check_circle_outline_rounded,
+        accentColor: const Color(0xFF10B981),
+      );
+      final updated = await _revisionService.getDailyRevisionRecommendations(
+        roadmaps: _allRoadmaps,
+        beatsByRoadmap: _beatsByRoadmap,
+      );
+      if (mounted) {
+        setState(() {
+          _revisionItems = updated;
+        });
+      }
     }
   }
 
@@ -379,6 +417,14 @@ class _DesignSystemShowcaseScreenState
 
     await _beatRepo.createBeatsBatch(sampleBeats);
     await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(['beat_delayed_sample']));
+
+    // Pre-seed sample flagged weak concept for the Revision System
+    await _revisionService.flagTopicForRevision(
+      beat: sampleBeats[1],
+      roadmapTitle: _roadmapTitle,
+      note: 'Chain rule across multidimensional weight tensors',
+      isWeak: true,
+    );
   }
 
   Future<void> _loadDatabaseState() async {
@@ -484,6 +530,10 @@ class _DesignSystemShowcaseScreenState
     }
 
     final finalBeats = beatsByRoadmap[_roadmapId] ?? [];
+    final revisionItems = await _revisionService.getDailyRevisionRecommendations(
+      roadmaps: allRoadmaps,
+      beatsByRoadmap: beatsByRoadmap,
+    );
 
     if (mounted) {
       setState(() {
@@ -498,6 +548,7 @@ class _DesignSystemShowcaseScreenState
         _pacingBudget = budget;
         _weeklySchedule = weeklySchedule;
         _delayedBeatIds = delayedBeatIds;
+        _revisionItems = revisionItems;
       });
     }
     await _loadModelStatus();
@@ -875,20 +926,8 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  void _showToast(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-        backgroundColor: const Color(0xFF1E1E1E),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+  void _showToast(String message, {IconData? icon, Color? accentColor}) {
+    showGlassToast(context, message, icon: icon, accentColor: accentColor);
   }
 
   @override
@@ -982,6 +1021,8 @@ class _DesignSystemShowcaseScreenState
       onBeatToggled: _setBeatCompletion,
       delayedBeatIds: _delayedBeatIds,
       onToggleDelay: _handleToggleBeatDelay,
+      revisionItems: _revisionItems,
+      onMarkRevised: _handleMarkRevised,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onApplyPacingDecision: (roadmap, decision) async {
@@ -1080,8 +1121,8 @@ class _DesignSystemShowcaseScreenState
         updatedAt: DateTime.now(),
       );
       await _beatRepo.createBeat(beat);
+      await _loadDatabaseState();
     }
-    await _loadDatabaseState();
   }
 
   Future<void> _handleArchiveRoadmap(RoadmapEntity roadmap) async {
@@ -1103,11 +1144,11 @@ class _DesignSystemShowcaseScreenState
     }
     await _loadDatabaseState();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Deleted "${roadmap.title}"'),
-          duration: const Duration(seconds: 2),
-        ),
+      showGlassToast(
+        context,
+        'Deleted "${roadmap.title}"',
+        icon: Icons.delete_outline_rounded,
+        accentColor: Colors.redAccent,
       );
     }
   }

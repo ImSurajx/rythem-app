@@ -6,6 +6,7 @@ import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
+import 'package:rythem_app/core/widgets/markdown_content_view.dart';
 
 /// Non-punitive dialog to flag confusion or an obstacle on a beat per `docs/design.md` §2.
 /// Allows the user to record friction without penalty, guilt, or breaking streaks.
@@ -198,6 +199,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(12),
+                          constraints: const BoxConstraints(maxHeight: 220),
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
                             borderRadius: BorderRadius.circular(12),
@@ -205,12 +207,11 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                               color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
                             ),
                           ),
-                          child: Text(
-                            _aiExplanation!,
-                            style: RythemTypography.bodySmall.copyWith(
-                              color: themeColors.textPrimary,
-                              fontSize: 11,
-                              height: 1.4,
+                          child: SingleChildScrollView(
+                            child: MarkdownContentView(
+                              content: _aiExplanation!,
+                              isDark: isDark,
+                              themeColors: themeColors,
                             ),
                           ),
                         ),
