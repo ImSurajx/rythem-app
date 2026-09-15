@@ -771,38 +771,54 @@ class _TrackTodoListCard extends StatelessWidget {
                     return a.sortOrder.compareTo(b.sortOrder);
                   });
 
-                // Find active chapter with unfinished beats
-                String? activeChapterId;
-                for (final ch in chapters) {
-                  final hasIncomplete = sortedAllBeats.any((b) => b.chapterId == ch.id && !b.isCompleted);
-                  if (hasIncomplete) {
-                    activeChapterId = ch.id;
-                    break;
-                  }
+                // 1. Calculate today's target effort share
+                final incompleteBeats = sortedAllBeats.where((b) => !b.isCompleted).toList();
+                final remainingEffort = PacingCalculator.calculateRemainingEffort(incompleteBeats);
+                final daysLeft = roadmap.targetCompletionDate != null
+                    ? PacingCalculator.calculateDaysLeft(roadmap.targetCompletionDate!)
+                    : 30;
+                final dailyTargetEffort = pacingBudget != null && pacingBudget!.todayEffortShare > 0
+                    ? pacingBudget!.todayEffortShare
+                    : PacingCalculator.calculateDailyEffortShare(
+                        remainingEffort: remainingEffort,
+                        daysLeft: daysLeft,
+                      );
+
+                // 2. Measure completed effort today
+                double completedEffortToday = 0.0;
+                for (final b in completedToday) {
+                  completedEffortToday += b.effortWeight;
                 }
 
-                // Sequential queue from the active chapter first
-                final pendingFromActive = sortedAllBeats
-                    .where((b) => !b.isCompleted && (activeChapterId == null || b.chapterId == activeChapterId))
-                    .take(3)
-                    .toList();
-                final remainingCount = 3 - pendingFromActive.length;
-                final pendingNext = remainingCount > 0
-                    ? sortedAllBeats
-                        .where((b) => !b.isCompleted && b.chapterId != activeChapterId)
-                        .take(remainingCount)
-                        .toList()
-                    : <BeatEntity>[];
-                final pendingBeats = [...pendingFromActive, ...pendingNext];
+                // 3. Walk pending queue to automatically fulfill remaining effort budget for today
+                final remainingBudget = (dailyTargetEffort - completedEffortToday).clamp(0.0, dailyTargetEffort);
+                List<BeatEntity> pendingForToday;
+                if (pacingBudget != null && pacingBudget!.todaysBeats.isNotEmpty) {
+                  // Use the mathematically selected pending beats for today's effort
+                  final todayBeatIds = pacingBudget!.todaysBeats.map((b) => b.id).toSet();
+                  pendingForToday = incompleteBeats.where((b) => todayBeatIds.contains(b.id)).toList();
+                  if (pendingForToday.isEmpty && completedToday.isEmpty && incompleteBeats.isNotEmpty) {
+                    pendingForToday = PacingCalculator.walkQueueToFillBudget(
+                      pendingBeats: incompleteBeats,
+                      targetBudget: dailyTargetEffort > 0 ? dailyTargetEffort : 1.0,
+                    );
+                  }
+                } else {
+                  final target = remainingBudget > 0 ? remainingBudget : (dailyTargetEffort > 0 ? dailyTargetEffort : 1.0);
+                  pendingForToday = PacingCalculator.walkQueueToFillBudget(
+                    pendingBeats: incompleteBeats,
+                    targetBudget: target,
+                  );
+                }
 
                 final seenIds = <String>{};
                 final flowBeats = <BeatEntity>[];
                 final delayedBeats = sortedAllBeats.where((b) => !b.isCompleted && delayedBeatIds.contains(b.id)).toList();
-                for (final b in [...delayedBeats, ...completedToday, ...pendingBeats]) {
+                for (final b in [...delayedBeats, ...completedToday, ...pendingForToday]) {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
                 if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty) {
-                  flowBeats.addAll(sortedAllBeats.take(3));
+                  flowBeats.addAll(sortedAllBeats.take(1));
                 }
 
                 return Column(
