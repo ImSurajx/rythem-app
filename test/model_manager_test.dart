@@ -111,6 +111,57 @@ void main() {
       expect(await manager.isModelDownloaded(ModelTier.compact), isFalse);
       expect(await manager.getActiveTier(), ModelTier.fallback);
     });
+
+    test('Singleton returns identical instance when constructed without parameters', () {
+      final a = ModelDownloadManager();
+      final b = ModelDownloadManager();
+      expect(identical(a, b), isTrue);
+      expect(identical(a, ModelDownloadManager.instance), isTrue);
+    });
+
+    test('clearDownloadError clears error in progress notifier', () {
+      final manager = ModelDownloadManager(
+        settingsRepo: settingsRepo,
+        overrideModelsDir: tempDir.path,
+      );
+
+      manager.downloadProgressNotifier.value = const DownloadProgress(
+        tier: ModelTier.compact,
+        receivedBytes: 100,
+        totalBytes: 1000,
+        progress: 0.1,
+        isCompleted: false,
+        error: 'Network disconnected',
+      );
+      expect(manager.downloadProgressNotifier.value?.error, 'Network disconnected');
+
+      manager.clearDownloadError();
+      expect(manager.downloadProgressNotifier.value?.error, isNull);
+    });
+
+    test('getActiveTier automatically promotes from fallback to downloaded tier', () async {
+      // Create a dummy model file for compact tier in tempDir (> 10MB)
+      final compactInfo = ModelInfo.forTier(ModelTier.compact);
+      final modelFile = File('${tempDir.path}/${compactInfo.filename}');
+      final raf = await modelFile.open(mode: FileMode.write);
+      await raf.truncate(15 * 1024 * 1024);
+      await raf.close();
+
+      // Active tier in DB is fallback
+      await settingsRepo.setSetting('active_model_tier', ModelTier.fallback.name);
+
+      final manager = ModelDownloadManager(
+        settingsRepo: settingsRepo,
+        overrideModelsDir: tempDir.path,
+      );
+
+      // Should automatically detect compact model and activate it
+      final active = await manager.getActiveTier();
+      expect(active, ModelTier.compact);
+
+      final savedSetting = await settingsRepo.getSetting('active_model_tier');
+      expect(savedSetting, ModelTier.compact.name);
+    });
   });
 
   group('LocalInferenceService', () {

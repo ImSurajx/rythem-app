@@ -31,6 +31,44 @@ class DownloadProgress {
 
 class ModelDownloadManager {
   static const String _prefActiveModelTierKey = 'active_model_tier';
+  static const String _prefPreferredModelTierKey = 'preferred_model_tier';
+
+  static ModelDownloadManager? _sharedInstance;
+  static ModelDownloadManager get instance =>
+      _sharedInstance ??= ModelDownloadManager._internal();
+
+  factory ModelDownloadManager({
+    AppSettingsRepository? settingsRepo,
+    http.Client? client,
+    String? overrideModelsDir,
+  }) {
+    if (settingsRepo != null || client != null || overrideModelsDir != null) {
+      return ModelDownloadManager._custom(
+        settingsRepo: settingsRepo,
+        client: client,
+        overrideModelsDir: overrideModelsDir,
+      );
+    }
+    return instance;
+  }
+
+  ModelDownloadManager._internal()
+      : _settingsRepo = AppSettingsRepository(),
+        _client = http.Client(),
+        _overrideModelsDir = null;
+
+  ModelDownloadManager._custom({
+    AppSettingsRepository? settingsRepo,
+    http.Client? client,
+    String? overrideModelsDir,
+  })  : _settingsRepo = settingsRepo ?? AppSettingsRepository(),
+        _client = client ?? http.Client(),
+        _overrideModelsDir = overrideModelsDir;
+
+  @visibleForTesting
+  static void resetInstance() {
+    _sharedInstance = null;
+  }
 
   final AppSettingsRepository _settingsRepo;
   final http.Client _client;
@@ -41,13 +79,12 @@ class ModelDownloadManager {
   final ValueNotifier<DownloadProgress?> downloadProgressNotifier =
       ValueNotifier<DownloadProgress?>(null);
 
-  ModelDownloadManager({
-    AppSettingsRepository? settingsRepo,
-    http.Client? client,
-    String? overrideModelsDir,
-  })  : _settingsRepo = settingsRepo ?? AppSettingsRepository(),
-        _client = client ?? http.Client(),
-        _overrideModelsDir = overrideModelsDir;
+  void clearDownloadError() {
+    final current = downloadProgressNotifier.value;
+    if (current != null && current.error != null) {
+      downloadProgressNotifier.value = null;
+    }
+  }
 
   @visibleForTesting
   void setOverrideModelsDir(String? dir) {
@@ -107,14 +144,40 @@ class ModelDownloadManager {
 
   Future<ModelTier> getActiveTier() async {
     final raw = await _settingsRepo.getSetting(_prefActiveModelTierKey);
-    final tier = ModelInfo.fromString(raw).tier;
+    var tier = ModelInfo.fromString(raw).tier;
+
+    // If active tier is fallback, check if a preferred model or any downloaded model exists on device
     if (tier == ModelTier.fallback) {
+      final preferredRaw = await _settingsRepo.getSetting(_prefPreferredModelTierKey);
+      final preferredTier = ModelInfo.fromString(preferredRaw).tier;
+      if (preferredTier != ModelTier.fallback && await isModelDownloaded(preferredTier)) {
+        await setActiveTier(preferredTier);
+        return preferredTier;
+      }
+      if (await isModelDownloaded(ModelTier.balanced)) {
+        await setActiveTier(ModelTier.balanced);
+        return ModelTier.balanced;
+      }
+      if (await isModelDownloaded(ModelTier.compact)) {
+        await setActiveTier(ModelTier.compact);
+        return ModelTier.compact;
+      }
       return ModelTier.fallback;
     }
+
     // Verify file exists on device
     final downloaded = await isModelDownloaded(tier);
     if (!downloaded) {
-      await setActiveTier(ModelTier.fallback);
+      // Check if another downloaded model exists before reverting to fallback
+      if (tier != ModelTier.balanced && await isModelDownloaded(ModelTier.balanced)) {
+        await setActiveTier(ModelTier.balanced);
+        return ModelTier.balanced;
+      }
+      if (tier != ModelTier.compact && await isModelDownloaded(ModelTier.compact)) {
+        await setActiveTier(ModelTier.compact);
+        return ModelTier.compact;
+      }
+      await _settingsRepo.setSetting(_prefActiveModelTierKey, ModelTier.fallback.name);
       return ModelTier.fallback;
     }
     return tier;
@@ -170,6 +233,7 @@ class ModelDownloadManager {
         await downloadModel(pendingTier, onProgress: onProgress);
       } catch (e) {
         debugPrint('Notice: Background model resume interrupted: $e');
+        clearDownloadError();
       }
     }
   }
@@ -270,20 +334,29 @@ class ModelDownloadManager {
       }
 
       int lastCheckpointBytes = receivedBytes;
+      int lastDispatchedBytes = receivedBytes;
+      DateTime lastDispatchTime = DateTime.now();
 
       await for (final chunk in response.stream) {
         sink.add(chunk);
         receivedBytes += chunk.length;
         final progress = totalBytes > 0 ? (receivedBytes / totalBytes).clamp(0.0, 1.0) : 0.0;
 
-        final update = DownloadProgress(
-          tier: tier,
-          progress: progress,
-          receivedBytes: receivedBytes,
-          totalBytes: totalBytes,
-        );
-        downloadProgressNotifier.value = update;
-        onProgress?.call(update);
+        final now = DateTime.now();
+        // Throttle dispatch to UI to every ~80ms or 256KB so Flutter UI doesn't choke or freeze
+        if (now.difference(lastDispatchTime).inMilliseconds >= 80 ||
+            (receivedBytes - lastDispatchedBytes) >= 256 * 1024) {
+          lastDispatchTime = now;
+          lastDispatchedBytes = receivedBytes;
+          final update = DownloadProgress(
+            tier: tier,
+            progress: progress,
+            receivedBytes: receivedBytes,
+            totalBytes: totalBytes,
+          );
+          downloadProgressNotifier.value = update;
+          onProgress?.call(update);
+        }
 
         // Checkpoint periodically to survive background suspension / crash
         if (receivedBytes - lastCheckpointBytes > 2 * 1024 * 1024) {
@@ -307,6 +380,10 @@ class ModelDownloadManager {
       await _settingsRepo.removeSetting(_prefPendingTierKey);
       await _settingsRepo.removeSetting(_prefPendingBytesKey);
 
+      // Automatically set as active tier and preferred tier upon first successful download
+      await setActiveTier(tier);
+      await _settingsRepo.setSetting(_prefPreferredModelTierKey, tier.name);
+
       final completedUpdate = DownloadProgress(
         tier: tier,
         progress: 1.0,
@@ -316,9 +393,6 @@ class ModelDownloadManager {
       );
       downloadProgressNotifier.value = completedUpdate;
       onProgress?.call(completedUpdate);
-
-      // Automatically set as active tier upon first successful download
-      await setActiveTier(tier);
     } catch (e) {
       if (sink != null) {
         try {

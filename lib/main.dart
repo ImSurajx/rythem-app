@@ -295,6 +295,11 @@ class _DesignSystemShowcaseScreenState
     final p = _modelDownloadManager.downloadProgressNotifier.value;
     if (p != null && p.isCompleted) {
       _loadModelStatus();
+      if (mounted) {
+        _showToast('${ModelInfo.forTier(p.tier).displayName} activated!');
+      }
+    } else if (mounted) {
+      setState(() {});
     }
   }
 
@@ -309,13 +314,17 @@ class _DesignSystemShowcaseScreenState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_modelDownloadManager.resumePendingDownload());
+      unawaited(_modelDownloadManager.resumePendingDownload().then((_) {
+        if (mounted) _loadModelStatus();
+      }));
     }
   }
 
   Future<void> _initDatabaseAndSeed() async {
     try {
-      unawaited(_modelDownloadManager.resumePendingDownload());
+      unawaited(_modelDownloadManager.resumePendingDownload().then((_) {
+        if (mounted) _loadModelStatus();
+      }));
       final active = await _roadmapRepo.getActiveRoadmaps();
       if (active.isEmpty) {
         await _seedSampleData();
@@ -612,6 +621,7 @@ class _DesignSystemShowcaseScreenState
   }
 
   Future<void> _handleDownloadModel(ModelTier tier) async {
+    _modelDownloadManager.clearDownloadError();
     HapticFeedback.mediumImpact();
     _showToast('Downloading ${ModelInfo.forTier(tier).displayName}...');
     try {
@@ -626,7 +636,13 @@ class _DesignSystemShowcaseScreenState
           message:
               'Failed to download ${ModelInfo.forTier(tier).displayName}. Partial progress is preserved and can resume automatically.',
           details: e.toString(),
-          onRetry: () => _handleDownloadModel(tier),
+          onRetry: () {
+            _modelDownloadManager.clearDownloadError();
+            _handleDownloadModel(tier);
+          },
+          onDismiss: () {
+            _modelDownloadManager.clearDownloadError();
+          },
         );
       }
       await _loadModelStatus();
@@ -1058,6 +1074,13 @@ class _DesignSystemShowcaseScreenState
 
   Widget _buildSettingsTab(RythemThemeColors themeColors, bool isDark) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final currentDownload = _modelDownloadManager.downloadProgressNotifier.value;
+    final isCompactDownloading = currentDownload?.tier == ModelTier.compact &&
+        !(currentDownload?.isCompleted ?? true) &&
+        currentDownload?.error == null;
+    final isBalancedDownloading = currentDownload?.tier == ModelTier.balanced &&
+        !(currentDownload?.isCompleted ?? true) &&
+        currentDownload?.error == null;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -1248,20 +1271,22 @@ class _DesignSystemShowcaseScreenState
                   info: ModelInfo.compact,
                   isDownloaded: _compactDownloaded,
                   isActive: _activeModelTier == ModelTier.compact,
+                  isDownloading: isCompactDownloading,
                   themeColors: themeColors,
                   isDark: isDark,
                   onSelect: () => _handleSelectActiveModel(ModelTier.compact),
-                  onDownload: () => _handleDownloadModel(ModelTier.compact),
+                  onDownload: isCompactDownloading ? null : () => _handleDownloadModel(ModelTier.compact),
                   onDelete: () => _handleDeleteModel(ModelTier.compact),
                 ),
                 _buildModelOptionTile(
                   info: ModelInfo.balanced,
                   isDownloaded: _balancedDownloaded,
                   isActive: _activeModelTier == ModelTier.balanced,
+                  isDownloading: isBalancedDownloading,
                   themeColors: themeColors,
                   isDark: isDark,
                   onSelect: () => _handleSelectActiveModel(ModelTier.balanced),
-                  onDownload: () => _handleDownloadModel(ModelTier.balanced),
+                  onDownload: isBalancedDownloading ? null : () => _handleDownloadModel(ModelTier.balanced),
                   onDelete: () => _handleDeleteModel(ModelTier.balanced),
                 ),
               ],
@@ -1672,6 +1697,7 @@ class _DesignSystemShowcaseScreenState
     required ModelInfo info,
     required bool isDownloaded,
     required bool isActive,
+    bool isDownloading = false,
     required RythemThemeColors themeColors,
     required bool isDark,
     required VoidCallback onSelect,
@@ -1700,7 +1726,9 @@ class _DesignSystemShowcaseScreenState
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: (info.tier == ModelTier.fallback || isDownloaded) ? onSelect : onDownload,
+                onTap: (info.tier == ModelTier.fallback || isDownloaded)
+                    ? onSelect
+                    : (isDownloading ? null : onDownload),
                 child: Icon(
                   isActive
                       ? Icons.radio_button_checked
@@ -1746,7 +1774,19 @@ class _DesignSystemShowcaseScreenState
               ),
               if (info.tier != ModelTier.fallback) ...[
                 const SizedBox(width: 10),
-                if (!isDownloaded)
+                if (isDownloading)
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                      ),
+                    ),
+                  )
+                else if (!isDownloaded)
                   GestureDetector(
                     onTap: onDownload,
                     behavior: HitTestBehavior.opaque,

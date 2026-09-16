@@ -70,6 +70,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   bool _isErrorDialogShowing = false;
+  String? _lastDismissedError;
 
   void _onDownloadProgress() {
     final progress = _modelManager.downloadProgressNotifier.value;
@@ -100,7 +101,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   void _showDownloadErrorDialog(String title, String message, String details, VoidCallback onRetry) {
-    if (!mounted || _isErrorDialogShowing) return;
+    if (!mounted || _isErrorDialogShowing || _lastDismissedError == details) return;
     _isErrorDialogShowing = true;
     GlassErrorDialog.show(
       context,
@@ -109,9 +110,13 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
       details: details,
       onDismiss: () {
         _isErrorDialogShowing = false;
+        _lastDismissedError = details;
+        _modelManager.clearDownloadError();
       },
       onRetry: () {
         _isErrorDialogShowing = false;
+        _lastDismissedError = null;
+        _modelManager.clearDownloadError();
         onRetry();
       },
     );
@@ -120,6 +125,8 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   void _startDownload(ModelTier tier) {
     HapticFeedback.mediumImpact();
     setState(() => _selectedModelTier = tier);
+    _lastDismissedError = null;
+    _modelManager.clearDownloadError();
 
     _modelManager.downloadModel(tier).catchError((e) {
       debugPrint('Onboarding model download failed: $e');
@@ -168,6 +175,9 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
       };
       await _settingsRepo.setSetting('study_intensity_schedule', schedule.encode());
       await _settingsRepo.setSetting('preferred_model_tier', _selectedModelTier.name);
+      if (_compactDownloaded || _balancedDownloaded) {
+        await _settingsRepo.setSetting('active_model_tier', _selectedModelTier.name);
+      }
 
       // 2. Seed initial starter track if requested
       if (widget.onSeedDemoTrack != null) {
@@ -614,7 +624,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                         ),
                       ),
                       Text(
-                        'Background & app-close download enabled',
+                        'Auto-resumes if paused',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
@@ -633,7 +643,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Background download resilient: safe to minimize or close app anytime.',
+                    'Download pauses safely if app is closed and resumes automatically. Keep app open for fastest download.',
                     style: RythemTypography.caption.copyWith(
                       color: themeColors.textTertiary,
                       fontSize: 11,
