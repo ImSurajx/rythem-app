@@ -247,21 +247,11 @@ Contributions are warmly welcome! To maintain software quality and release relia
 
 ## 📄 License
 
-This project is licensed under the PolyForm Noncommercial License 1.0.0 - see the [LICENSE](LICENSE) file for details.
+Distributed under the PolyForm Noncommercial License 1.0.0. See [LICENSE](LICENSE) for details.
 
 ---
 
-## 🔍 SEO & Search Discovery Overview
-
-<!-- SEO Meta Description: Local-first milestone study tracker, pacing OS, syllabus progress planner, habit streak calendar, spaced repetition revision, and offline AI learning assistant. -->
-
-**Rythem** is an open-source, local-first **learning operating system**, **study pacing tracker**, and **curriculum planner** engineered for self-directed learners, students, developers, and researchers. Unlike conventional study timers and pomodoro stopwatches, Rythem uses **milestone-driven pacing** and **dynamic dilution** to calculate realistic daily study quotas without stress or toxic overdue banners. Features include:
-
-- **Syllabus & Course Tracker**: Import academic syllabi, textbook tables of contents, and exam outlines in Markdown format.
-- **YouTube Playlist Course Ingestion**: Batch convert 100+ to 230+ video playlists into structured chapters and trackable learning beats.
-- **Milestone Habit Streak Calendar**: Track daily consistency with GitHub-style contribution heat maps and honest streak counting.
-- **Offline On-Device AI Mentor**: Local Small Language Model (SLM) intelligence with zero telemetry or subscription fees.
-- **Spaced Repetition & Revision System**: Forgetting curve memory retention recommendations with active recall prompts.
-- **Stock-Market Learning Velocity Graph**: Interactive financial-style momentum line charts tracking daily learning trends.
-- **100% Air-Gapped Local Storage**: Secure SQLite database with full JSON export, backup, and restore capabilities.
+<div align="center">
+Built with care for self-directed learners everywhere.
+</div>
 
