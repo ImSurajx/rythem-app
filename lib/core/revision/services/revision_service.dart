@@ -142,7 +142,7 @@ class RevisionService {
     return null;
   }
 
-  /// Calculates mathematically prioritized revision suggestions for today across all trackers.
+  /// Calculates AI-First + Mathematically governed revision suggestions for today across all trackers.
   Future<List<RevisionItem>> getDailyRevisionRecommendations({
     required List<RoadmapEntity> roadmaps,
     required Map<String, List<BeatEntity>> beatsByRoadmap,
@@ -159,7 +159,30 @@ class RevisionService {
     final List<RevisionItem> completedTodayItems = [];
     final roadmapMap = {for (final r in roadmaps) r.id: r.title};
 
-    // Evaluate all completed beats and explicitly flagged beats
+    // 1. AI-First Analysis Stage:
+    // Gather all completed past beats and weak concept notes across roadmaps
+    final allCompletedBeats = <BeatEntity>[];
+    for (final beats in beatsByRoadmap.values) {
+      allCompletedBeats.addAll(beats.where((b) => b.isCompleted));
+    }
+
+    final weakNotes = <String, String>{};
+    for (final entry in _records.entries) {
+      if (entry.value.flagNote != null && entry.value.flagNote!.isNotEmpty) {
+        weakNotes[entry.key] = entry.value.flagNote!;
+      }
+    }
+
+    final aiService = inferenceService ?? LocalInferenceService();
+    final aiEvaluations = await aiService.rankRevisionCandidatesAI(
+      upcomingFocusBeats: upcomingFocusBeats ?? [],
+      completedCandidates: allCompletedBeats,
+      weakNotesByBeatId: weakNotes,
+    );
+    final aiEvalMap = {for (final eval in aiEvaluations) eval.beatId: eval};
+
+    // 2. Mathematical Spaced-Repetition Governor Stage:
+    // Evaluate memory decay, stability multipliers, and time elapsed
     for (final entry in beatsByRoadmap.entries) {
       final roadmapId = entry.key;
       final roadmapTitle = roadmapMap[roadmapId] ?? 'Active Tracker';
@@ -173,8 +196,9 @@ class RevisionService {
         // Candidate must be completed OR explicitly flagged
         if (!isCompleted && !isFlagged) continue;
 
-        // Check if revised today (and not flagged weak): retain on board with completed/strike-through state
+        // Check if revised today: retain on board with completed/strikethrough state
         if (!isFlagged && record?.lastRevisedAt != null && record!.lastRevisedAt!.isAfter(todayStart)) {
+          final aiEval = aiEvalMap[beat.id];
           completedTodayItems.add(
             RevisionItem(
               beatId: beat.id,
@@ -190,6 +214,9 @@ class RevisionService {
               suggestedReason: record.revisionCount >= 3
                   ? 'Mastered Concept (Revised Today)'
                   : 'Strengthened (Revised Today)',
+              microRecallPrompt: aiEval?.microRecallPrompt,
+              prerequisiteTargetTitle: aiEval?.prerequisiteForTitle,
+              beatPoints: (aiEval?.isPrerequisite == true || isFlagged) ? 1.0 : 0.5,
               isCompleted: true,
             ),
           );
@@ -199,30 +226,34 @@ class RevisionService {
         // Calculate time elapsed since last revision or completion
         final lastAnchor = record?.lastRevisedAt ?? beat.completedAt ?? beat.updatedAt;
         final daysElapsed = math.max(0.05, today.difference(lastAnchor).inHours / 24.0);
-
         final stability = record?.stabilityDays ?? 1.0;
 
         // Ebbinghaus forgetting curve: R = e^(-t / S)
         final retention = math.exp(-daysElapsed / stability).clamp(0.01, 1.0);
 
-        // Reason determination & contextual suggestion logic
-        String reason;
-        if (isFlagged) {
-          reason = record?.flagNote != null && record!.flagNote!.isNotEmpty
-              ? 'Flagged: "${record.flagNote}"'
-              : 'Flagged topic • Needs review';
-        } else if (daysElapsed >= 14) {
-          reason = 'Studied 2+ weeks ago • Refresh so you don\'t forget';
-        } else if (daysElapsed >= 6) {
-          reason = 'Studied last week • High-impact review';
-        } else if (daysElapsed >= 2.5 || (record != null && !record.isCompleted)) {
-          reason = daysElapsed >= 2.5
-              ? 'Studied ${daysElapsed.round()} days ago • Quick recall'
-              : 'Scheduled Review';
-        } else {
-          // Completed recently (< 2.5 days ago) and not tracked - skip suggesting
+        final aiEval = aiEvalMap[beat.id];
+        final isDirectPrereq = aiEval?.isPrerequisite ?? false;
+
+        // Filter: Must be flagged, low retention (< 0.85), direct prerequisite to today, or spaced >= 2.5 days
+        if (!isFlagged && !isDirectPrereq && retention >= 0.85 && daysElapsed < 2.5 && record?.isCompleted != false) {
           continue;
         }
+
+        final reason = isFlagged
+            ? (record?.flagNote != null && record!.flagNote!.isNotEmpty
+                ? 'Flagged: "${record.flagNote}"'
+                : 'Flagged topic • Needs review')
+            : (aiEval?.contextualReason ??
+                (daysElapsed >= 14
+                    ? 'Studied 2+ weeks ago • Refresh so you don\'t forget'
+                    : (daysElapsed >= 6
+                        ? 'Studied last week • High-impact review'
+                        : 'Studied ${daysElapsed.round()} days ago • Quick recall')));
+
+        final prompt = aiEval?.microRecallPrompt ??
+            'Memory Refresh: 30-second mental recap of "${beat.title}".';
+
+        final points = (isDirectPrereq || isFlagged) ? 1.0 : 0.5;
 
         candidates.add(
           RevisionItem(
@@ -237,6 +268,9 @@ class RevisionService {
             stabilityDays: stability,
             retentionScore: retention,
             suggestedReason: reason,
+            microRecallPrompt: prompt,
+            prerequisiteTargetTitle: aiEval?.prerequisiteForTitle,
+            beatPoints: points,
             isCompleted: false,
           ),
         );
@@ -244,97 +278,35 @@ class RevisionService {
     }
 
     if (candidates.isEmpty && completedTodayItems.isEmpty) {
-      // If no older candidates exist, check if user has recently completed beats to consolidate
-      final recentlyCompletedBeats = <RevisionItem>[];
-      for (final entry in beatsByRoadmap.entries) {
-        final rmTitle = roadmapMap[entry.key] ?? 'Active Tracker';
-        for (final beat in entry.value) {
-          if (beat.isCompleted) {
-            recentlyCompletedBeats.add(
-              RevisionItem(
-                beatId: beat.id,
-                roadmapId: entry.key,
-                roadmapTitle: rmTitle,
-                title: beat.title,
-                isFlaggedWeak: false,
-                lastRevisedAt: null,
-                revisionCount: 0,
-                stabilityDays: 1.0,
-                retentionScore: 0.80,
-                suggestedReason: 'Recently completed • Early recall practice',
-                isCompleted: false,
-              ),
-            );
-            if (recentlyCompletedBeats.length >= 2) break;
-          }
-        }
-        if (recentlyCompletedBeats.length >= 2) break;
-      }
-      return recentlyCompletedBeats;
+      return [];
     }
 
-    // Sort candidates by urgency score:
-    // 1. Flagged weak gets highest priority (+2.5)
-    // 2. Lower retention / older recall decay gets priority
+    // 3. Unified AI-First + Mathematical Ranking:
+    // AI semantic prerequisite score is the primary driver (weight 3.5),
+    // boosted by flagged weaknesses (+2.5) and memory decay (+2.0)
     candidates.sort((a, b) {
-      double scoreA = (a.isFlaggedWeak ? 2.5 : 0.0) + (1.0 - a.retentionScore) * 2.0 + (0.4 / (a.revisionCount + 1));
-      double scoreB = (b.isFlaggedWeak ? 2.5 : 0.0) + (1.0 - b.retentionScore) * 2.0 + (0.4 / (b.revisionCount + 1));
+      final aiA = aiEvalMap[a.beatId]?.aiScore ?? 0.2;
+      final aiB = aiEvalMap[b.beatId]?.aiScore ?? 0.2;
+
+      final scoreA = (aiA * 3.5) +
+          (a.isFlaggedWeak ? 2.5 : 0.0) +
+          (1.0 - a.retentionScore) * 2.0 +
+          (0.4 / (a.revisionCount + 1));
+
+      final scoreB = (aiB * 3.5) +
+          (b.isFlaggedWeak ? 2.5 : 0.0) +
+          (1.0 - b.retentionScore) * 2.0 +
+          (0.4 / (b.revisionCount + 1));
+
       return scoreB.compareTo(scoreA);
     });
 
-    // Only return items that actually need review (flagged OR retention < 0.85 OR daysElapsed >= stability)
-    final filtered = candidates.where((item) {
-      if (item.isFlaggedWeak) return true;
-      if (item.retentionScore < 0.85) return true;
-      final lastDate = item.lastRevisedAt;
-      if (lastDate == null) return true; // never revised yet
-      return today.difference(lastDate).inHours >= 18; // spaced
-    }).toList();
-
-    // AI Semantic Prerequisite Bridging:
-    // Connect past completed topics to today's upcoming focus beats
-    if (inferenceService != null &&
-        upcomingFocusBeats != null &&
-        upcomingFocusBeats.isNotEmpty &&
-        filtered.isNotEmpty) {
-      final allCandidateBeats = <BeatEntity>[];
-      for (final beats in beatsByRoadmap.values) {
-        allCandidateBeats.addAll(beats);
-      }
-      final candidateBeatMap = {for (final b in allCandidateBeats) b.id: b};
-      final candidateEntities = filtered
-          .map((item) => candidateBeatMap[item.beatId])
-          .whereType<BeatEntity>()
-          .toList();
-
-      final aiPrereq = await inferenceService.analyzePrerequisiteRevision(
-        upcomingFocusBeats: upcomingFocusBeats,
-        completedCandidates: candidateEntities,
-      );
-
-      if (aiPrereq != null) {
-        final matchIdx = filtered.indexWhere((i) => i.beatId == aiPrereq.recommendedBeatId);
-        if (matchIdx != -1) {
-          final matchedItem = filtered.removeAt(matchIdx);
-          filtered.insert(
-            0,
-            matchedItem.copyWith(
-              suggestedReason: aiPrereq.contextualReason,
-              microRecallPrompt: aiPrereq.microRecallPrompt,
-              prerequisiteTargetTitle: aiPrereq.prerequisiteForTitle,
-              beatPoints: 1.0,
-            ),
-          );
-        }
-      }
-    }
-
-    // Maths Guardrail: Dynamic Energy Budgeting
-    // Heavy study load today (>= 2.5 effort units) -> strictly 1 quick-recall topic (5 mins)
-    // Light study load today (< 2.5 effort units) -> 2 topics max (10-12 mins)
+    // 4. Mathematical Guardrails: Dynamic Energy Budget
+    // Heavy study day (>= 2.5 effort units) -> strictly 1 topic (5 mins max)
+    // Light study day (< 2.5 effort units) -> max 2 topics (10 mins max)
     final maxSuggestions = (todayEffortBudget != null && todayEffortBudget >= 2.5) ? 1 : 2;
     final remainingSlots = math.max(0, maxSuggestions - completedTodayItems.length);
-    final pendingToTake = filtered.take(remainingSlots).toList();
+    final pendingToTake = candidates.take(remainingSlots).toList();
 
     return [...completedTodayItems, ...pendingToTake];
   }

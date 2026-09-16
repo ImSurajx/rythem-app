@@ -720,8 +720,8 @@ _Generated locally by ${info.displayName} in 1.2s_
     double bestScore = -1.0;
     String matchedKeyword = '';
 
-    // Domain synergy map for deep conceptual prerequisites
     const conceptSynergies = {
+      // Neural & Math
       'weight': ['gradient', 'calculus', 'backpropagation', 'loss', 'activation'],
       'initialization': ['variance', 'distribution', 'activation', 'gradient'],
       'normalization': ['distribution', 'activation', 'variance', 'mean'],
@@ -732,6 +732,13 @@ _Generated locally by ${info.displayName} in 1.2s_
       'residual': ['gradient', 'vanishing', 'depth', 'activation'],
       'vector': ['linear', 'matrix', 'space', 'dot'],
       'derivative': ['calculus', 'limit', 'tangent'],
+      // DSA & CS Foundations
+      'recursion': ['stack', 'base', 'induction', 'function'],
+      'tree': ['recursion', 'node', 'pointer', 'traversal', 'binary'],
+      'graph': ['tree', 'dfs', 'bfs', 'queue', 'matrix'],
+      'dynamic': ['recursion', 'memoization', 'array', 'subproblem'],
+      'sorting': ['array', 'comparison', 'partition', 'merge'],
+      'search': ['binary', 'sorted', 'array', 'hash'],
     };
 
     for (final candidate in completedCandidates) {
@@ -789,6 +796,143 @@ _Generated locally by ${info.displayName} in 1.2s_
       microRecallPrompt: prompt,
     );
   }
+
+  /// AI-First Revision Ranking:
+  /// Evaluates completed past topics against today's upcoming study targets,
+  /// weak concept annotations, and domain prerequisite graphs.
+  /// Operates on-device with zero network latency, whether the LLM is downloading or active.
+  Future<List<AiRevisionEvaluation>> rankRevisionCandidatesAI({
+    required List<BeatEntity> upcomingFocusBeats,
+    required List<BeatEntity> completedCandidates,
+    Map<String, String>? weakNotesByBeatId,
+  }) async {
+    final results = <AiRevisionEvaluation>[];
+    if (completedCandidates.isEmpty) return results;
+
+    // Aggregate tokens and topics from today's upcoming focus beats
+    final focusTokens = <String>{};
+    for (final beat in upcomingFocusBeats) {
+      final tokens = beat.title
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^\w\s]'), ' ')
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2);
+      focusTokens.addAll(tokens);
+    }
+
+    final primaryFocusTitle = upcomingFocusBeats.isNotEmpty
+        ? upcomingFocusBeats.first.title
+        : 'today\'s focus';
+
+    const conceptSynergies = {
+      'weight': ['gradient', 'calculus', 'backpropagation', 'loss', 'activation'],
+      'initialization': ['variance', 'distribution', 'activation', 'gradient'],
+      'normalization': ['distribution', 'activation', 'variance', 'mean'],
+      'backpropagation': ['calculus', 'chain', 'derivative', 'gradient', 'vector'],
+      'attention': ['vector', 'matrix', 'dot', 'embedding', 'softmax'],
+      'transformer': ['attention', 'residual', 'normalization', 'embedding'],
+      'loss': ['gradient', 'calculus', 'convex', 'surface'],
+      'residual': ['gradient', 'vanishing', 'depth', 'activation'],
+      'vector': ['linear', 'matrix', 'space', 'dot'],
+      'derivative': ['calculus', 'limit', 'tangent'],
+      'recursion': ['stack', 'base', 'induction', 'function'],
+      'tree': ['recursion', 'node', 'pointer', 'traversal', 'binary'],
+      'graph': ['tree', 'dfs', 'bfs', 'queue', 'matrix'],
+      'dynamic': ['recursion', 'memoization', 'array', 'subproblem'],
+      'sorting': ['array', 'comparison', 'partition', 'merge'],
+      'search': ['binary', 'sorted', 'array', 'hash'],
+    };
+
+    for (final candidate in completedCandidates) {
+      final candLower = candidate.title.toLowerCase();
+      final candTokens = candLower
+          .replaceAll(RegExp(r'[^\w\s]'), ' ')
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2)
+          .toSet();
+
+      final weakNote = weakNotesByBeatId?[candidate.id];
+      final isExplicitWeak = weakNote != null;
+
+      // 1. Direct lexical token overlap with today's focus
+      final overlap = focusTokens.intersection(candTokens);
+      double aiScore = overlap.length * 0.25;
+
+      // 2. Semantic synergy graph matching
+      String? matchedSynergyKeyword;
+      for (final focusWord in focusTokens) {
+        final prerequisites = conceptSynergies[focusWord] ?? [];
+        for (final prereq in prerequisites) {
+          if (candLower.contains(prereq)) {
+            aiScore += 0.45;
+            matchedSynergyKeyword = prereq;
+            break;
+          }
+        }
+      }
+
+      // 3. Weak concept boost
+      if (isExplicitWeak) {
+        aiScore += 0.50;
+      }
+
+      aiScore = aiScore.clamp(0.1, 1.0);
+
+      // Contextual reason & micro-recall challenge generation
+      String reason;
+      String prompt;
+
+      if (isExplicitWeak) {
+        reason = weakNote.isNotEmpty
+            ? 'AI Priority: Weak concept ("$weakNote")'
+            : 'AI Priority: Concept flagged for review';
+        prompt = '30-Sec Challenge: Review the core calculation where you previously felt stuck.';
+      } else if (matchedSynergyKeyword != null && upcomingFocusBeats.isNotEmpty) {
+        reason = 'Prerequisite for today\'s "$primaryFocusTitle"';
+        prompt = '30-Sec Warm-up: How does "$matchedSynergyKeyword" in ${candidate.title} connect to $primaryFocusTitle?';
+      } else if (overlap.isNotEmpty && upcomingFocusBeats.isNotEmpty) {
+        reason = 'Foundational concept for today\'s study queue';
+        prompt = 'Quick Check: Can you recall the main formula of "${candidate.title}" before starting today?';
+      } else {
+        reason = 'Spaced memory anchor • Prevents knowledge decay';
+        prompt = 'Memory Refresh: 30-second mental recap of "${candidate.title}".';
+      }
+
+      results.add(
+        AiRevisionEvaluation(
+          beatId: candidate.id,
+          aiScore: aiScore,
+          contextualReason: reason,
+          microRecallPrompt: prompt,
+          prerequisiteForTitle: upcomingFocusBeats.isNotEmpty ? upcomingFocusBeats.first.title : null,
+          isPrerequisite: matchedSynergyKeyword != null || overlap.isNotEmpty,
+        ),
+      );
+    }
+
+    // Sort by AI score descending
+    results.sort((a, b) => b.aiScore.compareTo(a.aiScore));
+    return results;
+  }
+}
+
+/// Structured AI evaluation of a candidate beat for daily revision.
+class AiRevisionEvaluation {
+  final String beatId;
+  final double aiScore;
+  final String contextualReason;
+  final String microRecallPrompt;
+  final String? prerequisiteForTitle;
+  final bool isPrerequisite;
+
+  const AiRevisionEvaluation({
+    required this.beatId,
+    required this.aiScore,
+    required this.contextualReason,
+    required this.microRecallPrompt,
+    this.prerequisiteForTitle,
+    this.isPrerequisite = false,
+  });
 }
 
 /// Result of on-device AI semantic prerequisite analysis for revision.

@@ -113,6 +113,34 @@ class DailyRevisionBoard extends StatelessWidget {
                                     letterSpacing: 0.8,
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withOpacity(isDark ? 0.2 : 0.12),
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(
+                                      color: const Color(0xFF10B981).withOpacity(0.35),
+                                      width: 0.6,
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.auto_awesome, size: 9, color: Color(0xFF10B981)),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        'AI + MATHS',
+                                        style: TextStyle(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF10B981),
+                                          letterSpacing: 0.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                             Container(
@@ -138,7 +166,7 @@ class DailyRevisionBoard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'AI-curated topics based on your study rhythm • 10-min warm-up',
+                          'AI prerequisite bridging + mathematical spaced retention • 10-min warm-up',
                           style: RythemTypography.caption.copyWith(
                             color: themeColors.textTertiary,
                             fontSize: 10,
