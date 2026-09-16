@@ -519,7 +519,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Rythem runs 100% private offline intelligence for mathematical shortfall diagnosis and concept clarity. You must download any one model to continue.',
+            'Rythem runs 100% private offline intelligence for mathematical shortfall diagnosis and concept clarity. Select your mentor — it will download automatically in the background as you begin.',
             style: RythemTypography.bodySmall.copyWith(
               color: themeColors.textSecondary,
               height: 1.45,
@@ -539,7 +539,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             themeColors: themeColors,
             isDark: isDark,
             onSelect: () => setState(() => _selectedModelTier = ModelTier.compact),
-            onDownload: () => _startDownload(ModelTier.compact),
           ),
           const SizedBox(height: 12),
 
@@ -555,7 +554,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             themeColors: themeColors,
             isDark: isDark,
             onSelect: () => setState(() => _selectedModelTier = ModelTier.balanced),
-            onDownload: () => _startDownload(ModelTier.balanced),
           ),
           const SizedBox(height: 16),
 
@@ -669,7 +667,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     required RythemColorTokens themeColors,
     required bool isDark,
     required VoidCallback onSelect,
-    required VoidCallback onDownload,
   }) {
     final isDownloadingThis = _modelManager.downloadingTier == tier;
 
@@ -777,25 +774,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: themeColors.actionPrimary,
-                      ),
-                    ),
-                  ),
-                ] else ...[
-                  GestureDetector(
-                    onTap: onDownload,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: themeColors.actionPrimary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Download',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: themeColors.actionOnPrimary,
-                        ),
                       ),
                     ),
                   ),

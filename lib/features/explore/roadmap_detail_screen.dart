@@ -88,11 +88,25 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     super.dispose();
   }
 
+  final Map<String, bool> _localPendingToggles = {};
+
   Future<void> _reloadFromDb() async {
     try {
       final rm = await _roadmapRepo.getRoadmapById(_currentRoadmap.id);
       final chapters = await _chapterRepo.getChaptersByRoadmapId(_currentRoadmap.id);
-      final beats = await _beatRepo.getBeatsByRoadmapId(_currentRoadmap.id);
+      final rawBeats = await _beatRepo.getBeatsByRoadmapId(_currentRoadmap.id);
+      final beats = rawBeats.map((b) {
+        if (_localPendingToggles.containsKey(b.id)) {
+          final pending = _localPendingToggles[b.id]!;
+          return b.copyWith(
+            isCompleted: pending,
+            completedAt: pending ? (b.completedAt ?? DateTime.now()) : null,
+            clearCompletedAt: !pending,
+          );
+        }
+        return b;
+      }).toList();
+
       if (mounted) {
         setState(() {
           if (rm != null) _currentRoadmap = rm;
@@ -121,6 +135,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   }
 
   Future<void> _handleBeatToggle(BeatEntity beat, bool isCompleted) async {
+    _localPendingToggles[beat.id] = isCompleted;
     final updated = beat.copyWith(isCompleted: isCompleted);
     setState(() {
       final index = _currentBeats.indexWhere((b) => b.id == beat.id);
@@ -128,8 +143,14 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
         _currentBeats[index] = updated;
       }
     });
-    await widget.onBeatToggled(beat, isCompleted);
-    await _reloadFromDb();
+    try {
+      await widget.onBeatToggled(beat, isCompleted);
+    } finally {
+      _localPendingToggles.remove(beat.id);
+      if (mounted) {
+        await _reloadFromDb();
+      }
+    }
   }
 
   Future<void> _handleConfirmMatch(BeatEntity beat) async {

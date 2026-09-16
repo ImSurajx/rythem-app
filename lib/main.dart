@@ -183,6 +183,17 @@ class _DesignSystemShowcaseScreenState
   bool _isLoadingDbState = false;
   bool _hasPendingDbReload = false;
 
+  /// Tracks active in-flight toggles to guarantee SQLite reads never clobber optimistic state
+  final Map<String, bool> _pendingBeatToggles = {};
+  Timer? _debounceReloadTimer;
+
+  void _scheduleDebouncedReload([int delayMs = 120]) {
+    _debounceReloadTimer?.cancel();
+    _debounceReloadTimer = Timer(Duration(milliseconds: delayMs), () {
+      _requestDatabaseReload();
+    });
+  }
+
   Future<void> _requestDatabaseReload() async {
     if (_isLoadingDbState) {
       _hasPendingDbReload = true;
@@ -205,6 +216,8 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _setBeatCompletion(BeatEntity beat, bool isCompleted) {
     // 1. Instant optimistic update so UI is immediately reactive
+    _pendingBeatToggles[beat.id] = isCompleted;
+
     final updatedBeat = beat.copyWith(
       isCompleted: isCompleted,
       completedAt: isCompleted ? DateTime.now() : null,
@@ -234,8 +247,10 @@ class _DesignSystemShowcaseScreenState
           _showToast('Delayed beat completed: "${beat.title}"! 🎉');
         }
       }
-      await _requestDatabaseReload();
+      _pendingBeatToggles.remove(beat.id);
+      _scheduleDebouncedReload(80);
     }).catchError((e) {
+      _pendingBeatToggles.remove(beat.id);
       debugPrint('Error in sequential toggle operation: $e');
     });
 
@@ -374,7 +389,12 @@ class _DesignSystemShowcaseScreenState
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _eventSubscription = DatabaseEventBus.instance.stream.listen((event) {
-      _requestDatabaseReload();
+      if (event.type == DatabaseEventType.beatToggled) {
+        if (_pendingBeatToggles.isNotEmpty) return;
+        _scheduleDebouncedReload(100);
+      } else {
+        _requestDatabaseReload();
+      }
     });
     _modelDownloadManager.downloadProgressNotifier.addListener(_onModelDownloadUpdated);
     _initDatabaseAndSeed();
@@ -394,6 +414,7 @@ class _DesignSystemShowcaseScreenState
 
   @override
   void dispose() {
+    _debounceReloadTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _modelDownloadManager.downloadProgressNotifier.removeListener(_onModelDownloadUpdated);
     _eventSubscription?.cancel();
@@ -590,7 +611,18 @@ class _DesignSystemShowcaseScreenState
 
     for (final rm in allRoadmaps) {
       final chs = await _chapterRepo.getChaptersByRoadmapId(rm.id);
-      final bts = await _beatRepo.getBeatsByRoadmapId(rm.id);
+      final rawBts = await _beatRepo.getBeatsByRoadmapId(rm.id);
+      final bts = rawBts.map((b) {
+        if (_pendingBeatToggles.containsKey(b.id)) {
+          final pending = _pendingBeatToggles[b.id]!;
+          return b.copyWith(
+            isCompleted: pending,
+            completedAt: pending ? (b.completedAt ?? DateTime.now()) : null,
+            clearCompletedAt: !pending,
+          );
+        }
+        return b;
+      }).toList();
       chaptersByRoadmap[rm.id] = chs;
       beatsByRoadmap[rm.id] = bts;
 
