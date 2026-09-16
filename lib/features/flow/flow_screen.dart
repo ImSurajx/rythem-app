@@ -172,7 +172,9 @@ class _FlowScreenState extends State<FlowScreen> {
               revisionCount: 1,
               stabilityDays: 2.2,
               retentionScore: 0.65,
-              suggestedReason: 'Studied 3 days ago • Quick recall',
+              suggestedReason: 'Prerequisite for today\'s focus • Quick recall',
+              microRecallPrompt: '30-Sec Warm-up: Can you explain the core mechanism before starting today?',
+              beatPoints: 1.0,
               isCompleted: false,
             ),
             RevisionItem(
@@ -187,6 +189,8 @@ class _FlowScreenState extends State<FlowScreen> {
               stabilityDays: 1.0,
               retentionScore: 0.40,
               suggestedReason: 'Flagged topic • High-impact review',
+              microRecallPrompt: '30-Sec Recall: Review the derivation step you previously flagged.',
+              beatPoints: 1.0,
               isCompleted: false,
             ),
             if (simBeats.length > 2)
@@ -201,6 +205,8 @@ class _FlowScreenState extends State<FlowScreen> {
                 stabilityDays: 5.0,
                 retentionScore: 0.35,
                 suggestedReason: "Studied 2+ weeks ago • Refresh so you don't forget",
+                microRecallPrompt: 'Memory Refresh: 30-second mental recap of "${simBeats[2].title}".',
+                beatPoints: 0.5,
                 isCompleted: false,
               ),
           ]

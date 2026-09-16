@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import '../../ai/services/local_inference_service.dart';
 import '../../database/models/beat_entity.dart';
 import '../../database/models/roadmap_entity.dart';
 import '../../database/repositories/app_settings_repository.dart';
@@ -143,6 +144,9 @@ class RevisionService {
   Future<List<RevisionItem>> getDailyRevisionRecommendations({
     required List<RoadmapEntity> roadmaps,
     required Map<String, List<BeatEntity>> beatsByRoadmap,
+    List<BeatEntity>? upcomingFocusBeats,
+    double? todayEffortBudget,
+    LocalInferenceService? inferenceService,
     DateTime? referenceDate,
   }) async {
     await init();
@@ -283,8 +287,48 @@ class RevisionService {
       return today.difference(lastDate).inHours >= 18; // spaced
     }).toList();
 
-    // Suggest at most 2-3 focused topics across all tracks
-    const maxSuggestions = 3;
+    // AI Semantic Prerequisite Bridging:
+    // Connect past completed topics to today's upcoming focus beats
+    if (inferenceService != null &&
+        upcomingFocusBeats != null &&
+        upcomingFocusBeats.isNotEmpty &&
+        filtered.isNotEmpty) {
+      final allCandidateBeats = <BeatEntity>[];
+      for (final beats in beatsByRoadmap.values) {
+        allCandidateBeats.addAll(beats);
+      }
+      final candidateBeatMap = {for (final b in allCandidateBeats) b.id: b};
+      final candidateEntities = filtered
+          .map((item) => candidateBeatMap[item.beatId])
+          .whereType<BeatEntity>()
+          .toList();
+
+      final aiPrereq = await inferenceService.analyzePrerequisiteRevision(
+        upcomingFocusBeats: upcomingFocusBeats,
+        completedCandidates: candidateEntities,
+      );
+
+      if (aiPrereq != null) {
+        final matchIdx = filtered.indexWhere((i) => i.beatId == aiPrereq.recommendedBeatId);
+        if (matchIdx != -1) {
+          final matchedItem = filtered.removeAt(matchIdx);
+          filtered.insert(
+            0,
+            matchedItem.copyWith(
+              suggestedReason: aiPrereq.contextualReason,
+              microRecallPrompt: aiPrereq.microRecallPrompt,
+              prerequisiteTargetTitle: aiPrereq.prerequisiteForTitle,
+              beatPoints: 1.0,
+            ),
+          );
+        }
+      }
+    }
+
+    // Maths Guardrail: Dynamic Energy Budgeting
+    // Heavy study load today (>= 2.5 effort units) -> strictly 1 quick-recall topic (5 mins)
+    // Light study load today (< 2.5 effort units) -> 2 topics max (10-12 mins)
+    final maxSuggestions = (todayEffortBudget != null && todayEffortBudget >= 2.5) ? 1 : 2;
     final remainingSlots = math.max(0, maxSuggestions - completedTodayItems.length);
     final pendingToTake = filtered.take(remainingSlots).toList();
 

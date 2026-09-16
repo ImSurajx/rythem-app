@@ -18,6 +18,26 @@ class BeatLogRepository {
 
   Future<Database> get _db => _dbService.database;
 
+  Future<void> logBeatCompletion({
+    required String beatId,
+    required String roadmapId,
+    required String completedDate,
+  }) async {
+    final db = await _db;
+    final now = DateTime.now();
+    await db.insert(
+      DatabaseTables.beatLogs,
+      {
+        BeatLogColumns.id: '${beatId}_${now.millisecondsSinceEpoch}',
+        BeatLogColumns.beatId: beatId,
+        BeatLogColumns.roadmapId: roadmapId,
+        BeatLogColumns.completedDate: completedDate,
+        BeatLogColumns.createdAt: now.toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<List<BeatLogEntity>> getLogsForDate(String dateStr) async {
     final db = await _db;
     final results = await db.query(

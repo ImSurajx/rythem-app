@@ -266,5 +266,143 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       expect(find.text("You're falling behind"), findsOneWidget);
       expect(find.text('Review plan'), findsOneWidget);
     });
+
+    testWidgets('DailyRevisionBoard renders empty (SizedBox.shrink) when no topics are due', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: DailyRevisionBoard(
+              revisionItems: const [],
+              onMarkRevised: (_) {},
+              inferenceService: LocalInferenceService(),
+              themeColors: RythemColors.dark,
+              isDark: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("TODAY'S REVISION"), findsNothing);
+      expect(find.byType(DailyRevisionBoard), findsOneWidget);
+    });
+
+    testWidgets('DailyRevisionBoard retains completed item with strikethrough, checkmark, and beat points badge', (tester) async {
+      final completedItem = RevisionItem(
+        beatId: 'beat_completed_1',
+        roadmapId: 'rm_test',
+        roadmapTitle: 'Neural Networks',
+        title: 'Activation Functions & Sigmoids',
+        isCompleted: true,
+        beatPoints: 1.0,
+        microRecallPrompt: 'What is the vanishing gradient problem in deep sigmoids?',
+        suggestedReason: 'Prerequisite for today\'s Backpropagation',
+        lastRevisedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: DailyRevisionBoard(
+                revisionItems: [completedItem],
+                onMarkRevised: (_) {},
+                inferenceService: LocalInferenceService(),
+                themeColors: RythemColors.dark,
+                isDark: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Board header visible with ALL REVISED badge
+      expect(find.text("TODAY'S REVISION"), findsOneWidget);
+      expect(find.text('ALL REVISED'), findsOneWidget);
+
+      // Topic title rendered with strikethrough
+      final textFinder = find.text('Activation Functions & Sigmoids');
+      expect(textFinder, findsOneWidget);
+      final textWidget = tester.widget<Text>(textFinder);
+      expect(textWidget.style?.decoration, TextDecoration.lineThrough);
+
+      // Points badge and prompt rendered
+      expect(find.text('+1.0 pts'), findsOneWidget);
+      expect(find.text('What is the vanishing gradient problem in deep sigmoids?'), findsOneWidget);
+
+      // Done checkmark icon visible
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    });
+
+    test('RevisionService enforces dynamic 1-topic cap for heavy days and bridges prerequisites via AI', () async {
+      final service = RevisionService();
+      await service.init();
+      final ai = LocalInferenceService();
+      final now = DateTime.now();
+
+      final roadmap = RoadmapEntity(
+        id: 'rm_cap_test',
+        title: 'Deep Learning Track',
+        targetCompletionDate: now.add(const Duration(days: 30)),
+        createdAt: now.subtract(const Duration(days: 20)),
+        updatedAt: now,
+      );
+
+      // 4 completed beats in the past
+      final completedBeats = List.generate(4, (i) => BeatEntity(
+        id: 'past_beat_$i',
+        chapterId: 'ch_1',
+        roadmapId: roadmap.id,
+        title: i == 0 ? 'Weight Initialization He Xavier' : 'Gradient Descent Step $i',
+        effortWeight: 1.0,
+        sortOrder: i,
+        isCompleted: true,
+        completedAt: now.subtract(Duration(days: 3 * (i + 1))),
+        createdAt: now.subtract(const Duration(days: 20)),
+        updatedAt: now.subtract(Duration(days: 3 * (i + 1))),
+      ));
+
+      final upcomingBeat = BeatEntity(
+        id: 'upcoming_1',
+        chapterId: 'ch_2',
+        roadmapId: roadmap.id,
+        title: 'Deep Weight Initialization & Residual Scaling',
+        effortWeight: 3.0, // heavy
+        sortOrder: 10,
+        isCompleted: false,
+        createdAt: now.subtract(const Duration(days: 20)),
+        updatedAt: now,
+      );
+
+      // Heavy day: todayEffortBudget = 3.0 -> strictly 1 topic cap
+      final recommendationsHeavy = await service.getDailyRevisionRecommendations(
+        roadmaps: [roadmap],
+        beatsByRoadmap: {roadmap.id: [...completedBeats, upcomingBeat]},
+        upcomingFocusBeats: [upcomingBeat],
+        todayEffortBudget: 3.0,
+        inferenceService: ai,
+        referenceDate: now,
+      );
+
+      expect(recommendationsHeavy.length, 1);
+      expect(recommendationsHeavy.first.beatPoints, greaterThan(0));
+
+      // Light day: todayEffortBudget = 1.5 -> max 2 topics cap
+      final recommendationsLight = await service.getDailyRevisionRecommendations(
+        roadmaps: [roadmap],
+        beatsByRoadmap: {roadmap.id: [...completedBeats, upcomingBeat]},
+        upcomingFocusBeats: [upcomingBeat],
+        todayEffortBudget: 1.5,
+        inferenceService: ai,
+        referenceDate: now,
+      );
+
+      expect(recommendationsLight.length, inInclusiveRange(1, 2));
+    });
   });
 }
+
+

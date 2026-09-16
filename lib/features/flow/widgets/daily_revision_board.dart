@@ -138,7 +138,7 @@ class DailyRevisionBoard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Suggested topics based on your study pace • Refresh so you don\'t forget',
+                          'AI-curated topics based on your study rhythm • 10-min warm-up',
                           style: RythemTypography.caption.copyWith(
                             color: themeColors.textTertiary,
                             fontSize: 10,
@@ -316,9 +316,39 @@ class DailyRevisionBoard extends StatelessWidget {
                               ),
                               child: Text(
                                 item.title,
+                                style: TextStyle(
+                                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withOpacity(isDark ? 0.22 : 0.14),
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: const Color(0xFF10B981).withOpacity(isDark ? 0.45 : 0.3),
+                                width: 0.7,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.bolt, size: 9.5, color: Color(0xFF10B981)),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '+${item.beatPoints.toStringAsFixed(1)} pts',
+                                  style: const TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF10B981),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -377,6 +407,38 @@ class DailyRevisionBoard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (item.microRecallPrompt != null) ...[
+                        const SizedBox(height: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark ? Colors.white10 : const Color(0x12000000),
+                              width: 0.6,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.psychology_outlined, size: 11.5, color: Color(0xFF10B981)),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  item.microRecallPrompt!,
+                                  style: RythemTypography.caption.copyWith(
+                                    color: isCompleted ? themeColors.textTertiary : themeColors.textSecondary,
+                                    fontSize: 9.5,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

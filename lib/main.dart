@@ -238,15 +238,28 @@ class _DesignSystemShowcaseScreenState
         );
       } else {
         await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
+        final points = item.beatPoints;
+        final now = DateTime.now();
+        await _beatLogRepo.logBeatCompletion(
+          beatId: beat.id,
+          roadmapId: beat.roadmapId,
+          completedDate: '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+        );
         _showToast(
-          'Revised "${item.title}"! Retention interval updated.',
-          icon: Icons.check_circle_outline_rounded,
+          '+${points.toStringAsFixed(1)} Beat Points! Revised "${item.title}"',
+          icon: Icons.bolt_rounded,
           accentColor: const Color(0xFF10B981),
         );
       }
+      final upcomingFocus = _pacingBudget?.todaysBeats.isNotEmpty == true
+          ? _pacingBudget!.todaysBeats
+          : _beats.where((b) => !b.isCompleted).take(2).toList();
       final updated = await _revisionService.getDailyRevisionRecommendations(
         roadmaps: _allRoadmaps,
         beatsByRoadmap: _beatsByRoadmap,
+        upcomingFocusBeats: upcomingFocus,
+        todayEffortBudget: _pacingBudget?.todayEffortShare,
+        inferenceService: _localInferenceService,
       );
       if (mounted) {
         setState(() {
@@ -338,9 +351,9 @@ class _DesignSystemShowcaseScreenState
         effortWeight: 1.0,
         sortOrder: 0,
         isCompleted: true,
-        completedAt: now.subtract(const Duration(hours: 3)),
-        createdAt: now,
-        updatedAt: now,
+        completedAt: now.subtract(const Duration(days: 7)),
+        createdAt: now.subtract(const Duration(days: 10)),
+        updatedAt: now.subtract(const Duration(days: 7)),
       ),
       BeatEntity(
         id: 'beat_2',
@@ -350,9 +363,9 @@ class _DesignSystemShowcaseScreenState
         effortWeight: 1.5,
         sortOrder: 1,
         isCompleted: true,
-        completedAt: now.subtract(const Duration(hours: 2)),
-        createdAt: now,
-        updatedAt: now,
+        completedAt: now.subtract(const Duration(days: 3)),
+        createdAt: now.subtract(const Duration(days: 5)),
+        updatedAt: now.subtract(const Duration(days: 3)),
       ),
       BeatEntity(
         id: 'beat_3',
@@ -362,9 +375,9 @@ class _DesignSystemShowcaseScreenState
         effortWeight: 1.0,
         sortOrder: 2,
         isCompleted: true,
-        completedAt: now.subtract(const Duration(hours: 1)),
-        createdAt: now,
-        updatedAt: now,
+        completedAt: now.subtract(const Duration(days: 1)),
+        createdAt: now.subtract(const Duration(days: 3)),
+        updatedAt: now.subtract(const Duration(days: 1)),
       ),
       BeatEntity(
         id: 'beat_4',
@@ -540,9 +553,15 @@ class _DesignSystemShowcaseScreenState
     }
 
     final finalBeats = beatsByRoadmap[_roadmapId] ?? [];
+    final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
+        ? budget!.todaysBeats
+        : finalBeats.where((b) => !b.isCompleted).take(2).toList();
     final revisionItems = await _revisionService.getDailyRevisionRecommendations(
       roadmaps: allRoadmaps,
       beatsByRoadmap: beatsByRoadmap,
+      upcomingFocusBeats: upcomingFocus,
+      todayEffortBudget: budget?.todayEffortShare,
+      inferenceService: _localInferenceService,
     );
 
     if (mounted) {

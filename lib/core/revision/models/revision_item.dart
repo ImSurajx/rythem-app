@@ -14,6 +14,9 @@ class RevisionItem {
   final double retentionScore; // 0.0 to 1.0 (calculated using e^(-t/S))
   final String suggestedReason;
   final bool isCompleted;
+  final double beatPoints;
+  final String? microRecallPrompt;
+  final String? prerequisiteTargetTitle;
 
   const RevisionItem({
     required this.beatId,
@@ -28,6 +31,9 @@ class RevisionItem {
     this.retentionScore = 1.0,
     required this.suggestedReason,
     this.isCompleted = false,
+    this.beatPoints = 0.5,
+    this.microRecallPrompt,
+    this.prerequisiteTargetTitle,
   });
 
   bool get isCompletedToday {
@@ -52,6 +58,9 @@ class RevisionItem {
     double? retentionScore,
     String? suggestedReason,
     bool? isCompleted,
+    double? beatPoints,
+    String? microRecallPrompt,
+    String? prerequisiteTargetTitle,
   }) {
     return RevisionItem(
       beatId: beatId ?? this.beatId,
@@ -66,6 +75,9 @@ class RevisionItem {
       retentionScore: retentionScore ?? this.retentionScore,
       suggestedReason: suggestedReason ?? this.suggestedReason,
       isCompleted: isCompleted ?? this.isCompleted,
+      beatPoints: beatPoints ?? this.beatPoints,
+      microRecallPrompt: microRecallPrompt ?? this.microRecallPrompt,
+      prerequisiteTargetTitle: prerequisiteTargetTitle ?? this.prerequisiteTargetTitle,
     );
   }
 
@@ -83,6 +95,9 @@ class RevisionItem {
       'retentionScore': retentionScore,
       'suggestedReason': suggestedReason,
       'isCompleted': isCompleted,
+      'beatPoints': beatPoints,
+      'microRecallPrompt': microRecallPrompt,
+      'prerequisiteTargetTitle': prerequisiteTargetTitle,
     };
   }
 
@@ -100,6 +115,9 @@ class RevisionItem {
       retentionScore: (map['retentionScore'] as num?)?.toDouble() ?? 1.0,
       suggestedReason: map['suggestedReason'] as String? ?? 'Scheduled Review',
       isCompleted: map['isCompleted'] as bool? ?? false,
+      beatPoints: (map['beatPoints'] as num?)?.toDouble() ?? 0.5,
+      microRecallPrompt: map['microRecallPrompt'] as String?,
+      prerequisiteTargetTitle: map['prerequisiteTargetTitle'] as String?,
     );
   }
 

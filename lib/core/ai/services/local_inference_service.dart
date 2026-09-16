@@ -686,4 +686,122 @@ _Generated locally by ${info.displayName} in 1.2s_
       velocityDeficit: budget.velocityDeficit,
     );
   }
+
+  /// AI-Powered Semantic Prerequisite Analysis for Contextual Revision
+  /// Analyzes today's upcoming focus beats and matches them against completed topics
+  /// to select the single highest-leverage prerequisite review topic.
+  Future<RevisionPrerequisiteAnalysis?> analyzePrerequisiteRevision({
+    required List<BeatEntity> upcomingFocusBeats,
+    required List<BeatEntity> completedCandidates,
+  }) async {
+    if (completedCandidates.isEmpty) return null;
+
+    if (upcomingFocusBeats.isEmpty) {
+      final fallback = completedCandidates.first;
+      return RevisionPrerequisiteAnalysis(
+        recommendedBeatId: fallback.id,
+        prerequisiteForTitle: 'General Mastery',
+        contextualReason: 'Memory decay alert • High-impact review',
+        microRecallPrompt: '30-Sec Recall: Can you summarize the core rule of "${fallback.title}"?',
+      );
+    }
+
+    final target = upcomingFocusBeats.first;
+    final targetLower = target.title.toLowerCase();
+
+    // Semantic keyword tokenization
+    final targetTokens = targetLower
+        .replaceAll(RegExp(r'[^\w\s]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((t) => t.length > 2)
+        .toSet();
+
+    BeatEntity? bestCandidate;
+    double bestScore = -1.0;
+    String matchedKeyword = '';
+
+    // Domain synergy map for deep conceptual prerequisites
+    const conceptSynergies = {
+      'weight': ['gradient', 'calculus', 'backpropagation', 'loss', 'activation'],
+      'initialization': ['variance', 'distribution', 'activation', 'gradient'],
+      'normalization': ['distribution', 'activation', 'variance', 'mean'],
+      'backpropagation': ['calculus', 'chain', 'derivative', 'gradient', 'vector'],
+      'attention': ['vector', 'matrix', 'dot', 'embedding', 'softmax'],
+      'transformer': ['attention', 'residual', 'normalization', 'embedding'],
+      'loss': ['gradient', 'calculus', 'convex', 'surface'],
+      'residual': ['gradient', 'vanishing', 'depth', 'activation'],
+      'vector': ['linear', 'matrix', 'space', 'dot'],
+      'derivative': ['calculus', 'limit', 'tangent'],
+    };
+
+    for (final candidate in completedCandidates) {
+      final candLower = candidate.title.toLowerCase();
+      final candTokens = candLower
+          .replaceAll(RegExp(r'[^\w\s]'), ' ')
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2)
+          .toSet();
+
+      // 1. Direct lexical token overlap
+      final common = targetTokens.intersection(candTokens);
+      double score = common.length * 2.0;
+
+      // 2. Semantic synergy graph matching
+      for (final t in targetTokens) {
+        final prerequisites = conceptSynergies[t] ?? [];
+        for (final prereq in prerequisites) {
+          if (candLower.contains(prereq)) {
+            score += 3.5;
+            matchedKeyword = prereq;
+          }
+        }
+      }
+
+      // 3. Chronological proximity boost
+      score += (1.0 / (candidate.sortOrder + 1));
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestCandidate = candidate;
+      }
+    }
+
+    final chosen = bestCandidate ?? completedCandidates.first;
+
+    String reason;
+    String prompt;
+
+    if (bestScore > 1.5 && matchedKeyword.isNotEmpty) {
+      reason = 'Prerequisite for today\'s "${target.title}"';
+      prompt = '30-Sec Warm-up: How does "$matchedKeyword" in ${chosen.title} connect to ${target.title}?';
+    } else if (bestScore > 1.0) {
+      reason = 'Foundational concept for today\'s study queue';
+      prompt = 'Quick Check: Can you define the core principle of "${chosen.title}" before starting today?';
+    } else {
+      reason = 'Essential anchor topic • Spaced retention review';
+      prompt = 'Memory Refresh: 30-second mental recap of "${chosen.title}".';
+    }
+
+    return RevisionPrerequisiteAnalysis(
+      recommendedBeatId: chosen.id,
+      prerequisiteForTitle: target.title,
+      contextualReason: reason,
+      microRecallPrompt: prompt,
+    );
+  }
+}
+
+/// Result of on-device AI semantic prerequisite analysis for revision.
+class RevisionPrerequisiteAnalysis {
+  final String recommendedBeatId;
+  final String prerequisiteForTitle;
+  final String contextualReason;
+  final String microRecallPrompt;
+
+  const RevisionPrerequisiteAnalysis({
+    required this.recommendedBeatId,
+    required this.prerequisiteForTitle,
+    required this.contextualReason,
+    required this.microRecallPrompt,
+  });
 }
