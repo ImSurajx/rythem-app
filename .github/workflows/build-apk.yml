@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - polyform-license
     tags:
       - 'v*'
   workflow_dispatch:
