@@ -303,5 +303,35 @@ void main() {
       await tester.tap(find.text('Vector Clocks & Causality'));
       await tester.pumpAndSettle();
     });
+
+    testWidgets('ExploreScreen delegates to onOpenRoadmapDetail when tapped', (tester) async {
+      RoadmapEntity? openedRoadmap;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: ExploreScreen(
+              roadmaps: [testRoadmap1],
+              chaptersByRoadmap: {'rm_1': [testChapter1]},
+              beatsByRoadmap: {'rm_1': testBeats},
+              onBeatToggled: (_, __) async {},
+              onCreateTrack: ({required title, required category, required targetDate, resourceUrl, syllabusText}) async {},
+              onOpenRoadmapDetail: (rm) => openedRoadmap = rm,
+            ),
+          ),
+        ),
+      );
+
+      // Verify card shows 1 of 3 beats (33%)
+      expect(find.text('1 of 3 beats'), findsOneWidget);
+      expect(find.text('33%'), findsOneWidget);
+
+      // Tap card
+      await tester.tap(find.text('Distributed Systems Architecture'));
+      await tester.pumpAndSettle();
+
+      expect(openedRoadmap?.id, 'rm_1');
+    });
   });
 }
+

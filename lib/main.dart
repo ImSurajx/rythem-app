@@ -201,7 +201,9 @@ class _DesignSystemShowcaseScreenState
     }
   }
 
-  Future<void> _setBeatCompletion(BeatEntity beat, bool isCompleted) async {
+  Future<void> _lastToggleOperation = Future.value();
+
+  Future<void> _setBeatCompletion(BeatEntity beat, bool isCompleted) {
     // 1. Instant optimistic update so UI is immediately reactive
     final updatedBeat = beat.copyWith(
       isCompleted: isCompleted,
@@ -219,21 +221,26 @@ class _DesignSystemShowcaseScreenState
       });
     }
 
-    // 2. Persist to SQLite
-    await _beatRepo.toggleBeatCompletion(beat.id, isCompleted: isCompleted);
-    if (isCompleted && _delayedBeatIds.contains(beat.id)) {
-      final updated = Set<String>.from(_delayedBeatIds)..remove(beat.id);
-      await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(updated.toList()));
-      if (mounted) {
-        setState(() {
-          _delayedBeatIds = updated;
-        });
-        _showToast('Delayed beat completed: "${beat.title}"! 🎉');
+    // 2. Persist to SQLite and reload sequentially so rapid toggles never race
+    final op = _lastToggleOperation.then((_) async {
+      await _beatRepo.toggleBeatCompletion(beat.id, isCompleted: isCompleted);
+      if (isCompleted && _delayedBeatIds.contains(beat.id)) {
+        final updated = Set<String>.from(_delayedBeatIds)..remove(beat.id);
+        await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(updated.toList()));
+        if (mounted) {
+          setState(() {
+            _delayedBeatIds = updated;
+          });
+          _showToast('Delayed beat completed: "${beat.title}"! 🎉');
+        }
       }
-    }
+      await _requestDatabaseReload();
+    }).catchError((e) {
+      debugPrint('Error in sequential toggle operation: $e');
+    });
 
-    // 3. Sequenced database reload
-    await _requestDatabaseReload();
+    _lastToggleOperation = op;
+    return op;
   }
 
   Future<void> _handleRequestRevisionRecommendations() async {
@@ -367,7 +374,7 @@ class _DesignSystemShowcaseScreenState
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _eventSubscription = DatabaseEventBus.instance.stream.listen((event) {
-      _loadDatabaseState();
+      _requestDatabaseReload();
     });
     _modelDownloadManager.downloadProgressNotifier.addListener(_onModelDownloadUpdated);
     _initDatabaseAndSeed();
@@ -1140,6 +1147,7 @@ class _DesignSystemShowcaseScreenState
       chaptersByRoadmap: _chaptersByRoadmap,
       beatsByRoadmap: _beatsByRoadmap,
       onBeatToggled: _setBeatCompletion,
+      onOpenRoadmapDetail: _openRoadmapDetail,
       onCreateTrack: _handleCreateTrack,
       onArchiveRoadmap: _handleArchiveRoadmap,
       onRestoreRoadmap: _handleRestoreRoadmap,

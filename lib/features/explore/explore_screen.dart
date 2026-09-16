@@ -34,6 +34,7 @@ class ExploreScreen extends StatefulWidget {
   final Future<void> Function(RoadmapEntity roadmap)? onDeleteRoadmap;
   final Future<void> Function(String roadmapId, String resourceUrl, {String? chapterId})? onAttachResource;
   final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
+  final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
 
   const ExploreScreen({
     super.key,
@@ -47,6 +48,7 @@ class ExploreScreen extends StatefulWidget {
     this.onDeleteRoadmap,
     this.onAttachResource,
     this.onAttachResourceToBeat,
+    this.onOpenRoadmapDetail,
   });
 
   @override
@@ -96,12 +98,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  void _openRoadmapDetail(RoadmapEntity roadmap) {
+  Future<void> _openRoadmapDetail(RoadmapEntity roadmap) async {
     HapticFeedback.lightImpact();
+    if (widget.onOpenRoadmapDetail != null) {
+      widget.onOpenRoadmapDetail!(roadmap);
+      return;
+    }
+
     final chapters = widget.chaptersByRoadmap[roadmap.id] ?? [];
     final beats = widget.beatsByRoadmap[roadmap.id] ?? [];
 
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       SmoothPageRoute(
         child: RoadmapDetailScreen(
           roadmap: roadmap,
@@ -116,6 +123,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
       ),
     );
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _openNewTrackModal() {

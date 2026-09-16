@@ -116,6 +116,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     }
     if (oldWidget.beats != widget.beats) {
       _currentBeats = List.from(widget.beats);
+      _reloadFromDb();
     }
   }
 
