@@ -509,11 +509,7 @@ class BeatTile extends StatelessWidget {
     final hasResource = beat.sourceUrl != null && beat.sourceUrl!.trim().isNotEmpty;
     final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
+    return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -886,8 +882,6 @@ class BeatTile extends StatelessWidget {
         ],
       ],
     ),
-  ),
-),
-    );
+  );
   }
 }

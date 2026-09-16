@@ -72,4 +72,36 @@ class PacingBudget {
 
   /// Formatted readable effort string (e.g. "2.5 effort units").
   String get formattedBudget => todayEffortShare.toStringAsFixed(1);
+
+  PacingBudget copyWith({
+    String? roadmapId,
+    double? remainingEffort,
+    int? daysLeft,
+    double? todayEffortShare,
+    List<BeatEntity>? todaysBeats,
+    double? todaysSelectedEffort,
+    bool? isRoadmapCompleted,
+    bool? isDailyQuotaCompleted,
+    bool? isSustainedLag,
+    int? lagStreakDays,
+    double? recentVelocity,
+    double? shortfallDebt,
+    double? velocityDeficit,
+  }) {
+    return PacingBudget(
+      roadmapId: roadmapId ?? this.roadmapId,
+      remainingEffort: remainingEffort ?? this.remainingEffort,
+      daysLeft: daysLeft ?? this.daysLeft,
+      todayEffortShare: todayEffortShare ?? this.todayEffortShare,
+      todaysBeats: todaysBeats ?? this.todaysBeats,
+      todaysSelectedEffort: todaysSelectedEffort ?? this.todaysSelectedEffort,
+      isRoadmapCompleted: isRoadmapCompleted ?? this.isRoadmapCompleted,
+      isDailyQuotaCompleted: isDailyQuotaCompleted ?? this.isDailyQuotaCompleted,
+      isSustainedLag: isSustainedLag ?? this.isSustainedLag,
+      lagStreakDays: lagStreakDays ?? this.lagStreakDays,
+      recentVelocity: recentVelocity ?? this.recentVelocity,
+      shortfallDebt: shortfallDebt ?? this.shortfallDebt,
+      velocityDeficit: velocityDeficit ?? this.velocityDeficit,
+    );
+  }
 }

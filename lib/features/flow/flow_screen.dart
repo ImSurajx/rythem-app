@@ -158,6 +158,54 @@ class _FlowScreenState extends State<FlowScreen> {
       );
     }
 
+    final simTrackTitle = roadmaps.isNotEmpty ? roadmaps.first.title : 'Active Tracker';
+    final simBeats = widget.allBeats.isNotEmpty ? widget.allBeats : <BeatEntity>[];
+    final effectiveRevisionItems = (_simulateLagState && widget.revisionItems.isEmpty)
+        ? [
+            RevisionItem(
+              beatId: simBeats.isNotEmpty ? simBeats[0].id : 'sim_rev_1',
+              roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
+              roadmapTitle: simTrackTitle,
+              title: simBeats.isNotEmpty ? simBeats[0].title : 'Core Fundamentals & Architecture',
+              isFlaggedWeak: false,
+              lastRevisedAt: DateTime.now().subtract(const Duration(days: 3)),
+              revisionCount: 1,
+              stabilityDays: 2.2,
+              retentionScore: 0.65,
+              suggestedReason: 'Studied 3 days ago • Quick recall',
+              isCompleted: false,
+            ),
+            RevisionItem(
+              beatId: simBeats.length > 1 ? simBeats[1].id : 'sim_rev_2',
+              roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
+              roadmapTitle: simTrackTitle,
+              title: simBeats.length > 1 ? simBeats[1].title : 'Key Principles & Implementation Review',
+              isFlaggedWeak: true,
+              flagNote: 'Priority review needed',
+              lastRevisedAt: DateTime.now().subtract(const Duration(days: 7)),
+              revisionCount: 0,
+              stabilityDays: 1.0,
+              retentionScore: 0.40,
+              suggestedReason: 'Flagged topic • High-impact review',
+              isCompleted: false,
+            ),
+            if (simBeats.length > 2)
+              RevisionItem(
+                beatId: simBeats[2].id,
+                roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
+                roadmapTitle: simTrackTitle,
+                title: simBeats[2].title,
+                isFlaggedWeak: false,
+                lastRevisedAt: DateTime.now().subtract(const Duration(days: 16)),
+                revisionCount: 2,
+                stabilityDays: 5.0,
+                retentionScore: 0.35,
+                suggestedReason: "Studied 2+ weeks ago • Refresh so you don't forget",
+                isCompleted: false,
+              ),
+          ]
+        : widget.revisionItems;
+
     final topPadding = MediaQuery.of(context).padding.top;
 
     return SingleChildScrollView(
@@ -197,14 +245,14 @@ class _FlowScreenState extends State<FlowScreen> {
                       if (_simulateLagState) {
                         showGlassToast(
                           context,
-                          'Simulating Fall Behind lag. Backlog banner active.',
+                          'Backlog active: Review plan and backlog dilution queued.',
                           icon: Icons.warning_amber_rounded,
                           accentColor: Colors.amber,
                         );
                       } else {
                         showGlassToast(
                           context,
-                          'Lag simulation cleared.',
+                          'Backlog cleared: Normal pace restored.',
                           icon: Icons.check_circle_outline_rounded,
                         );
                       }
@@ -444,6 +492,15 @@ class _FlowScreenState extends State<FlowScreen> {
 
           const SizedBox(height: 12),
 
+          // Daily Revision Board placed prominently just below Today's Focus
+          DailyRevisionBoard(
+            revisionItems: effectiveRevisionItems,
+            onMarkRevised: (item) => widget.onMarkRevised?.call(item),
+            inferenceService: widget.inferenceService ?? LocalInferenceService(),
+            themeColors: themeColors,
+            isDark: isDark,
+          ),
+
           // Render Whole Todo List for Each Track
           if (displayedRoadmaps.isEmpty)
             _EmptyMissionState(
@@ -457,8 +514,23 @@ class _FlowScreenState extends State<FlowScreen> {
                   (rm.id == widget.activeRoadmap?.id ? widget.chapters : <ChapterEntity>[]);
               final rmBeats = widget.beatsByRoadmap?[rm.id] ??
                   (rm.id == widget.activeRoadmap?.id ? widget.allBeats : <BeatEntity>[]);
-              final rmBudget = widget.budgetsByRoadmap?[rm.id] ??
-                  (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
+              final rmBudget = _simulateLagState
+                  ? ((widget.budgetsByRoadmap?[rm.id] ??
+                              (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null))
+                          ?.copyWith(isSustainedLag: true, shortfallDebt: 4.5) ??
+                      const PacingBudget(
+                        roadmapId: 'simulated_lag',
+                        todayEffortShare: 3.5,
+                        todaysSelectedEffort: 3.5,
+                        remainingEffort: 18.0,
+                        daysLeft: 10,
+                        todaysBeats: [],
+                        isSustainedLag: true,
+                        shortfallDebt: 4.5,
+                        lagStreakDays: 3,
+                      ))
+                  : (widget.budgetsByRoadmap?[rm.id] ??
+                      (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null));
 
               final todaysBeats = rmBudget?.todaysBeats ?? [];
               final todaysBeatIds = todaysBeats.map((b) => b.id).toSet();
@@ -480,16 +552,6 @@ class _FlowScreenState extends State<FlowScreen> {
                     : null,
               );
             }),
-
-          const SizedBox(height: 16),
-          // Moved Daily Revision Board below the todo lists as requested
-          DailyRevisionBoard(
-            revisionItems: widget.revisionItems,
-            onMarkRevised: (item) => widget.onMarkRevised?.call(item),
-            inferenceService: widget.inferenceService ?? LocalInferenceService(),
-            themeColors: themeColors,
-            isDark: isDark,
-          ),
         ],
       ),
     );
@@ -597,8 +659,19 @@ class _TrackTodoListCard extends StatelessWidget {
     final totalCount = allBeats.length;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
 
-    return RepaintBoundary(
-      child: Container(
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      builder: (context, anim, child) => Opacity(
+        opacity: anim,
+        child: Transform.translate(
+          offset: Offset(0, 8 * (1.0 - anim)),
+          child: child,
+        ),
+      ),
+      child: RepaintBoundary(
+        child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
@@ -678,26 +751,55 @@ class _TrackTodoListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$completedCount/$totalCount Beats',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                      if (pacingBudget?.isSustainedLag == true ||
+                          (pacingBudget?.shortfallDebt != null && pacingBudget!.shortfallDebt > 0)) ...[
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(isDark ? 0.22 : 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.amber.withOpacity(isDark ? 0.45 : 0.3),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.schedule_rounded, size: 10, color: Colors.amber),
+                              const SizedBox(width: 3),
+                              Text(
+                                'BACKLOG: ${pacingBudget!.shortfallDebt.toStringAsFixed(1)} pts',
+                                style: const TextStyle(
+                                  color: Colors.amber,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$completedCount/$totalCount Beats',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -881,6 +983,7 @@ class _TrackTodoListCard extends StatelessWidget {
   ),
 ),
 ),
+),
     );
   }
 }
@@ -903,89 +1006,119 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onRecalibrate();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      builder: (context, anim, child) => Opacity(
+        opacity: anim,
+        child: Transform.translate(
+          offset: Offset(0, 6 * (1.0 - anim)),
+          child: child,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? [
-                          const Color(0x30F59E0B),
-                          const Color(0x18F59E0B),
-                        ]
-                      : [
-                          const Color(0x20F59E0B),
-                          const Color(0x0CF59E0B),
-                        ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? const Color(0x60F59E0B) : const Color(0x40F59E0B),
-                  width: 0.9,
-                ),
+      ),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onRecalibrate();
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.08),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule_outlined,
-                        size: 15,
-                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "You're falling behind",
-                        style: RythemTypography.titleSmall.copyWith(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [
+                            const Color(0x30F59E0B),
+                            const Color(0x18F59E0B),
+                          ]
+                        : [
+                            const Color(0x20F59E0B),
+                            const Color(0x0CF59E0B),
+                          ],
                   ),
-                  Row(
-                    children: [
-                      Text(
-                        'Review plan',
-                        style: RythemTypography.labelSmall.copyWith(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? const Color(0x60F59E0B) : const Color(0x40F59E0B),
+                    width: 0.9,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_outlined,
+                          size: 15,
                           color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 13,
-                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 8),
+                        Text(
+                          "You're falling behind",
+                          style: RythemTypography.titleSmall.copyWith(
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                        if (pacingBudget.shortfallDebt > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(isDark ? 0.25 : 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${pacingBudget.shortfallDebt.toStringAsFixed(1)} pts',
+                              style: const TextStyle(
+                                color: Colors.amber,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'Review plan',
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 13,
+                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

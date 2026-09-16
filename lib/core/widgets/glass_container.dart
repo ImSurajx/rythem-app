@@ -24,7 +24,7 @@ class GlassContainer extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius,
-    this.blur = 24.0,
+    this.blur = 12.0,
     this.opacity = 0.09,
     this.borderColor,
     this.borderGradient,
@@ -76,14 +76,18 @@ class GlassContainer extends StatelessWidget {
       child: child,
     );
 
-    final innerContent = ClipRRect(
-      borderRadius: effectiveRadius,
-      child: enableBlur
-          ? BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-              child: containerBody,
-            )
-          : containerBody,
+    final effectiveBlur = blur.clamp(4.0, 14.0);
+
+    final innerContent = RepaintBoundary(
+      child: ClipRRect(
+        borderRadius: effectiveRadius,
+        child: enableBlur
+            ? BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: effectiveBlur, sigmaY: effectiveBlur),
+                child: containerBody,
+              )
+            : containerBody,
+      ),
     );
 
     return Container(

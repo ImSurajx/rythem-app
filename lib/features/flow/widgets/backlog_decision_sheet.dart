@@ -333,6 +333,10 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
     required bool isDark,
     required ShortfallDiagnosis diagnosis,
   }) {
+    const emerald = Color(0xFF10B981);
+    const lightGreen = Color(0xFF34D399);
+    const softMint = Color(0xFF6EE7B7);
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -341,32 +345,32 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
           end: Alignment.bottomRight,
           colors: isDark
               ? [
-                  Colors.purpleAccent.withOpacity(0.18),
-                  Colors.cyanAccent.withOpacity(0.10),
+                  emerald.withOpacity(0.20),
+                  lightGreen.withOpacity(0.10),
                   Colors.transparent,
                 ]
               : [
-                  Colors.purple.withOpacity(0.08),
-                  Colors.cyan.withOpacity(0.04),
+                  emerald.withOpacity(0.12),
+                  lightGreen.withOpacity(0.06),
                   Colors.white,
                 ],
         ),
         border: Border.all(
-          color: isDark ? Colors.purpleAccent.withOpacity(0.35) : Colors.purple.withOpacity(0.25),
+          color: isDark ? lightGreen.withOpacity(0.40) : emerald.withOpacity(0.32),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? Colors.purpleAccent : Colors.purple).withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            color: (isDark ? emerald : lightGreen).withOpacity(0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -377,13 +381,13 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.purpleAccent.withOpacity(0.2),
+                        color: emerald.withOpacity(isDark ? 0.25 : 0.16),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.auto_awesome_rounded,
                         size: 16,
-                        color: Colors.purpleAccent,
+                        color: isDark ? lightGreen : emerald,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -392,22 +396,26 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                       style: RythemTypography.labelSmall.copyWith(
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.8,
-                        color: isDark ? Colors.purpleAccent.shade100 : Colors.purple.shade700,
+                        color: isDark ? softMint : const Color(0xFF047857),
                       ),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.purpleAccent.withOpacity(0.15),
+                        color: emerald.withOpacity(isDark ? 0.22 : 0.14),
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: emerald.withOpacity(isDark ? 0.4 : 0.25),
+                          width: 0.8,
+                        ),
                       ),
                       child: Text(
                         'Debt: ${diagnosis.shortfallDebt.toStringAsFixed(1)} pts',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.purpleAccent.shade100 : Colors.purple.shade700,
+                          color: isDark ? softMint : const Color(0xFF047857),
                         ),
                       ),
                     ),
@@ -438,7 +446,7 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                       padding: const EdgeInsets.only(left: 4, bottom: 2),
                       child: Row(
                         children: [
-                          Icon(Icons.check_circle_outline, size: 12, color: themeColors.actionPrimary),
+                          const Icon(Icons.check_circle_outline, size: 12, color: Color(0xFF10B981)),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(

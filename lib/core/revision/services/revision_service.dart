@@ -236,7 +236,33 @@ class RevisionService {
     }
 
     if (candidates.isEmpty && completedTodayItems.isEmpty) {
-      return [];
+      // If no older candidates exist, check if user has recently completed beats to consolidate
+      final recentlyCompletedBeats = <RevisionItem>[];
+      for (final entry in beatsByRoadmap.entries) {
+        final rmTitle = roadmapMap[entry.key] ?? 'Active Tracker';
+        for (final beat in entry.value) {
+          if (beat.isCompleted) {
+            recentlyCompletedBeats.add(
+              RevisionItem(
+                beatId: beat.id,
+                roadmapId: entry.key,
+                roadmapTitle: rmTitle,
+                title: beat.title,
+                isFlaggedWeak: false,
+                lastRevisedAt: null,
+                revisionCount: 0,
+                stabilityDays: 1.0,
+                retentionScore: 0.80,
+                suggestedReason: 'Recently completed • Early recall practice',
+                isCompleted: false,
+              ),
+            );
+            if (recentlyCompletedBeats.length >= 2) break;
+          }
+        }
+        if (recentlyCompletedBeats.length >= 2) break;
+      }
+      return recentlyCompletedBeats;
     }
 
     // Sort candidates by urgency score:

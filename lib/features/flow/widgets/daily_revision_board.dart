@@ -193,12 +193,7 @@ class DailyRevisionBoard extends StatelessWidget {
         break;
     }
 
-    return RepaintBoundary(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
+    return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -307,19 +302,23 @@ class DailyRevisionBoard extends StatelessWidget {
                             ),
                           ],
                           Expanded(
-                            child: Text(
-                              item.title,
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOutCubic,
                               style: RythemTypography.bodyMedium.copyWith(
                                 color: isCompleted
                                     ? themeColors.textTertiary
                                     : themeColors.textPrimary,
                                 decoration:
-                                    isCompleted ? TextDecoration.lineThrough : null,
+                                    isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
                                 fontWeight: FontWeight.w500,
                                 fontSize: 12.5,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                              child: Text(
+                                item.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ],
@@ -383,9 +382,6 @@ class DailyRevisionBoard extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
+          );
   }
 }
