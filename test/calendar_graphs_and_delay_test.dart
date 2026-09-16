@@ -153,6 +153,50 @@ void main() {
       await tester.tap(todayButton);
       await tester.pumpAndSettle();
     });
+
+    testWidgets('Clean state: FullMonthStreakCalendar with 0 streakDays displays 0d streak and no fake data', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: const Scaffold(
+            body: SingleChildScrollView(
+              child: FullMonthStreakCalendar(
+                themeColors: RythemColors.dark,
+                isDark: true,
+                streakDays: 0,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('0d streak'), findsOneWidget);
+      expect(find.text('🔥 3d streak'), findsNothing);
+    });
+
+    testWidgets('Clean state: PerformanceGraphsCard with empty recentActivity displays zeroed metrics', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: const Scaffold(
+            body: SingleChildScrollView(
+              child: PerformanceGraphsCard(
+                recentActivity: [],
+                themeColors: RythemColors.dark,
+                isDark: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Should show honest zero values for empty state
+      expect(find.text('0'), findsWidgets);
+      expect(find.text('0.0 /d'), findsOneWidget);
+      expect(find.text('0 / 7d'), findsOneWidget);
+    });
   });
 
   group('Task Delay Workflow in FlowScreen Tests', () {

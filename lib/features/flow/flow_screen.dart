@@ -1147,7 +1147,9 @@ class _FlowStreakCalendar extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isToday
-                                ? (isDark ? Colors.white : const Color(0xFF16181D))
+                                ? (completedOnDay > 0
+                                    ? (isDark ? Colors.white : const Color(0xFF16181D))
+                                    : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04)))
                                 : (isStreakMark
                                     ? (isDark ? _emeraldAccent.withOpacity(0.32) : Colors.teal.shade200)
                                     : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
@@ -1159,7 +1161,7 @@ class _FlowStreakCalendar extends StatelessWidget {
                                       : (isDark ? themeColors.glassBorder : const Color(0x10000000))),
                               width: isToday ? 1.5 : (isStreakMark ? 1.2 : 0.6),
                             ),
-                            boxShadow: isStreakMark
+                            boxShadow: (isStreakMark || (isToday && completedOnDay > 0))
                                 ? [
                                     BoxShadow(
                                       color: _emeraldAccent.withOpacity(isDark ? 0.25 : 0.15),
@@ -1174,7 +1176,9 @@ class _FlowStreakCalendar extends StatelessWidget {
                               '${dayDate.day}',
                               style: TextStyle(
                                 color: isToday
-                                    ? (isDark ? Colors.black : Colors.white)
+                                    ? (completedOnDay > 0
+                                        ? (isDark ? Colors.black : Colors.white)
+                                        : themeColors.textPrimary)
                                     : (isStreakMark
                                         ? (isDark ? Colors.white : Colors.teal.shade900)
                                         : (isPastOrToday ? themeColors.textSecondary : themeColors.textTertiary)),

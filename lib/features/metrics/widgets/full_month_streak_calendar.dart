@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/database/repositories/beat_log_repository.dart';
@@ -24,7 +23,7 @@ class FullMonthStreakCalendar extends StatefulWidget {
     this.beatLogRepo,
     required this.themeColors,
     required this.isDark,
-    this.streakDays = 3,
+    this.streakDays = 0,
     this.onStreakTapped,
   });
 
@@ -60,23 +59,6 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
         _displayedMonth.year,
         _displayedMonth.month,
       );
-
-      final now = DateTime.now();
-      final isCurrentMonth = _displayedMonth.year == now.year && _displayedMonth.month == now.month;
-
-      // By default consider at least a 3-day streak active
-      if (isCurrentMonth) {
-        final streakSpan = math.max(3, widget.streakDays);
-        for (int i = 0; i < streakSpan; i++) {
-          final day = now.subtract(Duration(days: i));
-          if (day.month == _displayedMonth.month) {
-            final dateKey = _formatDate(day);
-            if (!activity.containsKey(dateKey) || activity[dateKey] == 0) {
-              activity[dateKey] = i == 0 ? 2 : (i == 1 ? 3 : 1);
-            }
-          }
-        }
-      }
 
       if (mounted) {
         setState(() {
@@ -184,19 +166,21 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _emeraldAccent.withOpacity(widget.isDark ? 0.2 : 0.12),
+                      color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
+                          .withOpacity(widget.isDark ? 0.2 : 0.12),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: _emeraldAccent.withOpacity(widget.isDark ? 0.4 : 0.3),
+                        color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
+                            .withOpacity(widget.isDark ? 0.4 : 0.3),
                         width: 0.8,
                       ),
                     ),
                     child: Text(
-                      '🔥 ${math.max(3, widget.streakDays)}d streak',
-                      style: const TextStyle(
+                      widget.streakDays > 0 ? '🔥 ${widget.streakDays}d streak' : '0d streak',
+                      style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
-                        color: _emeraldAccent,
+                        color: widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary,
                       ),
                     ),
                   ),
@@ -431,11 +415,9 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
     required bool isToday,
     required bool isSelected,
   }) {
-    // Determine heat intensity (GitHub style)
+    // Determine heat intensity (GitHub style) based strictly on real logged beat count
     Color tileColor;
-    if (isToday) {
-      tileColor = widget.isDark ? Colors.white : const Color(0xFF16181D);
-    } else if (count >= 5) {
+    if (count >= 5) {
       tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.85) : Colors.teal.shade700;
     } else if (count >= 3) {
       tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.55) : Colors.teal.shade500;
@@ -445,11 +427,11 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
       tileColor = widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03);
     }
 
-    final textColor = isToday
+    final textColor = count >= 3
         ? (widget.isDark ? Colors.black : Colors.white)
-        : (count >= 3
-            ? (widget.isDark ? Colors.black : Colors.white)
-            : widget.themeColors.textPrimary);
+        : (isToday
+            ? widget.themeColors.textPrimary
+            : (count > 0 ? widget.themeColors.textPrimary : widget.themeColors.textSecondary));
 
     return Container(
       height: 38,
@@ -465,7 +447,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   : (widget.isDark ? Colors.white10 : Colors.black.withOpacity(0.06))),
           width: isToday ? 1.8 : (isSelected ? 1.4 : 0.8),
         ),
-        boxShadow: isToday
+        boxShadow: isToday && count > 0
             ? [
                 BoxShadow(
                   color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.25),
@@ -490,31 +472,47 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
               '$dayNum',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: (isToday || count > 0) ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isToday ? FontWeight.w800 : (count > 0 ? FontWeight.w700 : FontWeight.w500),
                 color: textColor,
               ),
             ),
           ),
 
-          // Top right beat count badge / flame highlight
-          if (isToday || count > 0)
+          // Top right beat count badge - only show when beats are actually recorded
+          if (count > 0)
             Positioned(
               top: 2,
               right: 2.5,
               child: Container(
                 padding: const EdgeInsets.all(1.5),
                 decoration: BoxDecoration(
-                  color: isToday
-                      ? (widget.isDark ? Colors.black : Colors.white)
-                      : (widget.isDark ? Colors.black45 : Colors.white70),
+                  color: widget.isDark ? Colors.black54 : Colors.white70,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.offline_bolt,
                   size: 7,
-                  color: isToday
-                      ? (widget.isDark ? Colors.white : Colors.black)
-                      : (widget.isDark ? _emeraldAccent : Colors.teal.shade900),
+                  color: widget.isDark ? _emeraldAccent : Colors.teal.shade900,
+                ),
+              ),
+            ),
+
+          // Bottom indicator dot for today
+          if (isToday)
+            Positioned(
+              bottom: 3,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 3,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: count > 0
+                        ? (count >= 3 ? Colors.white : _emeraldAccent)
+                        : (widget.isDark ? Colors.white70 : Colors.black87),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
             ),

@@ -245,7 +245,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
             final d = DateTime.now().subtract(Duration(days: 6 - i));
             return DailyBeatCount(
               date: '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
-              count: i == 6 ? 2 : (i % 2 == 0 ? 1 : 0),
+              count: 0,
             );
           });
 
@@ -307,7 +307,9 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(7),
                           color: isToday
-                              ? (widget.isDark ? Colors.white : Colors.black)
+                              ? (day.count > 0
+                                  ? (widget.isDark ? Colors.white : Colors.black)
+                                  : (widget.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08)))
                               : (day.count > 0
                                   ? (widget.isDark ? Colors.white.withOpacity(0.35) : Colors.black.withOpacity(0.35))
                                   : (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))),
@@ -375,8 +377,6 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
 
       monthlyPoints.add((date: dateStr, count: count));
     }
-
-    if (peakVelocity == 0) peakVelocity = 4;
 
     final selectedIndex = _scrubbedIndex != null && _scrubbedIndex! < monthlyPoints.length
         ? _scrubbedIndex!

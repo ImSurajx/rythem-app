@@ -116,7 +116,7 @@ class MetricsScreen extends StatelessWidget {
             beatLogRepo: beatLogRepo,
             themeColors: themeColors,
             isDark: isDark,
-            streakDays: currentStreak >= 3 ? currentStreak : 3,
+            streakDays: currentStreak,
           ),
 
           const SizedBox(height: 18),
@@ -211,7 +211,7 @@ class MetricsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
-                  'No tracks currently active. Ingest or seed a roadmap to see live progress.',
+                  'No tracks currently active. Ingest or create a track to see live progress.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                   ),
