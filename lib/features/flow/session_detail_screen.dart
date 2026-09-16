@@ -285,11 +285,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
               left: 18,
               right: 18,
               bottom: 24,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                  child: Container(
+              child: RepaintBoundary(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xCC161616) : const Color(0xEBFFFFFF),
@@ -358,6 +359,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),

@@ -909,7 +909,7 @@ class _DesignSystemShowcaseScreenState
               child: RepaintBoundary(
                 child: ClipRect(
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                     child: Container(
                       padding: EdgeInsets.fromLTRB(20, topPadding + 8, 20, 12),
                       decoration: BoxDecoration(

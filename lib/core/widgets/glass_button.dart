@@ -18,6 +18,7 @@ class GlassButton extends StatefulWidget {
   final double? width;
   final double height;
   final bool isLoading;
+  final bool enableBlur;
 
   const GlassButton({
     super.key,
@@ -28,6 +29,7 @@ class GlassButton extends StatefulWidget {
     this.width,
     this.height = 52.0,
     this.isLoading = false,
+    this.enableBlur = true,
   });
 
   @override
@@ -187,6 +189,20 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
 
     final horizontalPadding = (widget.width != null && widget.width! < 120) ? 12.0 : 22.0;
 
+    final innerContainer = Container(
+      alignment: Alignment.center,
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: borderColor,
+          width: widget.variant == GlassButtonVariant.primary ? 1.0 : 0.8,
+        ),
+      ),
+      child: content,
+    );
+
     final buttonBody = Container(
       width: widget.width,
       height: widget.height,
@@ -194,25 +210,15 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: shadows,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            alignment: Alignment.center,
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            decoration: BoxDecoration(
-              color: backgroundColor,
+      child: widget.enableBlur
+          ? ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: borderColor,
-                width: widget.variant == GlassButtonVariant.primary ? 1.0 : 0.8,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: innerContainer,
               ),
-            ),
-            child: content,
-          ),
-        ),
-      ),
+            )
+          : innerContainer,
     );
 
     return AnimatedBuilder(

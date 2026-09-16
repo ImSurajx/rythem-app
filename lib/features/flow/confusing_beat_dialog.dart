@@ -80,7 +80,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(

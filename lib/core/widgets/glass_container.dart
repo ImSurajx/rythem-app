@@ -2,6 +2,22 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 
+/// Performance tiers for frosted glass rendering.
+enum GlassLevel {
+  /// Level 0: Pure translucent surface, specular border, soft shadow.
+  /// 0 GPU blur passes. Extremely lightweight and fast for repeated cards & lists.
+  matte,
+
+  /// Level 1: Localized subtle blur (sigma: 8-10). Used for primary section cards.
+  frosted,
+
+  /// Level 2: Refined blur (sigma: 16) for focal floating navigation bars and dialogs.
+  premium,
+
+  /// Level 3: Refined blur with specular highlight for active hero surfaces.
+  liquid,
+}
+
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double? width;
@@ -9,7 +25,8 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final BorderRadius? borderRadius;
-  final double blur;
+  final GlassLevel level;
+  final double? blur;
   final double opacity;
   final Color? borderColor;
   final Gradient? borderGradient;
@@ -24,7 +41,8 @@ class GlassContainer extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius,
-    this.blur = 12.0,
+    this.level = GlassLevel.frosted,
+    this.blur,
     this.opacity = 0.09,
     this.borderColor,
     this.borderGradient,
@@ -76,19 +94,40 @@ class GlassContainer extends StatelessWidget {
       child: child,
     );
 
-    final effectiveBlur = blur.clamp(4.0, 14.0);
+    final double resolvedBlur;
+    if (blur != null) {
+      resolvedBlur = blur!.clamp(0.0, 24.0);
+    } else {
+      switch (level) {
+        case GlassLevel.matte:
+          resolvedBlur = 0.0;
+          break;
+        case GlassLevel.frosted:
+          resolvedBlur = 8.0;
+          break;
+        case GlassLevel.premium:
+        case GlassLevel.liquid:
+          resolvedBlur = 16.0;
+          break;
+      }
+    }
 
-    final innerContent = RepaintBoundary(
-      child: ClipRRect(
-        borderRadius: effectiveRadius,
-        child: enableBlur
-            ? BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: effectiveBlur, sigmaY: effectiveBlur),
+    final bool shouldApplyBlur = enableBlur && level != GlassLevel.matte && resolvedBlur > 0.0;
+
+    final innerContent = shouldApplyBlur
+        ? RepaintBoundary(
+            child: ClipRRect(
+              borderRadius: effectiveRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: resolvedBlur, sigmaY: resolvedBlur),
                 child: containerBody,
-              )
-            : containerBody,
-      ),
-    );
+              ),
+            ),
+          )
+        : ClipRRect(
+            borderRadius: effectiveRadius,
+            child: containerBody,
+          );
 
     return Container(
       width: width,

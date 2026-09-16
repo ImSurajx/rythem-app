@@ -44,28 +44,29 @@ class GlassBottomDock extends StatelessWidget {
     final themeColors = RythemColors.of(context);
     final effectiveBorderGradient = themeColors.specularBorderGradient;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-      height: 62,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(31),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.55)
-                : const Color(0xFF0E1420).withOpacity(0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        gradient: effectiveBorderGradient,
-      ),
-      padding: const EdgeInsets.all(1.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        height: 62,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(31),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withOpacity(0.55)
+                  : const Color(0xFF0E1420).withOpacity(0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          gradient: effectiveBorderGradient,
+        ),
+        padding: const EdgeInsets.all(1.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xCC121316) : themeColors.glassBackground,
@@ -92,8 +93,9 @@ class GlassBottomDock extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _DockItemData {

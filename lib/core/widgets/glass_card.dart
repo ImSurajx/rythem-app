@@ -8,7 +8,8 @@ class GlassCard extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final BorderRadius? borderRadius;
-  final double blur;
+  final GlassLevel level;
+  final double? blur;
   final double opacity;
   final Color? borderColor;
 
@@ -19,7 +20,8 @@ class GlassCard extends StatefulWidget {
     this.padding = const EdgeInsets.all(20),
     this.margin,
     this.borderRadius,
-    this.blur = 24.0,
+    this.level = GlassLevel.frosted,
+    this.blur,
     this.opacity = 0.09,
     this.borderColor,
   });
@@ -29,52 +31,95 @@ class GlassCard extends StatefulWidget {
 }
 
 class _GlassCardState extends State<GlassCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
+  AnimationController? _controller;
+  Animation<double>? _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+    if (widget.onTap != null) {
+      _initController();
+    }
+  }
+
+  void _initController() {
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 140),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.982).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart),
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.985).animate(
+      CurvedAnimation(parent: _controller!, curve: Curves.easeOutQuart),
     );
   }
 
   @override
+  void didUpdateWidget(GlassCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onTap != null && _controller == null) {
+      _initController();
+    } else if (widget.onTap == null && _controller != null) {
+      _controller?.dispose();
+      _controller = null;
+      _scaleAnimation = null;
+    }
+  }
+
+  @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   void _onTapDown(TapDownDetails details) {
-    if (widget.onTap != null) {
-      _controller.forward();
+    if (widget.onTap != null && _controller != null) {
+      _controller!.forward();
       HapticFeedback.lightImpact();
     }
   }
 
   void _onTapUp(TapUpDetails details) {
-    if (widget.onTap != null) {
-      _controller.reverse();
+    if (widget.onTap != null && _controller != null) {
+      _controller!.reverse();
     }
   }
 
   void _onTapCancel() {
-    if (widget.onTap != null) {
-      _controller.reverse();
+    if (widget.onTap != null && _controller != null) {
+      _controller!.reverse();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final cardContent = GlassContainer(
+      padding: widget.padding,
+      margin: widget.margin,
+      borderRadius: widget.borderRadius,
+      level: widget.level,
+      blur: widget.blur,
+      opacity: widget.opacity,
+      borderColor: widget.borderColor,
+      child: widget.child,
+    );
+
+    // If static card without tap interaction, render directly without ticker/transform overhead
+    if (widget.onTap == null) {
+      return cardContent;
+    }
+
+    final scaleAnim = _scaleAnimation;
+    if (scaleAnim == null) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: cardContent,
+      );
+    }
+
     return AnimatedBuilder(
-      animation: _scaleAnimation,
+      animation: scaleAnim,
       builder: (context, child) => Transform.scale(
-        scale: _scaleAnimation.value,
+        scale: scaleAnim.value,
         child: child,
       ),
       child: GestureDetector(
@@ -83,15 +128,7 @@ class _GlassCardState extends State<GlassCard> with SingleTickerProviderStateMix
         onTapCancel: _onTapCancel,
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
-        child: GlassContainer(
-          padding: widget.padding,
-          margin: widget.margin,
-          borderRadius: widget.borderRadius,
-          blur: widget.blur,
-          opacity: widget.opacity,
-          borderColor: widget.borderColor,
-          child: widget.child,
-        ),
+        child: cardContent,
       ),
     );
   }

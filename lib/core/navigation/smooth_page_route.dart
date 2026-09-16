@@ -10,8 +10,8 @@ class SmoothPageRoute<T> extends PageRouteBuilder<T> {
     super.settings,
   }) : super(
           pageBuilder: (context, animation, secondaryAnimation) => child,
-          transitionDuration: const Duration(milliseconds: 260),
-          reverseTransitionDuration: const Duration(milliseconds: 220),
+          transitionDuration: const Duration(milliseconds: 200),
+          reverseTransitionDuration: const Duration(milliseconds: 160),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             final curvedAnimation = CurvedAnimation(
               parent: animation,
@@ -23,7 +23,7 @@ class SmoothPageRoute<T> extends PageRouteBuilder<T> {
               opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation),
               child: SlideTransition(
                 position: Tween<Offset>(
-                  begin: const Offset(0.0, 0.025),
+                  begin: const Offset(0.0, 0.015),
                   end: Offset.zero,
                 ).animate(curvedAnimation),
                 child: child,

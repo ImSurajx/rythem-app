@@ -56,18 +56,12 @@ class GlassErrorDialog extends StatefulWidget {
         );
       },
       transitionBuilder: (ctx, anim, secondaryAnim, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
-        return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: anim.value * 8.0,
-            sigmaY: anim.value * 8.0,
-          ),
-          child: FadeTransition(
-            opacity: anim,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
-              child: child,
-            ),
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.95, end: 1.0).animate(curved),
+            child: child,
           ),
         );
       },
@@ -124,7 +118,7 @@ class _GlassErrorDialogState extends State<GlassErrorDialog> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(

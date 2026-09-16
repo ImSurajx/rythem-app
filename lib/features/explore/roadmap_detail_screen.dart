@@ -595,13 +595,14 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
           child: Column(
             children: [
               // Floating Frosted Glass Top Navigation Bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                    child: Container(
+              RepaintBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0x30FFFFFF) : const Color(0x66FFFFFF),
@@ -670,6 +671,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                   ),
                 ),
               ),
+            ),
 
               // Scrollable Content
               Expanded(
@@ -760,85 +762,73 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'REMAINING',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: themeColors.textTertiary,
                                         ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'REMAINING',
-                                            style: RythemTypography.labelSmall.copyWith(
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: themeColors.textTertiary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '$remainingCount topics',
-                                            style: RythemTypography.labelSmall.copyWith(
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: themeColors.textPrimary,
-                                            ),
-                                          ),
-                                        ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$remainingCount topics',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: themeColors.textPrimary,
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'RESOURCES',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: themeColors.textTertiary,
                                         ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'RESOURCES',
-                                            style: RythemTypography.labelSmall.copyWith(
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: themeColors.textTertiary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
-                                            style: RythemTypography.labelSmall.copyWith(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: themeColors.textPrimary,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: themeColors.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -883,7 +873,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(18),
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 14),
                               padding: const EdgeInsets.all(16),
