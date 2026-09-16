@@ -38,6 +38,18 @@ class BeatLogRepository {
     );
   }
 
+  Future<void> removeBeatCompletion({
+    required String beatId,
+    required String completedDate,
+  }) async {
+    final db = await _db;
+    await db.delete(
+      DatabaseTables.beatLogs,
+      where: '${BeatLogColumns.beatId} = ? AND ${BeatLogColumns.completedDate} = ?',
+      whereArgs: [beatId, completedDate],
+    );
+  }
+
   Future<List<BeatLogEntity>> getLogsForDate(String dateStr) async {
     final db = await _db;
     final results = await db.query(

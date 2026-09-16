@@ -193,10 +193,16 @@ class DailyRevisionBoard extends StatelessWidget {
         break;
     }
 
-    return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onMarkRevised(item);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isDark
@@ -230,41 +236,34 @@ class DailyRevisionBoard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Interactive Checkbox matching BeatTile exactly
-                GestureDetector(
+                Padding(
                   key: Key('revision_check_button_${item.beatId}'),
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onMarkRevised(item);
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(4),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: isCompleted
+                          ? themeColors.textPrimary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
                         color: isCompleted
                             ? themeColors.textPrimary
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: isCompleted
-                              ? themeColors.textPrimary
-                              : themeColors.textTertiary,
-                          width: 1.5,
-                        ),
+                            : themeColors.textTertiary,
+                        width: 1.5,
                       ),
-                      child: AnimatedScale(
-                        scale: isCompleted ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutBack,
-                        child: Icon(
-                          Icons.check_rounded,
-                          size: 13,
-                          color: isDark ? Colors.black : Colors.white,
-                        ),
+                    ),
+                    child: AnimatedScale(
+                      scale: isCompleted ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutBack,
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: isDark ? Colors.black : Colors.white,
                       ),
                     ),
                   ),
@@ -444,6 +443,7 @@ class DailyRevisionBoard extends StatelessWidget {
                 ),
               ],
             ),
-          );
+          ),
+        );
   }
 }

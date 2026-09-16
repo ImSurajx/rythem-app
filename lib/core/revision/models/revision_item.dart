@@ -36,14 +36,7 @@ class RevisionItem {
     this.prerequisiteTargetTitle,
   });
 
-  bool get isCompletedToday {
-    if (isCompleted) return true;
-    if (lastRevisedAt == null) return false;
-    final now = DateTime.now();
-    return lastRevisedAt!.year == now.year &&
-        lastRevisedAt!.month == now.month &&
-        lastRevisedAt!.day == now.day;
-  }
+  bool get isCompletedToday => isCompleted;
 
   RevisionItem copyWith({
     String? beatId,

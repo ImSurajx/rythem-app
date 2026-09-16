@@ -337,6 +337,68 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     });
 
+    testWidgets('DailyRevisionBoard allows toggling revision on and undoing it to remove strikethrough', (tester) async {
+      var currentItem = const RevisionItem(
+        beatId: 'beat_toggle_test',
+        roadmapId: 'rm_test',
+        roadmapTitle: 'Neural Networks',
+        title: 'Loss Surfaces & Convex Optimization',
+        isCompleted: false,
+        beatPoints: 1.0,
+        suggestedReason: 'Scheduled Review',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return SingleChildScrollView(
+                  child: DailyRevisionBoard(
+                    revisionItems: [currentItem],
+                    onMarkRevised: (item) {
+                      setState(() {
+                        final newState = !currentItem.isCompletedToday;
+                        currentItem = currentItem.copyWith(
+                          isCompleted: newState,
+                          lastRevisedAt: newState ? DateTime.now() : null,
+                        );
+                      });
+                    },
+                    inferenceService: LocalInferenceService(),
+                    themeColors: RythemColors.dark,
+                    isDark: true,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Initial state: Not completed, no strikethrough
+      var titleWidget = tester.widget<Text>(find.text('Loss Surfaces & Convex Optimization'));
+      expect(titleWidget.style?.decoration, isNull);
+
+      // Tap to mark completed
+      await tester.tap(find.byKey(const Key('revision_check_button_beat_toggle_test')));
+      await tester.pumpAndSettle();
+
+      // Now struck through
+      titleWidget = tester.widget<Text>(find.text('Loss Surfaces & Convex Optimization'));
+      expect(titleWidget.style?.decoration, TextDecoration.lineThrough);
+
+      // Tap again to UNDO
+      await tester.tap(find.byKey(const Key('revision_check_button_beat_toggle_test')));
+      await tester.pumpAndSettle();
+
+      // Strikethrough is removed!
+      titleWidget = tester.widget<Text>(find.text('Loss Surfaces & Convex Optimization'));
+      expect(titleWidget.style?.decoration, isNull);
+    });
+
     test('RevisionService enforces dynamic 1-topic cap for heavy days and bridges prerequisites via AI', () async {
       final service = RevisionService();
       await service.init();

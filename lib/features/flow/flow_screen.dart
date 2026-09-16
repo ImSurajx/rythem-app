@@ -81,6 +81,7 @@ class FlowScreen extends StatefulWidget {
 class _FlowScreenState extends State<FlowScreen> {
   String _selectedTrackFilter = 'all';
   bool _simulateLagState = false;
+  List<RevisionItem>? _simulatedRevisionItems;
 
   @override
   Widget build(BuildContext context) {
@@ -160,56 +161,62 @@ class _FlowScreenState extends State<FlowScreen> {
 
     final simTrackTitle = roadmaps.isNotEmpty ? roadmaps.first.title : 'Active Tracker';
     final simBeats = widget.allBeats.isNotEmpty ? widget.allBeats : <BeatEntity>[];
+    if (_simulateLagState && widget.revisionItems.isEmpty && _simulatedRevisionItems == null) {
+      _simulatedRevisionItems = [
+        RevisionItem(
+          beatId: simBeats.isNotEmpty ? simBeats[0].id : 'sim_rev_1',
+          roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
+          roadmapTitle: simTrackTitle,
+          title: simBeats.isNotEmpty ? simBeats[0].title : 'Core Fundamentals & Architecture',
+          isFlaggedWeak: false,
+          lastRevisedAt: DateTime.now().subtract(const Duration(days: 3)),
+          revisionCount: 1,
+          stabilityDays: 2.2,
+          retentionScore: 0.65,
+          suggestedReason: 'Prerequisite for today\'s focus • Quick recall',
+          microRecallPrompt: '30-Sec Warm-up: Can you explain the core mechanism before starting today?',
+          beatPoints: 1.0,
+          isCompleted: false,
+        ),
+        RevisionItem(
+          beatId: simBeats.length > 1 ? simBeats[1].id : 'sim_rev_2',
+          roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
+          roadmapTitle: simTrackTitle,
+          title: simBeats.length > 1 ? simBeats[1].title : 'Key Principles & Implementation Review',
+          isFlaggedWeak: true,
+          flagNote: 'Priority review needed',
+          lastRevisedAt: DateTime.now().subtract(const Duration(days: 7)),
+          revisionCount: 0,
+          stabilityDays: 1.0,
+          retentionScore: 0.40,
+          suggestedReason: 'Flagged topic • High-impact review',
+          microRecallPrompt: '30-Sec Recall: Review the derivation step you previously flagged.',
+          beatPoints: 1.0,
+          isCompleted: false,
+        ),
+        if (simBeats.length > 2)
+          RevisionItem(
+            beatId: simBeats[2].id,
+            roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
+            roadmapTitle: simTrackTitle,
+            title: simBeats[2].title,
+            isFlaggedWeak: false,
+            lastRevisedAt: DateTime.now().subtract(const Duration(days: 16)),
+            revisionCount: 2,
+            stabilityDays: 5.0,
+            retentionScore: 0.35,
+            suggestedReason: "Studied 2+ weeks ago • Refresh so you don't forget",
+            microRecallPrompt: 'Memory Refresh: 30-second mental recap of "${simBeats[2].title}".',
+            beatPoints: 0.5,
+            isCompleted: false,
+          ),
+      ];
+    } else if (!_simulateLagState) {
+      _simulatedRevisionItems = null;
+    }
+
     final effectiveRevisionItems = (_simulateLagState && widget.revisionItems.isEmpty)
-        ? [
-            RevisionItem(
-              beatId: simBeats.isNotEmpty ? simBeats[0].id : 'sim_rev_1',
-              roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
-              roadmapTitle: simTrackTitle,
-              title: simBeats.isNotEmpty ? simBeats[0].title : 'Core Fundamentals & Architecture',
-              isFlaggedWeak: false,
-              lastRevisedAt: DateTime.now().subtract(const Duration(days: 3)),
-              revisionCount: 1,
-              stabilityDays: 2.2,
-              retentionScore: 0.65,
-              suggestedReason: 'Prerequisite for today\'s focus • Quick recall',
-              microRecallPrompt: '30-Sec Warm-up: Can you explain the core mechanism before starting today?',
-              beatPoints: 1.0,
-              isCompleted: false,
-            ),
-            RevisionItem(
-              beatId: simBeats.length > 1 ? simBeats[1].id : 'sim_rev_2',
-              roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
-              roadmapTitle: simTrackTitle,
-              title: simBeats.length > 1 ? simBeats[1].title : 'Key Principles & Implementation Review',
-              isFlaggedWeak: true,
-              flagNote: 'Priority review needed',
-              lastRevisedAt: DateTime.now().subtract(const Duration(days: 7)),
-              revisionCount: 0,
-              stabilityDays: 1.0,
-              retentionScore: 0.40,
-              suggestedReason: 'Flagged topic • High-impact review',
-              microRecallPrompt: '30-Sec Recall: Review the derivation step you previously flagged.',
-              beatPoints: 1.0,
-              isCompleted: false,
-            ),
-            if (simBeats.length > 2)
-              RevisionItem(
-                beatId: simBeats[2].id,
-                roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
-                roadmapTitle: simTrackTitle,
-                title: simBeats[2].title,
-                isFlaggedWeak: false,
-                lastRevisedAt: DateTime.now().subtract(const Duration(days: 16)),
-                revisionCount: 2,
-                stabilityDays: 5.0,
-                retentionScore: 0.35,
-                suggestedReason: "Studied 2+ weeks ago • Refresh so you don't forget",
-                microRecallPrompt: 'Memory Refresh: 30-second mental recap of "${simBeats[2].title}".',
-                beatPoints: 0.5,
-                isCompleted: false,
-              ),
-          ]
+        ? (_simulatedRevisionItems ?? [])
         : widget.revisionItems;
 
     final topPadding = MediaQuery.of(context).padding.top;
@@ -501,7 +508,23 @@ class _FlowScreenState extends State<FlowScreen> {
           // Daily Revision Board placed prominently just below Today's Focus
           DailyRevisionBoard(
             revisionItems: effectiveRevisionItems,
-            onMarkRevised: (item) => widget.onMarkRevised?.call(item),
+            onMarkRevised: (item) {
+              if (_simulateLagState && widget.revisionItems.isEmpty) {
+                setState(() {
+                  _simulatedRevisionItems = _simulatedRevisionItems?.map((r) {
+                    if (r.beatId == item.beatId) {
+                      final newState = !r.isCompletedToday;
+                      return r.copyWith(
+                        isCompleted: newState,
+                        lastRevisedAt: newState ? DateTime.now() : null,
+                      );
+                    }
+                    return r;
+                  }).toList();
+                });
+              }
+              widget.onMarkRevised?.call(item);
+            },
             inferenceService: widget.inferenceService ?? LocalInferenceService(),
             themeColors: themeColors,
             isDark: isDark,

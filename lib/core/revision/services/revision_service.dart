@@ -125,12 +125,14 @@ class RevisionService {
     if (existing != null) {
       final prevCount = math.max(0, existing.revisionCount - 1);
       final prevStability = (existing.stabilityDays / 2.2).clamp(1.0, 90.0);
+      final wasWeak = existing.flagNote != null && existing.flagNote!.isNotEmpty;
       final updated = existing.copyWith(
         lastRevisedAt: null,
         revisionCount: prevCount,
         stabilityDays: prevStability,
         retentionScore: 0.60,
-        suggestedReason: 'Scheduled Review',
+        suggestedReason: wasWeak ? 'Flagged: "${existing.flagNote}"' : 'Scheduled Review',
+        isFlaggedWeak: wasWeak,
         isCompleted: false,
       );
       _records[beat.id] = updated;
@@ -195,7 +197,7 @@ class RevisionService {
         }
 
         // Calculate time elapsed since last revision or completion
-        final lastAnchor = record?.lastRevisedAt ?? beat.updatedAt;
+        final lastAnchor = record?.lastRevisedAt ?? beat.completedAt ?? beat.updatedAt;
         final daysElapsed = math.max(0.05, today.difference(lastAnchor).inHours / 24.0);
 
         final stability = record?.stabilityDays ?? 1.0;
@@ -213,10 +215,12 @@ class RevisionService {
           reason = 'Studied 2+ weeks ago • Refresh so you don\'t forget';
         } else if (daysElapsed >= 6) {
           reason = 'Studied last week • High-impact review';
-        } else if (daysElapsed >= 2.5) {
-          reason = 'Studied ${daysElapsed.round()} days ago • Quick recall';
+        } else if (daysElapsed >= 2.5 || (record != null && !record.isCompleted)) {
+          reason = daysElapsed >= 2.5
+              ? 'Studied ${daysElapsed.round()} days ago • Quick recall'
+              : 'Scheduled Review';
         } else {
-          // Completed recently (< 2.5 days ago) and not flagged - skip suggesting
+          // Completed recently (< 2.5 days ago) and not tracked - skip suggesting
           continue;
         }
 

@@ -214,58 +214,69 @@ class _DesignSystemShowcaseScreenState
   }
 
   Future<void> _handleMarkRevised(RevisionItem item) async {
-    final beat = _beatsByRoadmap[item.roadmapId]?.firstWhere(
-      (b) => b.id == item.beatId,
-      orElse: () => BeatEntity(
-        id: item.beatId,
-        chapterId: '',
-        roadmapId: item.roadmapId,
-        title: item.title,
-        effortWeight: 1.0,
-        sortOrder: 0,
-        isCompleted: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
+    final wasCompleted = item.isCompletedToday;
+    final newCompletedState = !wasCompleted;
+    final now = DateTime.now();
+    final todayDateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    // 1. Instantly update in-memory state so strikethrough updates immediately without dropping items
+    setState(() {
+      _revisionItems = _revisionItems.map((r) {
+        if (r.beatId == item.beatId) {
+          return r.copyWith(
+            isCompleted: newCompletedState,
+            lastRevisedAt: newCompletedState ? now : null,
+          );
+        }
+        return r;
+      }).toList();
+    });
+
+    BeatEntity? beat;
+    for (final beatList in _beatsByRoadmap.values) {
+      final match = beatList.where((b) => b.id == item.beatId).firstOrNull;
+      if (match != null) {
+        beat = match;
+        break;
+      }
+    }
+    beat ??= await _beatRepo.getBeatById(item.beatId);
+    beat ??= BeatEntity(
+      id: item.beatId,
+      chapterId: '',
+      roadmapId: item.roadmapId,
+      title: item.title,
+      effortWeight: 1.0,
+      sortOrder: 0,
+      isCompleted: true,
+      createdAt: now,
+      updatedAt: now,
     );
-    if (beat != null) {
-      if (item.isCompletedToday) {
-        await _revisionService.unmarkTopicRevised(beat, roadmapTitle: item.roadmapTitle);
-        _showToast(
-          'Reopened "${item.title}" for revision',
-          icon: Icons.history_rounded,
-          accentColor: Colors.amber,
-        );
-      } else {
-        await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
-        final points = item.beatPoints;
-        final now = DateTime.now();
-        await _beatLogRepo.logBeatCompletion(
-          beatId: beat.id,
-          roadmapId: beat.roadmapId,
-          completedDate: '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-        );
-        _showToast(
-          '+${points.toStringAsFixed(1)} Beat Points! Revised "${item.title}"',
-          icon: Icons.bolt_rounded,
-          accentColor: const Color(0xFF10B981),
-        );
-      }
-      final upcomingFocus = _pacingBudget?.todaysBeats.isNotEmpty == true
-          ? _pacingBudget!.todaysBeats
-          : _beats.where((b) => !b.isCompleted).take(2).toList();
-      final updated = await _revisionService.getDailyRevisionRecommendations(
-        roadmaps: _allRoadmaps,
-        beatsByRoadmap: _beatsByRoadmap,
-        upcomingFocusBeats: upcomingFocus,
-        todayEffortBudget: _pacingBudget?.todayEffortShare,
-        inferenceService: _localInferenceService,
+
+    if (wasCompleted) {
+      await _revisionService.unmarkTopicRevised(beat, roadmapTitle: item.roadmapTitle);
+      await _beatLogRepo.removeBeatCompletion(
+        beatId: beat.id,
+        completedDate: todayDateStr,
       );
-      if (mounted) {
-        setState(() {
-          _revisionItems = updated;
-        });
-      }
+      _showToast(
+        'Reopened "${item.title}" for revision',
+        icon: Icons.history_rounded,
+        accentColor: Colors.amber,
+      );
+    } else {
+      await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
+      final points = item.beatPoints;
+      await _beatLogRepo.logBeatCompletion(
+        beatId: beat.id,
+        roadmapId: beat.roadmapId,
+        completedDate: todayDateStr,
+      );
+      _showToast(
+        '+${points.toStringAsFixed(1)} Beat Points! Revised "${item.title}"',
+        icon: Icons.bolt_rounded,
+        accentColor: const Color(0xFF10B981),
+      );
     }
   }
 
