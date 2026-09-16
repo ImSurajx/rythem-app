@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - polyform-license
     tags:
       - 'v*'
   workflow_dispatch:
@@ -73,22 +74,29 @@ jobs:
           fi
           echo "Target release tag: $TAG_NAME"
 
-          # If release exists, upload and overwrite the APK asset using --clobber and ensure latest
-          # If release does not exist yet, create it with release notes and mark --latest
+          PRERELEASE_FLAG=""
+          if [[ "$TAG_NAME" == *"-"* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          else
+            PRERELEASE_FLAG="--latest"
+          fi
+
+          # If release exists, upload and overwrite the APK asset using --clobber
+          # If release does not exist yet, create it with release notes
           if gh release view "$TAG_NAME" > /dev/null 2>&1; then
             echo "Release $TAG_NAME exists. Uploading and updating APK asset..."
             gh release upload "$TAG_NAME" release_output/rythem.apk --clobber
-            gh release edit "$TAG_NAME" --latest --notes-file CHANGELOG.md
+            gh release edit "$TAG_NAME" $PRERELEASE_FLAG --notes-file CHANGELOG.md
           else
             echo "Release $TAG_NAME does not exist. Creating new release..."
             gh release create "$TAG_NAME" release_output/rythem.apk \
               --title "Rythem $TAG_NAME" \
-              --latest \
+              $PRERELEASE_FLAG \
               --notes-file CHANGELOG.md
           fi
 
-          # Also ensure rythem.apk is mirrored on models-v1.0.0 for convenience
-          if gh release view "models-v1.0.0" > /dev/null 2>&1; then
+          # Also ensure rythem.apk is mirrored on models-v1.0.0 for main releases only
+          if [[ "$TAG_NAME" == "v1.0.0" ]] && gh release view "models-v1.0.0" > /dev/null 2>&1; then
             echo "Syncing rythem.apk to models-v1.0.0 release tag..."
             gh release upload "models-v1.0.0" release_output/rythem.apk --clobber || true
           fi
