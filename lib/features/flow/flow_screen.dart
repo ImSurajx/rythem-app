@@ -68,11 +68,15 @@ class FlowScreen extends StatefulWidget {
     this.revisionItems = const [],
     this.onMarkRevised,
     this.onFlagForRevision,
+    this.onRequestRevisionRecommendations,
+    this.isScanningRevision = false,
   });
 
   final List<RevisionItem> revisionItems;
   final ValueChanged<RevisionItem>? onMarkRevised;
   final ValueChanged<BeatEntity>? onFlagForRevision;
+  final VoidCallback? onRequestRevisionRecommendations;
+  final bool isScanningRevision;
 
   @override
   State<FlowScreen> createState() => _FlowScreenState();
@@ -526,6 +530,8 @@ class _FlowScreenState extends State<FlowScreen> {
               widget.onMarkRevised?.call(item);
             },
             inferenceService: widget.inferenceService ?? LocalInferenceService(),
+            onRequestRecommendations: widget.onRequestRevisionRecommendations,
+            isScanning: widget.isScanningRevision,
             themeColors: themeColors,
             isDark: isDark,
           ),

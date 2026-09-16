@@ -178,8 +178,48 @@ class _DesignSystemShowcaseScreenState
   bool _compactDownloaded = false;
   bool _balancedDownloaded = false;
   Set<String> _delayedBeatIds = {'beat_delayed_sample'};
+  bool _hasRequestedRevision = false;
+  bool _isScanningRevision = false;
+  bool _isLoadingDbState = false;
+  bool _hasPendingDbReload = false;
+
+  Future<void> _requestDatabaseReload() async {
+    if (_isLoadingDbState) {
+      _hasPendingDbReload = true;
+      return;
+    }
+    _isLoadingDbState = true;
+    _hasPendingDbReload = false;
+    try {
+      await _loadDatabaseState();
+    } finally {
+      _isLoadingDbState = false;
+      if (_hasPendingDbReload) {
+        _hasPendingDbReload = false;
+        unawaited(_requestDatabaseReload());
+      }
+    }
+  }
 
   Future<void> _setBeatCompletion(BeatEntity beat, bool isCompleted) async {
+    // 1. Instant optimistic update so UI is immediately reactive
+    final updatedBeat = beat.copyWith(
+      isCompleted: isCompleted,
+      completedAt: isCompleted ? DateTime.now() : null,
+      clearCompletedAt: !isCompleted,
+    );
+    if (mounted) {
+      setState(() {
+        _beats = _beats.map((b) => b.id == beat.id ? updatedBeat : b).toList();
+        final rmList = _beatsByRoadmap[beat.roadmapId];
+        if (rmList != null) {
+          _beatsByRoadmap[beat.roadmapId] =
+              rmList.map((b) => b.id == beat.id ? updatedBeat : b).toList();
+        }
+      });
+    }
+
+    // 2. Persist to SQLite
     await _beatRepo.toggleBeatCompletion(beat.id, isCompleted: isCompleted);
     if (isCompleted && _delayedBeatIds.contains(beat.id)) {
       final updated = Set<String>.from(_delayedBeatIds)..remove(beat.id);
@@ -191,7 +231,49 @@ class _DesignSystemShowcaseScreenState
         _showToast('Delayed beat completed: "${beat.title}"! 🎉');
       }
     }
-    await _loadDatabaseState();
+
+    // 3. Sequenced database reload
+    await _requestDatabaseReload();
+  }
+
+  Future<void> _handleRequestRevisionRecommendations() async {
+    if (_isScanningRevision) return;
+    setState(() => _isScanningRevision = true);
+    HapticFeedback.mediumImpact();
+    _showToast('AI Mentor scanning tracker & memory decay curves...');
+    try {
+      final budget = _budgetsByRoadmap[_roadmapId];
+      final finalBeats = _beatsByRoadmap[_roadmapId] ?? [];
+      final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
+          ? budget!.todaysBeats
+          : finalBeats.where((b) => !b.isCompleted).take(2).toList();
+
+      final items = await _revisionService.getDailyRevisionRecommendations(
+        roadmaps: _allRoadmaps,
+        beatsByRoadmap: _beatsByRoadmap,
+        upcomingFocusBeats: upcomingFocus,
+        todayEffortBudget: budget?.todayEffortShare,
+        inferenceService: _localInferenceService,
+      );
+
+      if (mounted) {
+        setState(() {
+          _hasRequestedRevision = true;
+          _isScanningRevision = false;
+          _revisionItems = items;
+        });
+        if (items.isEmpty) {
+          _showToast('Trackers are fresh! No concepts need urgent revision today.');
+        } else {
+          _showToast('AI recommended ${items.length} high-yield topic${items.length == 1 ? '' : 's'} to revise');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isScanningRevision = false);
+        _showToast('Could not analyze revision: $e');
+      }
+    }
   }
 
   Future<void> _handleToggleBeatDelay(BeatEntity beat) async {
@@ -576,13 +658,16 @@ class _DesignSystemShowcaseScreenState
     final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
         ? budget!.todaysBeats
         : finalBeats.where((b) => !b.isCompleted).take(2).toList();
-    final revisionItems = await _revisionService.getDailyRevisionRecommendations(
-      roadmaps: allRoadmaps,
-      beatsByRoadmap: beatsByRoadmap,
-      upcomingFocusBeats: upcomingFocus,
-      todayEffortBudget: budget?.todayEffortShare,
-      inferenceService: _localInferenceService,
-    );
+    List<RevisionItem> revisionItems = _revisionItems;
+    if (_hasRequestedRevision) {
+      revisionItems = await _revisionService.getDailyRevisionRecommendations(
+        roadmaps: allRoadmaps,
+        beatsByRoadmap: beatsByRoadmap,
+        upcomingFocusBeats: upcomingFocus,
+        todayEffortBudget: budget?.todayEffortShare,
+        inferenceService: _localInferenceService,
+      );
+    }
 
     if (mounted) {
       setState(() {
@@ -876,6 +961,8 @@ class _DesignSystemShowcaseScreenState
       onToggleDelay: _handleToggleBeatDelay,
       revisionItems: _revisionItems,
       onMarkRevised: _handleMarkRevised,
+      onRequestRevisionRecommendations: _handleRequestRevisionRecommendations,
+      isScanningRevision: _isScanningRevision,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onApplyPacingDecision: (roadmap, decision) async {
@@ -896,12 +983,12 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  void _openRoadmapDetail(RoadmapEntity roadmap) {
+  Future<void> _openRoadmapDetail(RoadmapEntity roadmap) async {
     HapticFeedback.lightImpact();
     final chapters = _chaptersByRoadmap[roadmap.id] ?? [];
     final beats = _beatsByRoadmap[roadmap.id] ?? [];
 
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       SmoothPageRoute(
         child: RoadmapDetailScreen(
           roadmap: roadmap,
@@ -916,6 +1003,9 @@ class _DesignSystemShowcaseScreenState
         ),
       ),
     );
+    if (mounted) {
+      await _requestDatabaseReload();
+    }
   }
 
   Future<void> _handleCreateTrack({

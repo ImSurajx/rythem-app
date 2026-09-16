@@ -56,8 +56,8 @@ class LocalInferenceService {
     PacingService? pacingService,
   })  : _downloadManager = downloadManager ?? ModelDownloadManager(),
         _fallbackMatcher = fallbackMatcher ?? SyllabusMatcherService(),
-        _roadmapRepo = roadmapRepo,
-        _beatRepo = beatRepo,
+        _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
+        _beatRepo = beatRepo ?? BeatRepository(),
         _pacingService = pacingService;
 
   Future<ModelTier> get activeTier => _downloadManager.getActiveTier();
@@ -727,11 +727,17 @@ _Generated locally by ${info.displayName} in 1.2s_
 
     final active = await activeTier;
     final modelLabel = active == ModelTier.balanced
-        ? 'Qwen 2.5 1.5B Mentor'
-        : (active == ModelTier.compact ? 'Qwen 2.5 0.5B Mentor' : 'Neural Flow Engine');
+        ? 'Qwen 2.5 1.5B Mentor (On-Device AI)'
+        : (active == ModelTier.compact ? 'Qwen 2.5 0.5B Mentor (On-Device AI)' : 'Neural Flow Engine');
 
-    final diagnosis =
-        'Your momentum slowed at "$bottleneckTitle" with a debt of ${budget.shortfallDebt.toStringAsFixed(1)} effort units. $modelLabel diagnoses $frictionDesc. By mathematically recalibrating (+$recommendedDays days), your daily effort eases from ${currentDailyPace.toStringAsFixed(1)} to ${projectedDailyPace.toStringAsFixed(1)} pts/day while keeping streaks intact.';
+    final String diagnosis;
+    if (active != ModelTier.fallback) {
+      diagnosis =
+          '🤖 **$modelLabel**: Diagnosed momentum friction at roadblock topic "$bottleneckTitle" (debt: ${budget.shortfallDebt.toStringAsFixed(1)} pts). Deep analysis indicates $frictionDesc. Recommendation: $pedagogicalRemedy. Applying dynamic recalibration (+$recommendedDays days) dilutes daily demand from ${currentDailyPace.toStringAsFixed(1)} to ${projectedDailyPace.toStringAsFixed(1)} pts/day while preserving your study streaks.';
+    } else {
+      diagnosis =
+          'Your momentum slowed at "$bottleneckTitle" with a debt of ${budget.shortfallDebt.toStringAsFixed(1)} effort units. $modelLabel diagnoses $frictionDesc. By mathematically recalibrating (+$recommendedDays days), your daily effort eases from ${currentDailyPace.toStringAsFixed(1)} to ${projectedDailyPace.toStringAsFixed(1)} pts/day while keeping streaks intact.';
+    }
 
     final rootCause =
         'Stalled on "$bottleneckTitle" causing ${budget.shortfallDebt.toStringAsFixed(1)} debt units across ${budget.lagStreakDays} lagging days.';

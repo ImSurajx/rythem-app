@@ -196,6 +196,11 @@ class RevisionService {
         // Candidate must be completed OR explicitly flagged
         if (!isCompleted && !isFlagged) continue;
 
+        // Topics completed today do not need same-day revision unless explicitly flagged weak
+        if (!isFlagged && beat.completedAt != null && beat.completedAt!.isAfter(todayStart) && record?.lastRevisedAt == null) {
+          continue;
+        }
+
         // Check if revised today: retain on board with completed/strikethrough state
         if (!isFlagged && record?.lastRevisedAt != null && record!.lastRevisedAt!.isAfter(todayStart)) {
           final aiEval = aiEvalMap[beat.id];

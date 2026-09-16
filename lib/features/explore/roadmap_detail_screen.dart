@@ -79,6 +79,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     _eventSub = DatabaseEventBus.instance.stream.listen((_) {
       _reloadFromDb();
     });
+    _reloadFromDb();
   }
 
   @override
@@ -127,6 +128,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       }
     });
     await widget.onBeatToggled(beat, isCompleted);
+    await _reloadFromDb();
   }
 
   Future<void> _handleConfirmMatch(BeatEntity beat) async {

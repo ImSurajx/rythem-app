@@ -15,6 +15,8 @@ class DailyRevisionBoard extends StatelessWidget {
   final List<RevisionItem> revisionItems;
   final ValueChanged<RevisionItem> onMarkRevised;
   final LocalInferenceService? inferenceService;
+  final VoidCallback? onRequestRecommendations;
+  final bool isScanning;
   final RythemColorTokens themeColors;
   final bool isDark;
 
@@ -23,6 +25,8 @@ class DailyRevisionBoard extends StatelessWidget {
     required this.revisionItems,
     required this.onMarkRevised,
     this.inferenceService,
+    this.onRequestRecommendations,
+    this.isScanning = false,
     required this.themeColors,
     required this.isDark,
   });
@@ -42,6 +46,9 @@ class DailyRevisionBoard extends StatelessWidget {
     }
 
     if (revisionItems.isEmpty) {
+      if (onRequestRecommendations != null) {
+        return _buildAskAiCard(context);
+      }
       return const SizedBox.shrink();
     }
 
@@ -157,24 +164,48 @@ class DailyRevisionBoard extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                              decoration: BoxDecoration(
-                                color: badgeColor.withOpacity(isDark ? 0.22 : 0.15),
-                                borderRadius: BorderRadius.circular(7),
-                                border: Border.all(
-                                  color: badgeColor.withOpacity(isDark ? 0.4 : 0.3),
-                                  width: 0.8,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (onRequestRecommendations != null)
+                                  GestureDetector(
+                                    onTap: isScanning ? null : onRequestRecommendations,
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: isScanning
+                                          ? const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(strokeWidth: 1.5),
+                                            )
+                                          : Icon(
+                                              Icons.refresh_rounded,
+                                              size: 14,
+                                              color: themeColors.textTertiary,
+                                            ),
+                                    ),
+                                  ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withOpacity(isDark ? 0.22 : 0.15),
+                                    borderRadius: BorderRadius.circular(7),
+                                    border: Border.all(
+                                      color: badgeColor.withOpacity(isDark ? 0.4 : 0.3),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isAllDone ? 'ALL REVISED' : '$dueCount SUGGESTED',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: badgeColor,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                isAllDone ? 'ALL REVISED' : '$dueCount SUGGESTED',
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: badgeColor,
-                                ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -588,6 +619,173 @@ class DailyRevisionBoard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAskAiCard(BuildContext context) {
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withOpacity(0.28)
+                  : const Color(0xFF0E1420).withOpacity(0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [
+                          const Color(0x24FFFFFF),
+                          const Color(0x12FFFFFF),
+                          const Color(0x08FFFFFF),
+                        ]
+                      : [
+                          const Color(0x99FFFFFF),
+                          const Color(0x66FFFFFF),
+                          const Color(0x40FFFFFF),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                  width: 0.9,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0x28A855F7) : const Color(0x1EA855F7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.psychology_outlined,
+                                size: 15,
+                                color: Color(0xFFA855F7),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'AI REVISION MENTOR',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  letterSpacing: 1.1,
+                                  fontWeight: FontWeight.w700,
+                                  color: themeColors.textPrimary,
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'ON-DEMAND',
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: themeColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Let the on-device AI scan your trackers, memory decay rates, and prerequisite synergy to suggest high-impact revision topics today.',
+                    style: RythemTypography.bodySmall.copyWith(
+                      color: themeColors.textSecondary,
+                      fontSize: 11.5,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  InkWell(
+                    onTap: isScanning ? null : onRequestRecommendations,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0x33A855F7)
+                            : const Color(0x1AA855F7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFA855F7).withOpacity(isDark ? 0.5 : 0.35),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isScanning)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.8,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA855F7)),
+                              ),
+                            )
+                          else
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 14,
+                              color: Color(0xFFA855F7),
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isScanning ? 'AI Scanning Trackers...' : 'See What to Revise',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isDark ? Colors.white : const Color(0xFF6B21A8),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
