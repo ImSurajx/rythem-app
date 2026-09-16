@@ -17,7 +17,6 @@ import 'widgets/backlog_decision_sheet.dart';
 import 'widgets/daily_revision_board.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/revision/models/revision_item.dart';
-import '../../core/widgets/glass_toast.dart';
 import '../../core/navigation/smooth_page_route.dart';
 
 /// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
@@ -84,8 +83,6 @@ class FlowScreen extends StatefulWidget {
 
 class _FlowScreenState extends State<FlowScreen> {
   String _selectedTrackFilter = 'all';
-  bool _simulateLagState = false;
-  List<RevisionItem>? _simulatedRevisionItems;
 
   @override
   Widget build(BuildContext context) {
@@ -147,81 +144,7 @@ class _FlowScreenState extends State<FlowScreen> {
       }
     }
 
-    // Support simulated lag state for immediate testing of Backlog Manager & AI Recalibration
-    if (_simulateLagState && laggingRoadmap == null && roadmaps.isNotEmpty) {
-      laggingRoadmap = roadmaps.first;
-      laggingBudget = const PacingBudget(
-        roadmapId: 'simulated_lag',
-        todayEffortShare: 3.5,
-        todaysSelectedEffort: 3.5,
-        remainingEffort: 18.0,
-        daysLeft: 10,
-        todaysBeats: [],
-        isSustainedLag: true,
-        shortfallDebt: 4.5,
-        lagStreakDays: 3,
-      );
-    }
-
-    final simTrackTitle = roadmaps.isNotEmpty ? roadmaps.first.title : 'Active Tracker';
-    final simBeats = widget.allBeats.isNotEmpty ? widget.allBeats : <BeatEntity>[];
-    if (_simulateLagState && widget.revisionItems.isEmpty && _simulatedRevisionItems == null) {
-      _simulatedRevisionItems = [
-        RevisionItem(
-          beatId: simBeats.isNotEmpty ? simBeats[0].id : 'sim_rev_1',
-          roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
-          roadmapTitle: simTrackTitle,
-          title: simBeats.isNotEmpty ? simBeats[0].title : 'Core Fundamentals & Architecture',
-          isFlaggedWeak: false,
-          lastRevisedAt: DateTime.now().subtract(const Duration(days: 3)),
-          revisionCount: 1,
-          stabilityDays: 2.2,
-          retentionScore: 0.65,
-          suggestedReason: 'Prerequisite for today\'s focus • Quick recall',
-          microRecallPrompt: '30-Sec Warm-up: Can you explain the core mechanism before starting today?',
-          beatPoints: 1.0,
-          isCompleted: false,
-        ),
-        RevisionItem(
-          beatId: simBeats.length > 1 ? simBeats[1].id : 'sim_rev_2',
-          roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
-          roadmapTitle: simTrackTitle,
-          title: simBeats.length > 1 ? simBeats[1].title : 'Key Principles & Implementation Review',
-          isFlaggedWeak: true,
-          flagNote: 'Priority review needed',
-          lastRevisedAt: DateTime.now().subtract(const Duration(days: 7)),
-          revisionCount: 0,
-          stabilityDays: 1.0,
-          retentionScore: 0.40,
-          suggestedReason: 'Flagged topic • High-impact review',
-          microRecallPrompt: '30-Sec Recall: Review the derivation step you previously flagged.',
-          beatPoints: 1.0,
-          isCompleted: false,
-        ),
-        if (simBeats.length > 2)
-          RevisionItem(
-            beatId: simBeats[2].id,
-            roadmapId: roadmaps.isNotEmpty ? roadmaps.first.id : 'sim_rm',
-            roadmapTitle: simTrackTitle,
-            title: simBeats[2].title,
-            isFlaggedWeak: false,
-            lastRevisedAt: DateTime.now().subtract(const Duration(days: 16)),
-            revisionCount: 2,
-            stabilityDays: 5.0,
-            retentionScore: 0.35,
-            suggestedReason: "Studied 2+ weeks ago • Refresh so you don't forget",
-            microRecallPrompt: 'Memory Refresh: 30-second mental recap of "${simBeats[2].title}".',
-            beatPoints: 0.5,
-            isCompleted: false,
-          ),
-      ];
-    } else if (!_simulateLagState) {
-      _simulatedRevisionItems = null;
-    }
-
-    final effectiveRevisionItems = (_simulateLagState && widget.revisionItems.isEmpty)
-        ? (_simulatedRevisionItems ?? [])
-        : widget.revisionItems;
+    final effectiveRevisionItems = widget.revisionItems;
 
     final topPadding = MediaQuery.of(context).padding.top;
 
@@ -231,7 +154,7 @@ class _FlowScreenState extends State<FlowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Date, Tracks & Delay / Lag Simulator Tester
+          // Header: Date & Active Track Switcher
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -252,65 +175,6 @@ class _FlowScreenState extends State<FlowScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 1-Click Lag / Backlog Simulator Test Pill
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _simulateLagState = !_simulateLagState;
-                      });
-                      if (_simulateLagState) {
-                        showGlassToast(
-                          context,
-                          'Backlog active: Review plan and backlog dilution queued.',
-                          icon: Icons.warning_amber_rounded,
-                          accentColor: Colors.amber,
-                        );
-                      } else {
-                        showGlassToast(
-                          context,
-                          'Backlog cleared: Normal pace restored.',
-                          icon: Icons.check_circle_outline_rounded,
-                        );
-                      }
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _simulateLagState
-                            ? Colors.amber.withOpacity(isDark ? 0.22 : 0.15)
-                            : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: _simulateLagState
-                              ? Colors.amber.withOpacity(isDark ? 0.5 : 0.4)
-                              : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _simulateLagState ? Icons.bolt : Icons.tune_rounded,
-                            size: 13,
-                            color: _simulateLagState ? Colors.amber : themeColors.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _simulateLagState ? 'SIMULATING LAG' : 'TEST BACKLOG',
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.4,
-                              color: _simulateLagState ? Colors.amber : themeColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                   if (roadmaps.length > 1)
                     GestureDetector(
                       onTap: widget.onSwitchRoadmap,
@@ -439,14 +303,6 @@ class _FlowScreenState extends State<FlowScreen> {
                   allRoadmaps: roadmaps,
                   inferenceService: widget.inferenceService,
                   onDecisionSelected: (decision) {
-                    if (_simulateLagState) {
-                      setState(() => _simulateLagState = false);
-                      showGlassToast(
-                        context,
-                        'Pacing recalibrated! Backlog resolved.',
-                        icon: Icons.auto_awesome_rounded,
-                      );
-                    }
                     widget.onApplyPacingDecision?.call(laggingRoadmap!, decision);
                   },
                 );
@@ -513,20 +369,6 @@ class _FlowScreenState extends State<FlowScreen> {
           DailyRevisionBoard(
             revisionItems: effectiveRevisionItems,
             onMarkRevised: (item) {
-              if (_simulateLagState && widget.revisionItems.isEmpty) {
-                setState(() {
-                  _simulatedRevisionItems = _simulatedRevisionItems?.map((r) {
-                    if (r.beatId == item.beatId) {
-                      final newState = !r.isCompletedToday;
-                      return r.copyWith(
-                        isCompleted: newState,
-                        lastRevisedAt: newState ? DateTime.now() : null,
-                      );
-                    }
-                    return r;
-                  }).toList();
-                });
-              }
               widget.onMarkRevised?.call(item);
             },
             inferenceService: widget.inferenceService ?? LocalInferenceService(),
@@ -549,23 +391,8 @@ class _FlowScreenState extends State<FlowScreen> {
                   (rm.id == widget.activeRoadmap?.id ? widget.chapters : <ChapterEntity>[]);
               final rmBeats = widget.beatsByRoadmap?[rm.id] ??
                   (rm.id == widget.activeRoadmap?.id ? widget.allBeats : <BeatEntity>[]);
-              final rmBudget = _simulateLagState
-                  ? ((widget.budgetsByRoadmap?[rm.id] ??
-                              (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null))
-                          ?.copyWith(isSustainedLag: true, shortfallDebt: 4.5) ??
-                      const PacingBudget(
-                        roadmapId: 'simulated_lag',
-                        todayEffortShare: 3.5,
-                        todaysSelectedEffort: 3.5,
-                        remainingEffort: 18.0,
-                        daysLeft: 10,
-                        todaysBeats: [],
-                        isSustainedLag: true,
-                        shortfallDebt: 4.5,
-                        lagStreakDays: 3,
-                      ))
-                  : (widget.budgetsByRoadmap?[rm.id] ??
-                      (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null));
+              final rmBudget = widget.budgetsByRoadmap?[rm.id] ??
+                  (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
 
               final todaysBeats = rmBudget?.todaysBeats ?? [];
               final todaysBeatIds = todaysBeats.map((b) => b.id).toSet();
@@ -1427,7 +1254,7 @@ class _EmptyMissionState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'No Targets Found in SQLite',
+              'No Learning Tracks Yet',
               style: RythemTypography.titleMedium.copyWith(
                 color: themeColors.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -1435,7 +1262,7 @@ class _EmptyMissionState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Your learning queue is clear. Explore curricula and ingest a YouTube track to get started.',
+              'Your flow queue is clear. Create or import your syllabus outline or link a playlist in Explore to begin.',
               style: RythemTypography.bodySmall.copyWith(
                 color: themeColors.textTertiary,
                 height: 1.4,
@@ -1445,7 +1272,7 @@ class _EmptyMissionState extends StatelessWidget {
             if (onExplore != null) ...[
               const SizedBox(height: 16),
               GlassButton(
-                label: 'Explore Tracks',
+                label: 'Create / Explore Tracks',
                 icon: Icons.explore_outlined,
                 onPressed: onExplore!,
               ),

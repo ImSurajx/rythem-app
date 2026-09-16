@@ -247,6 +247,9 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
                 remainingEffort: 4.0,
                 daysLeft: 14,
                 todaysBeats: [],
+                isSustainedLag: true,
+                shortfallDebt: 3.5,
+                lagStreakDays: 3,
               ),
               streakDays: 3,
               onSwitchRoadmap: () {},
@@ -257,15 +260,7 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       );
       await tester.pumpAndSettle();
 
-      // Find TEST BACKLOG pill
-      final testBacklogPill = find.text('TEST BACKLOG');
-      expect(testBacklogPill, findsOneWidget);
-
-      // Tap to activate lag simulation
-      await tester.tap(testBacklogPill);
-      await tester.pumpAndSettle();
-
-      // The sustained lag recalibration banner should now appear!
+      // The sustained lag recalibration banner should appear
       expect(find.text("You're falling behind"), findsOneWidget);
       expect(find.text('Review plan'), findsOneWidget);
     });

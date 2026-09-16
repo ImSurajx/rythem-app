@@ -160,9 +160,8 @@ class _DesignSystemShowcaseScreenState
 
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
-  String _roadmapTitle = 'Deep Learning & Neural Flow';
-  String _roadmapId = 'rm_demo';
-  int _currentStreak = 3;
+  String _roadmapId = '';
+  int _currentStreak = 0;
   List<ChapterEntity> _chapters = [];
   List<BeatEntity> _beats = [];
   Map<String, List<ChapterEntity>> _chaptersByRoadmap = {};
@@ -436,148 +435,15 @@ class _DesignSystemShowcaseScreenState
         if (mounted) _loadModelStatus();
       }));
       final active = await _roadmapRepo.getActiveRoadmaps();
-      if (active.isEmpty) {
-        await _seedSampleData();
-      } else {
+      if (active.isNotEmpty) {
         _roadmapId = active.first.id;
-        _roadmapTitle = active.first.title;
+      } else {
+        _roadmapId = '';
       }
       await _loadDatabaseState();
     } catch (e) {
       debugPrint('Error initializing database: $e');
     }
-  }
-
-  Future<void> _seedSampleData() async {
-    final now = DateTime.now();
-    _roadmapId = 'rm_demo';
-    _roadmapTitle = 'Deep Learning & Neural Flow';
-
-    await _roadmapRepo.createRoadmap(RoadmapEntity(
-      id: _roadmapId,
-      title: _roadmapTitle,
-      description: 'Deep Learning',
-      targetCompletionDate: now.add(const Duration(days: 14)),
-      isPrimary: true,
-      createdAt: now,
-      updatedAt: now,
-    ));
-
-    await _chapterRepo.createChapter(ChapterEntity(
-      id: 'ch_foundations',
-      roadmapId: _roadmapId,
-      title: 'Chapter 1: Mathematical Foundations',
-      sortOrder: 0,
-      createdAt: now,
-      updatedAt: now,
-    ));
-
-    final sampleBeats = [
-      BeatEntity(
-        id: 'beat_1',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Calculus & Gradient Vectors',
-        effortWeight: 1.0,
-        sortOrder: 0,
-        isCompleted: true,
-        completedAt: now.subtract(const Duration(days: 7)),
-        createdAt: now.subtract(const Duration(days: 10)),
-        updatedAt: now.subtract(const Duration(days: 7)),
-      ),
-      BeatEntity(
-        id: 'beat_2',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Forward & Backpropagation',
-        effortWeight: 1.5,
-        sortOrder: 1,
-        isCompleted: true,
-        completedAt: now.subtract(const Duration(days: 3)),
-        createdAt: now.subtract(const Duration(days: 5)),
-        updatedAt: now.subtract(const Duration(days: 3)),
-      ),
-      BeatEntity(
-        id: 'beat_3',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Activation Functions & Loss Surfaces',
-        effortWeight: 1.0,
-        sortOrder: 2,
-        isCompleted: true,
-        completedAt: now.subtract(const Duration(days: 1)),
-        createdAt: now.subtract(const Duration(days: 3)),
-        updatedAt: now.subtract(const Duration(days: 1)),
-      ),
-      BeatEntity(
-        id: 'beat_4',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Weight Initialization Secrets',
-        effortWeight: 1.8,
-        sortOrder: 3,
-        isCompleted: false,
-        isMentorExtra: true,
-        createdAt: now,
-        updatedAt: now,
-      ),
-      BeatEntity(
-        id: 'beat_5',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Batch Normalization Dynamics',
-        effortWeight: 1.2,
-        sortOrder: 4,
-        isCompleted: false,
-        createdAt: now,
-        updatedAt: now,
-      ),
-      BeatEntity(
-        id: 'beat_6',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Residual Connections & ResNet',
-        effortWeight: 1.6,
-        sortOrder: 5,
-        isCompleted: false,
-        createdAt: now,
-        updatedAt: now,
-      ),
-      BeatEntity(
-        id: 'beat_7',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Self-Attention Mechanism',
-        effortWeight: 2.0,
-        sortOrder: 6,
-        isCompleted: false,
-        isMentorExtra: true,
-        createdAt: now,
-        updatedAt: now,
-      ),
-      BeatEntity(
-        id: 'beat_delayed_sample',
-        chapterId: 'ch_foundations',
-        roadmapId: _roadmapId,
-        title: 'Backpropagation Vector Calculus (Delayed Task)',
-        effortWeight: 2.0,
-        sortOrder: 7,
-        isCompleted: false,
-        createdAt: now.subtract(const Duration(days: 2)),
-        updatedAt: now.subtract(const Duration(days: 2)),
-      ),
-    ];
-
-    await _beatRepo.createBeatsBatch(sampleBeats);
-    await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(['beat_delayed_sample']));
-
-    // Pre-seed sample flagged weak concept for the Revision System
-    await _revisionService.flagTopicForRevision(
-      beat: sampleBeats[1],
-      roadmapTitle: _roadmapTitle,
-      note: 'Chain rule across multidimensional weight tensors',
-      isWeak: true,
-    );
   }
 
   Future<void> _loadDatabaseState() async {
@@ -587,7 +453,6 @@ class _DesignSystemShowcaseScreenState
         setState(() {
           _allRoadmaps = [];
           _roadmapId = '';
-          _roadmapTitle = 'No Active Target';
           _chapters = [];
           _beats = [];
           _pacingBudget = null;
@@ -598,10 +463,6 @@ class _DesignSystemShowcaseScreenState
 
     if (_roadmapId.isEmpty || !allRoadmaps.any((r) => r.id == _roadmapId)) {
       _roadmapId = allRoadmaps.first.id;
-      _roadmapTitle = allRoadmaps.first.title;
-    } else {
-      final cur = allRoadmaps.firstWhere((r) => r.id == _roadmapId);
-      _roadmapTitle = cur.title;
     }
 
     // Fetch chapters, beats, and budgets for ALL roadmaps
@@ -790,7 +651,6 @@ class _DesignSystemShowcaseScreenState
   void _switchRoadmap(RoadmapEntity rm) {
     setState(() {
       _roadmapId = rm.id;
-      _roadmapTitle = rm.title;
     });
     _loadDatabaseState();
   }

@@ -485,9 +485,10 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
       cumulativePoints.add((date: day.date, cumulative: runningTotal));
     }
 
-    // Prepare demo graph of lifetime beats if user has sparse or empty data
-    if (cumulativePoints.length < 8 || runningTotal < 5) {
-      cumulativePoints = _generateDemoLifetimeBeats();
+    if (cumulativePoints.isEmpty) {
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      cumulativePoints = [(date: dateStr, cumulative: 0)];
     }
 
     final maxCumulative = math.max(1, cumulativePoints.last.cumulative);
@@ -584,26 +585,6 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
     );
   }
 
-  List<({String date, int cumulative})> _generateDemoLifetimeBeats() {
-    final now = DateTime.now();
-    // 30 days progression curve showing steady habit formation with plateaus & surges
-    final increments = [
-      2, 1, 3, 0, 2, 4, 1, // Week 1 (13 beats)
-      3, 0, 2, 3, 1, 4, 2, // Week 2 (28 beats)
-      0, 2, 3, 1, 2, 0, 3, // Week 3 (39 beats)
-      2, 1, 2, 0, 2, 1, 2, 1 // Week 4+ (50 beats)
-    ];
-
-    final List<({String date, int cumulative})> points = [];
-    int sum = 0;
-    for (int i = 0; i < increments.length; i++) {
-      sum += increments[i];
-      final d = now.subtract(Duration(days: (increments.length - 1) - i));
-      final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-      points.add((date: dateStr, cumulative: sum));
-    }
-    return points;
-  }
 
   Widget _buildMiniMetric(String label, String value, RythemColorTokens themeColors) {
     return Column(

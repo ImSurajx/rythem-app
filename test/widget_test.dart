@@ -106,31 +106,27 @@ void main() {
     await tester.pumpWidget(const RythemApp());
     await tester.pump();
 
-    // Allow real SQLite async database initialization and seeding to settle
-    for (int i = 0; i < 30; i++) {
+    // Allow real SQLite async database initialization to settle
+    for (int i = 0; i < 20; i++) {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
       await tester.pump();
-      if (find.text('Calculus & Gradient Vectors').evaluate().isNotEmpty) {
-        await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 250)));
-        await tester.pump();
-        break;
-      }
     }
 
-    // Verify brand typography, immediate stack & persistent dock
+    // Verify brand typography, clean state, immediate stack & persistent dock
     expect(find.text('RYTHEM'), findsOneWidget);
+    expect(find.text('No Learning Tracks Yet'), findsOneWidget);
     expect(find.byType(IndexedStack), findsWidgets);
     expect(find.byType(GlassBottomDock), findsOneWidget);
 
     // Switch to Explore tab
     await tester.tap(find.text('Explore'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     // Verify glass components
     expect(find.byType(GlassContainer), findsWidgets);
     expect(find.byType(GlassCard), findsWidgets);
     expect(find.byType(GlassButton), findsWidgets);
-    expect(find.byType(GlassProgressBar), findsWidgets);
 
     // Verify Explore screen structure
     expect(find.text('EXPLORE'), findsOneWidget);
@@ -139,7 +135,8 @@ void main() {
 
     // Switch to Settings tab
     await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     // Verify Settings & 7-Day Study Intensity & Backup
     expect(find.text('SETTINGS'), findsOneWidget);
@@ -152,6 +149,5 @@ void main() {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
       await tester.pump();
     }
-    await tester.pumpAndSettle();
   });
 }
