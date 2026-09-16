@@ -159,8 +159,6 @@ RAW SYLLABUS:
 
 </div>
 
-> *Tip: To update screenshots, place your device captures inside `assets/screenshots/` with the corresponding filenames.*
-
 ---
 
 ## 🏗️ Technical Architecture
