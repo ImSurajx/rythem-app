@@ -43,7 +43,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
     super.initState();
     final now = DateTime.now();
     _displayedMonth = DateTime(now.year, now.month, 1);
-    _selectedDateStr = _formatDate(now);
+    _selectedDateStr = null;
     _repo = widget.beatLogRepo ?? BeatLogRepository();
     _loadMonthActivity();
   }
@@ -89,16 +89,6 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
     _loadMonthActivity();
   }
 
-  void _jumpToCurrentMonth() {
-    HapticFeedback.mediumImpact();
-    final now = DateTime.now();
-    setState(() {
-      _displayedMonth = DateTime(now.year, now.month, 1);
-      _selectedDateStr = _formatDate(now);
-    });
-    _loadMonthActivity();
-  }
-
   static const _monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -110,7 +100,6 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final todayStr = _formatDate(now);
-    final isCurrentMonth = _displayedMonth.year == now.year && _displayedMonth.month == now.month;
 
     final firstDayWeekday = _displayedMonth.weekday; // 1 = Monday, 7 = Sunday
     final leadingEmptyDays = firstDayWeekday - 1;
@@ -138,81 +127,63 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.calendar_month_rounded,
+                        size: 16,
+                        color: widget.themeColors.textPrimary,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.calendar_month_rounded,
-                      size: 16,
-                      color: widget.themeColors.textPrimary,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '${_monthNames[_displayedMonth.month - 1]} ${_displayedMonth.year}'.toUpperCase(),
+                        overflow: TextOverflow.ellipsis,
+                        style: RythemTypography.labelSmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                          color: widget.themeColors.textPrimary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_monthNames[_displayedMonth.month - 1]} ${_displayedMonth.year}'.toUpperCase(),
-                    style: RythemTypography.labelSmall.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      color: widget.themeColors.textPrimary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
-                          .withOpacity(widget.isDark ? 0.2 : 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
                         color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
-                            .withOpacity(widget.isDark ? 0.4 : 0.3),
-                        width: 0.8,
+                            .withOpacity(widget.isDark ? 0.2 : 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
+                              .withOpacity(widget.isDark ? 0.4 : 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        widget.streakDays > 0 ? '🔥 ${widget.streakDays}d streak' : '0d streak',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary,
+                        ),
                       ),
                     ),
-                    child: Text(
-                      widget.streakDays > 0 ? '🔥 ${widget.streakDays}d streak' : '0d streak',
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color: widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary,
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (!isCurrentMonth)
-                    GestureDetector(
-                      onTap: _jumpToCurrentMonth,
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: widget.isDark ? Colors.white24 : Colors.black12,
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          'TODAY',
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            color: widget.themeColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
                   // Left / Right Month Navigators
                   GestureDetector(
                     onTap: _previousMonth,
@@ -440,12 +411,14 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
         color: tileColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isToday
-              ? (widget.isDark ? Colors.white : Colors.black)
-              : (isSelected
-                  ? (widget.isDark ? Colors.white70 : Colors.black87)
-                  : (widget.isDark ? Colors.white10 : Colors.black.withOpacity(0.06))),
-          width: isToday ? 1.8 : (isSelected ? 1.4 : 0.8),
+          color: isSelected
+              ? (widget.isDark ? Colors.white70 : Colors.black87)
+              : (isToday && count > 0
+                  ? (widget.isDark ? Colors.white : Colors.black)
+                  : (isToday
+                      ? (widget.isDark ? Colors.white24 : Colors.black26)
+                      : (widget.isDark ? Colors.white10 : Colors.black.withOpacity(0.06)))),
+          width: isSelected ? 1.4 : (isToday && count > 0 ? 1.5 : 0.8),
         ),
         boxShadow: isToday && count > 0
             ? [

@@ -495,6 +495,11 @@ class _DesignSystemShowcaseScreenState
       }
     }
 
+    if (allRoadmaps.isEmpty) {
+      final db = await DatabaseService.instance.database;
+      await db.delete(DatabaseTables.beatLogs);
+    }
+
     final chapters = chaptersByRoadmap[_roadmapId] ?? [];
     final beats = beatsByRoadmap[_roadmapId] ?? [];
     final streak = await _beatLogRepo.getCurrentStreak();
@@ -522,36 +527,9 @@ class _DesignSystemShowcaseScreenState
       if (rawDelayed != null && rawDelayed.isNotEmpty) {
         final decoded = jsonDecode(rawDelayed) as List;
         delayedBeatIds = decoded.map((e) => e.toString()).toSet();
-      } else {
-        delayedBeatIds = {'beat_delayed_sample'};
-        await _appSettingsRepo.setSetting('delayed_beat_ids', jsonEncode(delayedBeatIds.toList()));
       }
     } catch (_) {
-      delayedBeatIds = {'beat_delayed_sample'};
-    }
-
-    // Ensure sample delayed task exists in database so user can test delay workflow
-    if (allRoadmaps.isNotEmpty) {
-      final targetRoadmapId = allRoadmaps.first.id;
-      final chs = chaptersByRoadmap[targetRoadmapId] ?? [];
-      if (chs.isNotEmpty) {
-        final existingDelayed = await _beatRepo.getBeatById('beat_delayed_sample');
-        if (existingDelayed == null) {
-          final delayedBeat = BeatEntity(
-            id: 'beat_delayed_sample',
-            chapterId: chs.first.id,
-            roadmapId: targetRoadmapId,
-            title: 'Backpropagation Vector Calculus (Delayed Task)',
-            effortWeight: 2.0,
-            sortOrder: 99,
-            isCompleted: false,
-            createdAt: DateTime.now().subtract(const Duration(days: 2)),
-            updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-          );
-          await _beatRepo.createBeat(delayedBeat);
-          beatsByRoadmap[targetRoadmapId] = await _beatRepo.getBeatsByRoadmapId(targetRoadmapId);
-        }
-      }
+      delayedBeatIds = {};
     }
 
     final finalBeats = beatsByRoadmap[_roadmapId] ?? [];

@@ -147,10 +147,10 @@ void main() {
       await tester.tap(nextButton);
       await tester.pumpAndSettle();
 
-      // Tap TODAY shortcut to jump back
-      final todayButton = find.text('TODAY');
-      expect(todayButton, findsOneWidget);
-      await tester.tap(todayButton);
+      // Tap previous month icon to navigate back
+      final prevButton = find.byIcon(Icons.chevron_left_rounded);
+      expect(prevButton, findsOneWidget);
+      await tester.tap(prevButton);
       await tester.pumpAndSettle();
     });
 
