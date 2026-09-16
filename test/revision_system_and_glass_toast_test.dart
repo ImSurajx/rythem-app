@@ -10,7 +10,10 @@ import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'package:rythem_app/core/widgets/markdown_content_view.dart';
 import 'package:rythem_app/features/flow/flow_screen.dart';
 import 'package:rythem_app/features/flow/widgets/daily_revision_board.dart';
+import 'package:rythem_app/features/flow/widgets/backlog_decision_sheet.dart';
+import 'package:rythem_app/core/ai/models/model_tier.dart';
 import 'package:rythem_app/core/ai/services/local_inference_service.dart';
+import 'package:rythem_app/core/ai/services/model_download_manager.dart';
 import 'package:rythem_app/core/pacing/models/pacing_budget.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -464,7 +467,178 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
 
       expect(recommendationsLight.length, inInclusiveRange(1, 2));
     });
+
+    test('LocalInferenceService.diagnoseShortfallAndRecommend identifies roadblock beat and projects mathematically calibrated pace', () async {
+      final ai = LocalInferenceService();
+      final now = DateTime.now();
+
+      final stalledBeat = BeatEntity(
+        id: 'beat_roadblock_1',
+        chapterId: 'ch_1',
+        roadmapId: 'rm_dl',
+        title: 'Backpropagation Vector Tensor Calculus',
+        effortWeight: 2.5,
+        sortOrder: 0,
+        isCompleted: false,
+        createdAt: now.subtract(const Duration(days: 10)),
+        updatedAt: now,
+      );
+
+      final nextBeat = BeatEntity(
+        id: 'beat_roadblock_2',
+        chapterId: 'ch_1',
+        roadmapId: 'rm_dl',
+        title: 'Softmax Cross Entropy Loss',
+        effortWeight: 1.0,
+        sortOrder: 1,
+        isCompleted: false,
+        isMentorExtra: true,
+        createdAt: now.subtract(const Duration(days: 10)),
+        updatedAt: now,
+      );
+
+      final budget = PacingBudget(
+        roadmapId: 'rm_dl',
+        todayEffortShare: 3.5,
+        todaysSelectedEffort: 3.5,
+        remainingEffort: 14.0,
+        daysLeft: 7,
+        todaysBeats: [stalledBeat, nextBeat],
+        isSustainedLag: true,
+        shortfallDebt: 4.5,
+        lagStreakDays: 3,
+        recentVelocity: 1.2,
+      );
+
+      final diagnosis = await ai.diagnoseShortfallAndRecommend(
+        roadmapId: 'rm_dl',
+        budget: budget,
+      );
+
+      expect(diagnosis.bottleneckBeatTitle, contains('Backpropagation Vector Tensor Calculus'));
+      expect(diagnosis.pedagogicalRemedy, contains('Decompress roadblock beat'));
+      expect(diagnosis.recommendedExtensionDays, greaterThanOrEqualTo(3));
+      expect(diagnosis.calculatedDailyPace, lessThan(3.5)); // Eases daily effort
+      expect(diagnosis.optionalBeatsToDefer, contains('Softmax Cross Entropy Loss'));
+    });
+
+    testWidgets('BacklogDecisionSheet shows AI + Maths Engine Synchronizing card during model download and offers dynamic options', (tester) async {
+      final progressNotifier = ValueNotifier<DownloadProgress?>(
+        const DownloadProgress(
+          tier: ModelTier.compact,
+          progress: 0.45,
+          receivedBytes: 220000000,
+          totalBytes: 491400032,
+        ),
+      );
+
+      final mockInference = _MockDownloadingInferenceService(
+        progressNotifier: progressNotifier,
+        isDownloading: true,
+        tier: ModelTier.compact,
+      );
+
+      final roadmap = RoadmapEntity(
+        id: 'rm_test_dl',
+        title: 'Neural Networks',
+        targetCompletionDate: DateTime.now().add(const Duration(days: 14)),
+        createdAt: DateTime.now().subtract(const Duration(days: 7)),
+        updatedAt: DateTime.now(),
+      );
+
+      const budget = PacingBudget(
+        roadmapId: 'rm_test_dl',
+        todayEffortShare: 3.0,
+        todaysSelectedEffort: 3.0,
+        remainingEffort: 15.0,
+        daysLeft: 5,
+        todaysBeats: [],
+        isSustainedLag: true,
+        shortfallDebt: 5.0,
+        lagStreakDays: 3,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: BacklogDecisionSheet(
+              roadmap: roadmap,
+              pacingBudget: budget,
+              inferenceService: mockInference,
+              onDecisionSelected: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify the liquid-glass Engine Synchronizing screen is visible
+      expect(find.text('AI + MATHS ENGINES SYNCHRONIZING'), findsOneWidget);
+      expect(find.text('45%'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('DailyRevisionBoard shows REVISION ENGINE SYNCING card during model download', (tester) async {
+      final progressNotifier = ValueNotifier<DownloadProgress?>(
+        const DownloadProgress(
+          tier: ModelTier.compact,
+          progress: 0.60,
+          receivedBytes: 294000000,
+          totalBytes: 491400032,
+        ),
+      );
+
+      final mockInference = _MockDownloadingInferenceService(
+        progressNotifier: progressNotifier,
+        isDownloading: true,
+        tier: ModelTier.compact,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: DailyRevisionBoard(
+              revisionItems: const [],
+              onMarkRevised: (_) {},
+              inferenceService: mockInference,
+              themeColors: RythemColors.dark,
+              isDark: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('REVISION ENGINE SYNCING'), findsOneWidget);
+      expect(find.text('60%'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
   });
+}
+
+class _MockDownloadingInferenceService extends LocalInferenceService {
+  final ValueNotifier<DownloadProgress?> _progress;
+  final bool _downloading;
+  final ModelTier? _tier;
+
+  _MockDownloadingInferenceService({
+    required ValueNotifier<DownloadProgress?> progressNotifier,
+    bool isDownloading = true,
+    ModelTier tier = ModelTier.compact,
+  })  : _progress = progressNotifier,
+        _downloading = isDownloading,
+        _tier = tier;
+
+  @override
+  ValueNotifier<DownloadProgress?> get downloadProgressNotifier => _progress;
+
+  @override
+  bool get isModelDownloading => _downloading;
+
+  @override
+  ModelTier? get downloadingTier => _tier;
 }
 
 

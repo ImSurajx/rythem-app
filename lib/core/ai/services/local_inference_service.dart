@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import '../models/model_tier.dart';
 import '../models/curriculum_audit_result.dart';
 import 'model_download_manager.dart';
@@ -19,6 +20,9 @@ class ShortfallDiagnosis {
   final String encouragement;
   final double shortfallDebt;
   final double velocityDeficit;
+  final String? bottleneckBeatTitle;
+  final String? pedagogicalRemedy;
+  final double? calculatedDailyPace;
 
   const ShortfallDiagnosis({
     required this.diagnosis,
@@ -29,6 +33,9 @@ class ShortfallDiagnosis {
     required this.encouragement,
     this.shortfallDebt = 0.0,
     this.velocityDeficit = 0.0,
+    this.bottleneckBeatTitle,
+    this.pedagogicalRemedy,
+    this.calculatedDailyPace,
   });
 }
 
@@ -59,6 +66,15 @@ class LocalInferenceService {
     final tier = await activeTier;
     return tier != ModelTier.fallback;
   }
+
+  ValueNotifier<DownloadProgress?> get downloadProgressNotifier =>
+      _downloadManager.downloadProgressNotifier;
+
+  bool get isModelDownloading => _downloadManager.isDownloading;
+
+  ModelTier? get downloadingTier => _downloadManager.downloadingTier;
+
+  Future<bool> isModelDownloaded(ModelTier tier) => _downloadManager.isModelDownloaded(tier);
 
   /// Calculates semantic topic similarity between a video beat title and a syllabus topic.
   Future<double> scoreTopicSimilarity(String beatTitle, String topicTitle) async {
@@ -650,40 +666,91 @@ _Generated locally by ${info.displayName} in 1.2s_
         ? await _beatRepo.getBeatsByRoadmapId(roadmapId)
         : <BeatEntity>[];
 
-    final pendingBeats = allBeats.where((b) => !b.isCompleted).toList();
-    final mentorExtras = pendingBeats.where((b) => b.isMentorExtra).toList();
-    final coreBeats = pendingBeats.where((b) => !b.isMentorExtra).toList();
+    // Sort pending beats by sortOrder to find the exact bottleneck
+    final pendingBeats = allBeats.where((b) => !b.isCompleted).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-    final dailyPace = max(0.8, budget.todayEffortShare);
-    // Mathematical deficit absorption:
-    // How many days required to absorb accumulated shortfall debt smoothly
-    final deficitDays = (budget.shortfallDebt / dailyPace).ceil();
-    final recommendedDays = max(3, min(14, deficitDays == 0 ? 5 : deficitDays + 2));
+    final effectivePending = pendingBeats.isNotEmpty
+        ? pendingBeats
+        : budget.todaysBeats.where((b) => !b.isCompleted).toList();
+
+    final bottleneckBeat = effectivePending.firstOrNull;
+    final bottleneckTitle = bottleneckBeat?.title ?? 'Core Milestone';
+
+    // Semantic friction & complexity detection
+    final isHighFriction = bottleneckBeat != null &&
+        (bottleneckBeat.effortWeight >= 2.0 ||
+            RegExp(r'(backpropagation|gradient|calculus|matrix|eigen|attention|transformer|recursion|dynamic|dp|tree|graph|algorithm|optimization|neural)',
+                    caseSensitive: false)
+                .hasMatch(bottleneckBeat.title));
+
+    String pedagogicalRemedy;
+    String frictionDesc;
+    if (isHighFriction) {
+      pedagogicalRemedy = 'Decompress roadblock beat "$bottleneckTitle" into micro-sessions';
+      frictionDesc = 'steep conceptual density at "$bottleneckTitle"';
+    } else if (budget.velocityDeficit > 0.6) {
+      pedagogicalRemedy = 'Pacing Dilution (Spread effort across additional calendar days)';
+      frictionDesc =
+          'tempo mismatch (demanded ${budget.todayEffortShare.toStringAsFixed(1)} vs actual ${budget.recentVelocity.toStringAsFixed(1)} pts/day)';
+    } else {
+      pedagogicalRemedy = 'Timeline Re-anchor & Core Beat Focus';
+      frictionDesc = 'momentum pause across the last ${budget.lagStreakDays} days';
+    }
+
+    // Mathematical precision governor
+    final currentDailyPace = max(0.8, budget.todayEffortShare);
+    final safeVelocity = budget.recentVelocity > 0.4
+        ? budget.recentVelocity
+        : (currentDailyPace * 0.7);
+    final deficitAbsorptionDays = (budget.shortfallDebt / safeVelocity).ceil();
+    final recommendedDays = max(2, min(14, deficitAbsorptionDays == 0 ? 4 : deficitAbsorptionDays));
+
+    final remainingEffort = budget.remainingEffort > 0
+        ? budget.remainingEffort
+        : (budget.shortfallDebt * 2.0);
+    final projectedDays = max(1, budget.daysLeft + recommendedDays);
+    final projectedDailyPace =
+        double.parse((remainingEffort / projectedDays).toStringAsFixed(1));
+
+    // Segregate mentor extras vs core beats
+    final mentorExtras = effectivePending.where((b) => b.isMentorExtra).toList();
+    final coreBeats = effectivePending.where((b) => !b.isMentorExtra).toList();
+    final deferList = mentorExtras.isNotEmpty
+        ? mentorExtras.take(3).map((b) => b.title).toList()
+        : (effectivePending.length > 2
+            ? [effectivePending.last.title]
+            : <String>[]);
+    final focusList = coreBeats.isNotEmpty
+        ? coreBeats.take(3).map((b) => b.title).toList()
+        : effectivePending.take(3).map((b) => b.title).toList();
 
     final active = await activeTier;
     final modelLabel = active == ModelTier.balanced
-        ? 'Qwen-1.5B Mentor'
-        : (active == ModelTier.compact ? 'Qwen-0.5B Mentor' : 'Neural Flow Engine');
+        ? 'Qwen 2.5 1.5B Mentor'
+        : (active == ModelTier.compact ? 'Qwen 2.5 0.5B Mentor' : 'Neural Flow Engine');
 
-    final rootCause = budget.velocityDeficit > 0.6
-        ? 'Pacing demand (${dailyPace.toStringAsFixed(1)} effort/day) outpaced recent speed (${budget.recentVelocity.toStringAsFixed(1)} effort/day).'
-        : '${budget.lagStreakDays} consecutive lagging days accumulated ${budget.shortfallDebt.toStringAsFixed(1)} units of effort debt.';
+    final diagnosis =
+        'Your momentum slowed at "$bottleneckTitle" with a debt of ${budget.shortfallDebt.toStringAsFixed(1)} effort units. $modelLabel diagnoses $frictionDesc. By mathematically recalibrating (+$recommendedDays days), your daily effort eases from ${currentDailyPace.toStringAsFixed(1)} to ${projectedDailyPace.toStringAsFixed(1)} pts/day while keeping streaks intact.';
 
-    final diagnosis = 'Your momentum slowed across the last ${budget.lagStreakDays} days with a debt of ${budget.shortfallDebt.toStringAsFixed(1)} effort units across ${pendingBeats.length} remaining topics. To regain steady flow without cognitive fatigue, $modelLabel mathematically recommends a timeline recalibration of +$recommendedDays days and focusing on essential core beats.';
+    final rootCause =
+        'Stalled on "$bottleneckTitle" causing ${budget.shortfallDebt.toStringAsFixed(1)} debt units across ${budget.lagStreakDays} lagging days.';
 
-    const encouragement = 'Rhythm shifts are a natural part of deep mastery. Recalibrating keeps learning sustainable and penalty-free.';
+    const encouragement =
+        'Rhythm shifts are a natural part of deep mastery. Recalibrating keeps learning sustainable and penalty-free.';
 
     return ShortfallDiagnosis(
       diagnosis: diagnosis,
       rootCause: rootCause,
       recommendedExtensionDays: recommendedDays,
-      coreBeatsToFocus: coreBeats.take(3).map((b) => b.title).toList(),
-      optionalBeatsToDefer: mentorExtras.isNotEmpty
-          ? mentorExtras.take(3).map((b) => b.title).toList()
-          : pendingBeats.reversed.take(2).map((b) => b.title).toList(),
+      coreBeatsToFocus: focusList,
+      optionalBeatsToDefer: deferList,
       encouragement: encouragement,
       shortfallDebt: budget.shortfallDebt,
       velocityDeficit: budget.velocityDeficit,
+      bottleneckBeatTitle: bottleneckTitle,
+      pedagogicalRemedy: pedagogicalRemedy,
+      calculatedDailyPace: projectedDailyPace,
     );
   }
 

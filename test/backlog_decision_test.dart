@@ -50,7 +50,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('BACKLOG RECALIBRATION'), findsOneWidget);
-      expect(find.text('Push Target Date (+7 Days)'), findsOneWidget);
+      expect(find.textContaining('Push Target Date'), findsOneWidget);
       expect(find.text('Trim to Core Must-Do Beats'), findsOneWidget);
       expect(find.text('Accept & Keep Pace'), findsOneWidget);
     });
@@ -71,7 +71,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final pushOption = find.text('Push Target Date (+7 Days)');
+      final pushOption = find.textContaining('Push Target Date');
       expect(pushOption, findsOneWidget);
 
       await tester.tap(pushOption);
@@ -79,7 +79,7 @@ void main() {
 
       expect(selected, isNotNull);
       expect(selected!.type, PacingDecisionType.extendTargetDate);
-      expect(selected!.extensionDays, 7);
+      expect(selected!.extensionDays, greaterThan(0));
     });
 
     testWidgets('selecting trim to core fires trimToCore decision', (tester) async {

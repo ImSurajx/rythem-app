@@ -2,7 +2,9 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/ai/models/model_tier.dart';
 import '../../../../core/ai/services/local_inference_service.dart';
+import '../../../../core/ai/services/model_download_manager.dart';
 import '../../../../core/database/models/roadmap_entity.dart';
 import '../../../../core/pacing/models/pacing_budget.dart';
 import '../../../../core/pacing/models/pacing_decision.dart';
@@ -58,16 +60,51 @@ class BacklogDecisionSheet extends StatefulWidget {
 class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
   ShortfallDiagnosis? _diagnosis;
   bool _isLoadingDiagnosis = true;
+  bool _isListeningDownload = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAiDiagnosis();
+    final service = widget.inferenceService ?? LocalInferenceService();
+    if (service.isModelDownloading) {
+      _isListeningDownload = true;
+      _isLoadingDiagnosis = false;
+      service.downloadProgressNotifier.addListener(_onDownloadProgressChanged);
+    } else {
+      _loadAiDiagnosis();
+    }
+  }
+
+  void _onDownloadProgressChanged() {
+    final service = widget.inferenceService ?? LocalInferenceService();
+    final progress = service.downloadProgressNotifier.value;
+    if (progress != null && progress.isCompleted && mounted) {
+      service.downloadProgressNotifier.removeListener(_onDownloadProgressChanged);
+      _isListeningDownload = false;
+      _loadAiDiagnosis();
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_isListeningDownload) {
+      final service = widget.inferenceService ?? LocalInferenceService();
+      service.downloadProgressNotifier.removeListener(_onDownloadProgressChanged);
+    }
+    super.dispose();
   }
 
   Future<void> _loadAiDiagnosis() async {
+    final service = widget.inferenceService ?? LocalInferenceService();
+    if (service.isModelDownloading) {
+      if (mounted) setState(() => _isLoadingDiagnosis = false);
+      return;
+    }
+    if (mounted) setState(() => _isLoadingDiagnosis = true);
+
     try {
-      final service = widget.inferenceService ?? LocalInferenceService();
       final diag = await service.diagnoseShortfallAndRecommend(
         roadmapId: widget.roadmap.id,
         budget: widget.pacingBudget,
@@ -115,6 +152,11 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final themeColors = isDark ? RythemColors.dark : RythemColors.light;
+
+    final service = widget.inferenceService ?? LocalInferenceService();
+    final isDownloading = service.isModelDownloading;
+    final downloadProgress = service.downloadProgressNotifier.value;
+    final downloadingTier = service.downloadingTier;
 
     final otherRoadmaps = widget.allRoadmaps.where((r) => r.id != widget.roadmap.id).toList();
 
@@ -208,8 +250,17 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // AI Mentor Diagnosis Card (Maths + AI)
-              if (_isLoadingDiagnosis) ...[
+              // AI + Maths Engine Status / Diagnosis Card
+              if (isDownloading) ...[
+                _buildEngineDownloadingCard(
+                  context: context,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                  progress: downloadProgress,
+                  downloadingTier: downloadingTier,
+                ),
+                const SizedBox(height: 16),
+              ] else if (_isLoadingDiagnosis) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -227,10 +278,12 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       const SizedBox(width: 14),
-                      Text(
-                        'Analyzing shortfall metrics with AI Mentor...',
-                        style: RythemTypography.caption.copyWith(
-                          color: themeColors.textSecondary,
+                      Expanded(
+                        child: Text(
+                          'Analyzing shortfall metrics & bottleneck concepts with AI...',
+                          style: RythemTypography.caption.copyWith(
+                            color: themeColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -258,30 +311,39 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
               ),
               const SizedBox(height: 10),
 
-              // Option 1: Extend Target Date
-              _buildOptionCard(
-                context: context,
-                themeColors: themeColors,
-                isDark: isDark,
-                icon: Icons.update_rounded,
-                title: 'Push Target Date (+7 Days)',
-                subtitle: 'Gently dilutes remaining effort across 7 extra calendar days to ease your daily load.',
-                badge: 'RECOMMENDED',
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  _handleSelectDecision(const PacingDecision.extendDate(7));
-                },
-              ),
+              // Option 1: Extend Target Date (Dynamic)
+              () {
+                final extDays = _diagnosis?.recommendedExtensionDays ??
+                    max(3, (widget.pacingBudget.shortfallDebt / max(0.8, widget.pacingBudget.todayEffortShare)).ceil());
+                final dailyPace = _diagnosis?.calculatedDailyPace;
+                final paceStr = dailyPace != null ? '$dailyPace effort/day' : 'sustainable tempo';
+
+                return _buildOptionCard(
+                  context: context,
+                  themeColors: themeColors,
+                  isDark: isDark,
+                  icon: Icons.update_rounded,
+                  title: 'Push Target Date (+$extDays Days)',
+                  subtitle: 'Eases daily pace to $paceStr by diluting remaining effort across $extDays extra calendar days.',
+                  badge: 'RECOMMENDED',
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _handleSelectDecision(PacingDecision.extendDate(extDays));
+                  },
+                );
+              }(),
               const SizedBox(height: 12),
 
-              // Option 2: Trim to Core Beats
+              // Option 2: Trim to Core Beats (Dynamic)
               _buildOptionCard(
                 context: context,
                 themeColors: themeColors,
                 isDark: isDark,
                 icon: Icons.filter_alt_outlined,
                 title: 'Trim to Core Must-Do Beats',
-                subtitle: 'Temporarily deprioritizes optional mentor extras, keeping you locked onto primary milestones.',
+                subtitle: _diagnosis != null && _diagnosis!.optionalBeatsToDefer.isNotEmpty
+                    ? 'Temporarily deprioritizes ${_diagnosis!.optionalBeatsToDefer.length} non-core extras ("${_diagnosis!.optionalBeatsToDefer.join(', ')}") to restore momentum.'
+                    : 'Temporarily deprioritizes optional mentor extras, keeping you locked onto primary milestones.',
                 onTap: () {
                   HapticFeedback.mediumImpact();
                   _handleSelectDecision(const PacingDecision.trimCore());
@@ -323,6 +385,115 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEngineDownloadingCard({
+    required BuildContext context,
+    required RythemThemeColors themeColors,
+    required bool isDark,
+    required DownloadProgress? progress,
+    required ModelTier? downloadingTier,
+  }) {
+    const cyan = Color(0xFF06B6D4);
+    const lightCyan = Color(0xFF38BDF8);
+
+    final progressVal = progress?.progress ?? 0.0;
+    final progressPct = progress != null ? progress.formattedProgress : '0%';
+    final receivedStr = progress?.formattedReceived ?? '0 MB';
+    final totalStr = progress?.formattedTotal ?? '468 MB';
+    final tierInfo = ModelInfo.forTier(downloadingTier ?? ModelTier.compact);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A).withOpacity(0.85) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? lightCyan.withOpacity(0.35) : cyan.withOpacity(0.35),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cyan.withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: cyan.withOpacity(isDark ? 0.25 : 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.sync_rounded,
+                  size: 16,
+                  color: cyan,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'AI + MATHS ENGINES SYNCHRONIZING',
+                  style: RythemTypography.labelSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: isDark ? lightCyan : const Color(0xFF0891B2),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: cyan.withOpacity(isDark ? 0.22 : 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  progressPct,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: cyan,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Downloading on-device model: ${tierInfo.displayName}',
+            style: RythemTypography.bodySmall.copyWith(
+              color: themeColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Personalized diagnosis requires verified on-device intelligence. Progress: $receivedStr of $totalStr ($progressPct). Diagnosis will automatically generate once loaded.',
+            style: RythemTypography.caption.copyWith(
+              color: themeColors.textSecondary,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progressVal > 0.0 ? progressVal : null,
+              backgroundColor: isDark ? Colors.white10 : Colors.black12,
+              valueColor: const AlwaysStoppedAnimation<Color>(cyan),
+              minHeight: 6,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -423,6 +594,40 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                 ),
                 const SizedBox(height: 10),
 
+                // Roadblock Stalled Beat badge if present
+                if (diagnosis.bottleneckBeatTitle != null && diagnosis.bottleneckBeatTitle!.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(isDark ? 0.2 : 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.amber.withOpacity(isDark ? 0.4 : 0.25),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Roadblock: "${diagnosis.bottleneckBeatTitle}"',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.amber,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 Text(
                   diagnosis.diagnosis,
                   style: RythemTypography.bodySmall.copyWith(
@@ -431,6 +636,27 @@ class _BacklogDecisionSheetState extends State<BacklogDecisionSheet> {
                   ),
                 ),
                 const SizedBox(height: 8),
+
+                // Pedagogical Strategy
+                if (diagnosis.pedagogicalRemedy != null) ...[
+                  Text(
+                    'Pedagogical Strategy:',
+                    style: RythemTypography.caption.copyWith(
+                      color: themeColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    diagnosis.pedagogicalRemedy!,
+                    style: RythemTypography.bodySmall.copyWith(
+                      color: isDark ? softMint : const Color(0xFF047857),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
 
                 if (diagnosis.coreBeatsToFocus.isNotEmpty) ...[
                   Text(

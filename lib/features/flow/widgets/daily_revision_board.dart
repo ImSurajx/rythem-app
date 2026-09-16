@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/ai/models/model_tier.dart';
 import '../../../core/ai/services/local_inference_service.dart';
+import '../../../core/ai/services/model_download_manager.dart';
 import '../../../core/revision/models/revision_item.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
@@ -27,6 +29,18 @@ class DailyRevisionBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDownloading = inferenceService?.isModelDownloading == true;
+    final downloadProgress = inferenceService?.downloadProgressNotifier.value;
+    final downloadingTier = inferenceService?.downloadingTier;
+
+    if (isDownloading) {
+      return _buildEngineSyncingCard(
+        context: context,
+        progress: downloadProgress,
+        tier: downloadingTier,
+      );
+    }
+
     if (revisionItems.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -473,5 +487,108 @@ class DailyRevisionBoard extends StatelessWidget {
             ),
           ),
         );
+  }
+
+  Widget _buildEngineSyncingCard({
+    required BuildContext context,
+    required DownloadProgress? progress,
+    required ModelTier? tier,
+  }) {
+    const cyan = Color(0xFF06B6D4);
+    const lightCyan = Color(0xFF38BDF8);
+
+    final progressVal = progress?.progress ?? 0.0;
+    final progressPct = progress != null ? progress.formattedProgress : '0%';
+    final receivedStr = progress?.formattedReceived ?? '0 MB';
+    final totalStr = progress?.formattedTotal ?? '468 MB';
+    final tierInfo = ModelInfo.forTier(tier ?? ModelTier.compact);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: isDark
+            ? const Color(0xFF0B1220).withOpacity(0.85)
+            : Colors.white.withOpacity(0.92),
+        border: Border.all(
+          color: isDark ? lightCyan.withOpacity(0.35) : cyan.withOpacity(0.35),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cyan.withOpacity(0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: cyan.withOpacity(isDark ? 0.22 : 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 15,
+                  color: cyan,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'REVISION ENGINE SYNCING',
+                style: RythemTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: isDark ? lightCyan : const Color(0xFF0891B2),
+                  fontSize: 10.5,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: cyan.withOpacity(isDark ? 0.2 : 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  progressPct,
+                  style: const TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: cyan,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'AI prerequisite graph & memory decay engine are synchronizing (${tierInfo.displayName} • $receivedStr / $totalStr). Topics will unlock automatically once active.',
+            style: RythemTypography.caption.copyWith(
+              color: themeColors.textSecondary,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progressVal > 0.0 ? progressVal : null,
+              backgroundColor: isDark ? Colors.white10 : Colors.black12,
+              valueColor: const AlwaysStoppedAnimation<Color>(cyan),
+              minHeight: 4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
