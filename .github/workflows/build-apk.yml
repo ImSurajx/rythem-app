@@ -78,13 +78,13 @@ jobs:
           if gh release view "$TAG_NAME" > /dev/null 2>&1; then
             echo "Release $TAG_NAME exists. Uploading and updating APK asset..."
             gh release upload "$TAG_NAME" release_output/rythem.apk --clobber
-            gh release edit "$TAG_NAME" --latest
+            gh release edit "$TAG_NAME" --latest --notes-file CHANGELOG.md
           else
             echo "Release $TAG_NAME does not exist. Creating new release..."
             gh release create "$TAG_NAME" release_output/rythem.apk \
               --title "Rythem $TAG_NAME" \
               --latest \
-              --generate-notes
+              --notes-file CHANGELOG.md
           fi
 
           # Also ensure rythem.apk is mirrored on models-v1.0.0 for convenience
