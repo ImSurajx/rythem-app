@@ -1434,7 +1434,6 @@ class _DesignSystemShowcaseScreenState
               final weekday = d.$1;
               final dayLabel = d.$2;
               final intensity = _weeklySchedule.getIntensity(weekday);
-              final isToday = DateTime.now().weekday == weekday;
 
               final (intensityColor, icon) = switch (intensity) {
                 StudyIntensity.rest => (themeColors.textTertiary.withOpacity(0.5), Icons.bedtime_outlined),
@@ -1452,15 +1451,11 @@ class _DesignSystemShowcaseScreenState
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                       decoration: BoxDecoration(
-                        color: isToday
-                            ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06))
-                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02)),
+                        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isToday
-                              ? themeColors.glassBorderHighlight
-                              : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
-                          width: isToday ? 1.4 : 0.8,
+                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.06),
+                          width: 0.8,
                         ),
                       ),
                       child: Column(
@@ -1469,8 +1464,8 @@ class _DesignSystemShowcaseScreenState
                           Text(
                             dayLabel,
                             style: RythemTypography.labelSmall.copyWith(
-                              color: isToday ? themeColors.textPrimary : themeColors.textSecondary,
-                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                              color: themeColors.textSecondary,
+                              fontWeight: FontWeight.w600,
                               fontSize: 10.5,
                             ),
                           ),
