@@ -189,10 +189,13 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       await tester.pumpAndSettle();
 
       // Board header visible
-      expect(find.text('DAILY REVISION BOARD'), findsOneWidget);
-      expect(find.text('1 DUE'), findsOneWidget);
+      expect(find.text("TODAY'S REVISION"), findsOneWidget);
+      expect(find.text('1 SUGGESTED'), findsOneWidget);
       expect(find.text('Loss Surfaces & Hessian Matrices'), findsOneWidget);
       expect(find.text('Flagged Weak Concept'), findsOneWidget);
+
+      // Verify AI breakdown button has been removed from the board
+      expect(find.text('Quick Breakdown from AI Mentor'), findsNothing);
 
       // Tap Mark Revised check button
       final checkButton = find.byKey(const Key('revision_check_button_beat_sample'));
@@ -201,16 +204,6 @@ Here is **Gradient Descent** with `learning_rate = 0.01`.
       await tester.pump();
 
       expect(revisedItem?.beatId, 'beat_sample');
-
-      // Tap Quick Breakdown from AI Mentor button
-      final breakdownButton = find.text('Quick Breakdown from AI Mentor');
-      await tester.tap(breakdownButton);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 1300));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      expect(find.textContaining('AI Mentor Concept Breakdown'), findsOneWidget);
     });
 
     testWidgets('FlowScreen TEST BACKLOG toggle summons Sustained Lag banner for testing', (tester) async {

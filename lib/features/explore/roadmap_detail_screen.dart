@@ -18,6 +18,7 @@ import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 import 'package:rythem_app/features/flow/session_detail_screen.dart';
+import '../../core/navigation/smooth_page_route.dart';
 import 'widgets/chapter_accordion.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
@@ -539,8 +540,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     final chapterBeats = _currentBeats.where((b) => b.chapterId == targetBeat.chapterId).toList();
 
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => SessionDetailScreen(
+      SmoothPageRoute(
+        child: SessionDetailScreen(
           roadmapTitle: _currentRoadmap.title,
           chapterTitle: chapter?.title ?? 'Active Chapter',
           beats: chapterBeats.isNotEmpty ? chapterBeats : [targetBeat],

@@ -199,18 +199,21 @@ class RevisionService {
         // Ebbinghaus forgetting curve: R = e^(-t / S)
         final retention = math.exp(-daysElapsed / stability).clamp(0.01, 1.0);
 
-        // Reason determination
+        // Reason determination & contextual suggestion logic
         String reason;
         if (isFlagged) {
           reason = record?.flagNote != null && record!.flagNote!.isNotEmpty
               ? 'Flagged: "${record.flagNote}"'
-              : 'Flagged Weak Concept • Needs Attention';
-        } else if (retention < 0.5) {
-          reason = 'Forgetting Curve Decay (${(retention * 100).round()}% retention)';
-        } else if (daysElapsed >= stability) {
-          reason = 'Spaced Cadence Review (Day ${daysElapsed.round()})';
+              : 'Flagged topic • Needs review';
+        } else if (daysElapsed >= 14) {
+          reason = 'Studied 2+ weeks ago • Refresh so you don\'t forget';
+        } else if (daysElapsed >= 6) {
+          reason = 'Studied last week • High-impact review';
+        } else if (daysElapsed >= 2.5) {
+          reason = 'Studied ${daysElapsed.round()} days ago • Quick recall';
         } else {
-          reason = 'Foundational Recall Refresh';
+          // Completed recently (< 2.5 days ago) and not flagged - skip suggesting
+          continue;
         }
 
         candidates.add(
@@ -236,10 +239,9 @@ class RevisionService {
       return [];
     }
 
-    // Sort candidates by mathematical urgency score:
+    // Sort candidates by urgency score:
     // 1. Flagged weak gets highest priority (+2.5)
-    // 2. Lower retention gets higher urgency ((1 - R) * 2.0)
-    // 3. Lower revision count gets slight priority
+    // 2. Lower retention / older recall decay gets priority
     candidates.sort((a, b) {
       double scoreA = (a.isFlaggedWeak ? 2.5 : 0.0) + (1.0 - a.retentionScore) * 2.0 + (0.4 / (a.revisionCount + 1));
       double scoreB = (b.isFlaggedWeak ? 2.5 : 0.0) + (1.0 - b.retentionScore) * 2.0 + (0.4 / (b.revisionCount + 1));
@@ -252,10 +254,12 @@ class RevisionService {
       if (item.retentionScore < 0.85) return true;
       final lastDate = item.lastRevisedAt;
       if (lastDate == null) return true; // never revised yet
-      return today.difference(lastDate).inHours >= 18; // at least next day or spaced
+      return today.difference(lastDate).inHours >= 18; // spaced
     }).toList();
 
-    final remainingSlots = math.max(0, 4 - completedTodayItems.length);
+    // Suggest at most 2-3 focused topics across all tracks
+    const maxSuggestions = 3;
+    final remainingSlots = math.max(0, maxSuggestions - completedTodayItems.length);
     final pendingToTake = filtered.take(remainingSlots).toList();
 
     return [...completedTodayItems, ...pendingToTake];

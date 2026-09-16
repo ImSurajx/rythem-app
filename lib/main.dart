@@ -21,6 +21,7 @@ import 'core/backup/services/backup_service.dart';
 import 'core/pacing/models/study_intensity.dart';
 import 'core/revision/models/revision_item.dart';
 import 'core/revision/services/revision_service.dart';
+import 'core/navigation/smooth_page_route.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -762,33 +763,35 @@ class _DesignSystemShowcaseScreenState
               ),
             ),
 
-            // Floating Frosted Glass Header
+            // Floating Frosted Glass Header with RepaintBoundary optimization
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                  child: Container(
-                    padding: EdgeInsets.fromLTRB(20, topPadding + 8, 20, 12),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xB3090A0D) : const Color(0xCCFFFFFF),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: isDark ? const Color(0x1FFFFFFF) : const Color(0x18000000),
-                          width: 0.8,
+              child: RepaintBoundary(
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: EdgeInsets.fromLTRB(20, topPadding + 8, 20, 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xB3090A0D) : const Color(0xCCFFFFFF),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: isDark ? const Color(0x1FFFFFFF) : const Color(0x18000000),
+                            width: 0.8,
+                          ),
                         ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'RYTHEM',
-                        style: RythemTypography.brandLogo.copyWith(
-                          color: themeColors.textPrimary,
-                          letterSpacing: 4.0,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                      child: Center(
+                        child: Text(
+                          'RYTHEM',
+                          style: RythemTypography.brandLogo.copyWith(
+                            color: themeColors.textPrimary,
+                            letterSpacing: 4.0,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -853,8 +856,8 @@ class _DesignSystemShowcaseScreenState
     final beats = _beatsByRoadmap[roadmap.id] ?? [];
 
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => RoadmapDetailScreen(
+      SmoothPageRoute(
+        child: RoadmapDetailScreen(
           roadmap: roadmap,
           chapters: chapters,
           beats: beats,

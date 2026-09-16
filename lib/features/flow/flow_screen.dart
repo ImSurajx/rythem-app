@@ -18,6 +18,7 @@ import 'widgets/daily_revision_board.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/revision/models/revision_item.dart';
 import '../../core/widgets/glass_toast.dart';
+import '../../core/navigation/smooth_page_route.dart';
 
 /// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
 /// - Today's date & streak indicator
@@ -547,8 +548,8 @@ class _FlowScreenState extends State<FlowScreen> {
     final chapterBeats = beats.where((b) => b.chapterId == targetBeat.chapterId).toList();
 
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => SessionDetailScreen(
+      SmoothPageRoute(
+        child: SessionDetailScreen(
           roadmapTitle: roadmap.title,
           chapterTitle: chapter?.title ?? 'Current Chapter',
           beats: chapterBeats.isNotEmpty ? chapterBeats : [targetBeat],
@@ -596,25 +597,26 @@ class _TrackTodoListCard extends StatelessWidget {
     final totalCount = allBeats.length;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.35)
-                : const Color(0xFF0E1420).withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withOpacity(0.35)
+                  : const Color(0xFF0E1420).withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -878,6 +880,7 @@ class _TrackTodoListCard extends StatelessWidget {
     ),
   ),
 ),
+),
     );
   }
 }
@@ -1015,25 +1018,26 @@ class _FlowStreakCalendar extends StatelessWidget {
     final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
     const weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.30)
-                : const Color(0xFF0E1420).withOpacity(0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withOpacity(0.30)
+                  : const Color(0xFF0E1420).withOpacity(0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -1222,10 +1226,11 @@ class _FlowStreakCalendar extends StatelessWidget {
           ),
         ],
       ),
+          ),
+        ),
+      ),
     ),
-  ),
-),
-    );
+  );
   }
 }
 

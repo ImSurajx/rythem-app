@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
@@ -9,6 +8,7 @@ import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
+import '../../core/navigation/smooth_page_route.dart';
 import 'new_track_modal.dart';
 import 'roadmap_detail_screen.dart';
 
@@ -102,8 +102,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final beats = widget.beatsByRoadmap[roadmap.id] ?? [];
 
     Navigator.of(context).push(
-      CupertinoPageRoute(
-        builder: (_) => RoadmapDetailScreen(
+      SmoothPageRoute(
+        child: RoadmapDetailScreen(
           roadmap: roadmap,
           chapters: chapters,
           beats: beats,
