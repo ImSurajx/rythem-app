@@ -28,6 +28,20 @@ class BackupSnapshotInfo {
     required this.sizeBytes,
   });
 
+  String get displayTitle {
+    if (fileName == AutoBackupManager.latestBackupFileName) {
+      return 'Latest Snapshot';
+    }
+    final match = RegExp(r'rythem_autobackup_(\d{4}-\d{2}-\d{2})\.json').firstMatch(fileName);
+    if (match != null) {
+      return match.group(1)!;
+    }
+    if (fileName.startsWith('rythem_autobackup_')) {
+      return fileName.replaceFirst('rythem_autobackup_', '').replaceFirst('.json', '');
+    }
+    return fileName;
+  }
+
   String get formattedSize {
     if (sizeBytes < 1024) return '$sizeBytes B';
     final kb = sizeBytes / 1024;
@@ -43,7 +57,7 @@ class BackupSnapshotInfo {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays == 1) return 'Yesterday';
-    return '${diff.inDays} days ago';
+    return '${diff.inDays}d ago';
   }
 }
 
@@ -71,8 +85,55 @@ class AutoBackupManager {
         _settingsRepo = settingsRepo ?? AppSettingsRepository(),
         _overrideDir = overrideDir;
 
-  /// Resolves the most resilient storage directory available on the host OS.
-  /// Uses shared/user-accessible storage to ensure survival if app cache/data is reset.
+  /// Resolves the user-visible storage location label for UI display.
+  Future<String> getStorageLocationDescription() async {
+    try {
+      final dir = await getResilientBackupDirectory();
+      final p = dir.path;
+      if (p.contains('/storage/emulated/0/Documents')) {
+        return 'Documents > Rythem > Backups';
+      } else if (p.contains('/storage/emulated/0/Download')) {
+        return 'Download > Rythem > Backups';
+      } else if (p.contains('/Documents')) {
+        return 'Documents/Rythem/Backups';
+      }
+      final parts = p.split('/').where((s) => s.isNotEmpty).toList();
+      return parts.length >= 3 ? parts.sublist(parts.length - 3).join('/') : p;
+    } catch (_) {
+      return 'Documents/Rythem/Backups';
+    }
+  }
+
+  /// Resolves all candidate directories where backups may reside (for cross-directory recovery).
+  Future<List<Directory>> getCandidateBackupDirectories() async {
+    final dirs = <Directory>[];
+    if (_overrideDir != null) {
+      dirs.add(_overrideDir);
+      return dirs;
+    }
+
+    if (Platform.isAndroid) {
+      dirs.add(Directory('/storage/emulated/0/Documents/Rythem/Backups'));
+      dirs.add(Directory('/storage/emulated/0/Download/Rythem/Backups'));
+      try {
+        final ext = await getExternalStorageDirectory();
+        if (ext != null) {
+          dirs.add(Directory('${ext.path}/Rythem/Backups'));
+        }
+      } catch (_) {}
+    }
+
+    try {
+      final docDir = await getApplicationDocumentsDirectory();
+      dirs.add(Directory('${docDir.path}/Rythem/Backups'));
+    } catch (_) {}
+
+    return dirs;
+  }
+
+  /// Resolves the most resilient and user-visible storage directory available on the host OS.
+  /// Prioritizes user-visible public storage (`Documents/Rythem/Backups`) on Android so users
+  /// can find it in their file manager and it survives app data clearing.
   Future<Directory> getResilientBackupDirectory() async {
     if (_overrideDir != null) {
       if (!_overrideDir.existsSync()) {
@@ -81,6 +142,32 @@ class AutoBackupManager {
       return _overrideDir;
     }
 
+    if (Platform.isAndroid) {
+      // 1. Primary: Public Documents directory (visible in Files / My Files under Documents)
+      final publicDoc = Directory('/storage/emulated/0/Documents/Rythem/Backups');
+      if (_canWriteTo(publicDoc)) {
+        return publicDoc;
+      }
+
+      // 2. Secondary: Public Download directory (visible in Files under Downloads)
+      final publicDownload = Directory('/storage/emulated/0/Download/Rythem/Backups');
+      if (_canWriteTo(publicDownload)) {
+        return publicDownload;
+      }
+
+      // 3. Tertiary: External storage directory (visible on PC / file browsers under Android/data)
+      try {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) {
+          final extBackup = Directory('${extDir.path}/Rythem/Backups');
+          if (_canWriteTo(extBackup)) {
+            return extBackup;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Default fallback (macOS, iOS, or Android sandbox fallback)
     Directory baseDir;
     try {
       baseDir = await getApplicationDocumentsDirectory();
@@ -93,6 +180,20 @@ class AutoBackupManager {
       await backupDir.create(recursive: true);
     }
     return backupDir;
+  }
+
+  bool _canWriteTo(Directory dir) {
+    try {
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+      final testFile = File('${dir.path}/.write_probe');
+      testFile.writeAsStringSync('ok');
+      testFile.deleteSync();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Checks if today's backup has already run. If not (or if [force] is true),
@@ -170,17 +271,21 @@ class AutoBackupManager {
   /// Lists all available local auto-backups, sorted newest first.
   Future<List<BackupSnapshotInfo>> listAvailableBackups() async {
     final results = <BackupSnapshotInfo>[];
+    final seenNames = <String>{};
     try {
-      final dir = await getResilientBackupDirectory();
-      if (!dir.existsSync()) return [];
-
-      final files = dir.listSync().whereType<File>().toList();
-      for (final file in files) {
-        final name = file.path.split('/').last;
-        if (name.startsWith('rythem_autobackup_') && name.endsWith('.json')) {
-          final info = await parseSnapshotFile(file);
-          if (info != null) {
-            results.add(info);
+      final dirs = await getCandidateBackupDirectories();
+      for (final dir in dirs) {
+        if (!dir.existsSync()) continue;
+        final files = dir.listSync().whereType<File>().toList();
+        for (final file in files) {
+          final name = file.path.split('/').last;
+          if (name.startsWith('rythem_autobackup_') && name.endsWith('.json')) {
+            if (seenNames.contains(name)) continue;
+            final info = await parseSnapshotFile(file);
+            if (info != null) {
+              seenNames.add(name);
+              results.add(info);
+            }
           }
         }
       }

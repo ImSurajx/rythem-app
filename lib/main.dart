@@ -139,6 +139,7 @@ class _DesignSystemShowcaseScreenState
     settingsRepo: _appSettingsRepo,
   );
   BackupSnapshotInfo? _latestAutoBackup;
+  String _backupLocationDescription = 'Documents > Rythem > Backups';
   bool _isPerformingAutoBackup = false;
   bool _hasCheckedDisasterRecovery = false;
   WeeklyStudySchedule _weeklySchedule = WeeklyStudySchedule.defaultSchedule();
@@ -463,6 +464,7 @@ class _DesignSystemShowcaseScreenState
   Future<void> _loadDatabaseState() async {
     final allRoadmaps = await _roadmapRepo.getActiveRoadmaps();
     final latestBackup = await _autoBackupManager.getLatestAutoBackup();
+    final backupLocation = await _autoBackupManager.getStorageLocationDescription();
     if (allRoadmaps.isEmpty) {
       final db = await DatabaseService.instance.database;
       try {
@@ -484,6 +486,7 @@ class _DesignSystemShowcaseScreenState
           _recentActivity = [];
           _pacingBudget = null;
           _latestAutoBackup = latestBackup;
+          _backupLocationDescription = backupLocation;
         });
       }
       return;
@@ -585,6 +588,7 @@ class _DesignSystemShowcaseScreenState
         _delayedBeatIds = delayedBeatIds;
         _revisionItems = revisionItems;
         _latestAutoBackup = latestBackup;
+        _backupLocationDescription = backupLocation;
       });
     }
     unawaited(_autoBackupManager.checkAndPerformDailyBackup());
@@ -1672,6 +1676,33 @@ class _DesignSystemShowcaseScreenState
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.015),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: themeColors.glassBorder.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.folder_outlined, size: 13, color: themeColors.textTertiary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _backupLocationDescription,
+                    style: TextStyle(
+                      color: themeColors.textTertiary,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1796,13 +1827,15 @@ class _DesignSystemShowcaseScreenState
     HapticFeedback.mediumImpact();
     try {
       final info = await _autoBackupManager.checkAndPerformDailyBackup(force: true);
+      final location = await _autoBackupManager.getStorageLocationDescription();
       if (mounted) {
         setState(() {
           _latestAutoBackup = info;
+          _backupLocationDescription = location;
           _isPerformingAutoBackup = false;
         });
         if (info != null) {
-          _showToast('Daily backup saved (${info.roadmapsCount} tracks, ${info.formattedSize})');
+          _showToast('Backup saved to $location (${info.formattedSize})');
         } else {
           _showToast('Backup completed');
         }
@@ -1915,12 +1948,16 @@ class _DesignSystemShowcaseScreenState
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          isLatest ? 'Latest Auto-Backup' : item.fileName,
-                                          style: RythemTypography.titleSmall.copyWith(
-                                            color: colors.textPrimary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
+                                        Flexible(
+                                          child: Text(
+                                            item.displayTitle,
+                                            style: RythemTypography.titleSmall.copyWith(
+                                              color: colors.textPrimary,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         const SizedBox(width: 6),
@@ -1974,7 +2011,7 @@ class _DesignSystemShowcaseScreenState
               style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
             ),
             content: Text(
-              'Restoring "${selected.fileName}" (${selected.relativeTimeDescription}) will replace current database state with this snapshot\'s data.\n\nProceed?',
+              'Restoring "${selected.displayTitle}" (${selected.relativeTimeDescription}) will replace current database state with this snapshot\'s data.\n\nProceed?',
               style: RythemTypography.bodyMedium.copyWith(color: colors.textSecondary),
             ),
             actions: [
@@ -2000,7 +2037,7 @@ class _DesignSystemShowcaseScreenState
         try {
           await _autoBackupManager.restoreSnapshot(selected.file);
           await _loadDatabaseState();
-          _showToast('Restored from "${selected.fileName}"! 🎉');
+          _showToast('Restored from "${selected.displayTitle}"! 🎉');
         } catch (e) {
           _showToast('Restore error: $e');
         }

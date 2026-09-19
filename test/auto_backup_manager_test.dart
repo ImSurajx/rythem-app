@@ -140,6 +140,7 @@ void main() {
 
     expect(snapshot, isNotNull);
     expect(snapshot!.fileName, AutoBackupManager.latestBackupFileName);
+    expect(snapshot.displayTitle, 'Latest Snapshot');
     expect(snapshot.roadmapsCount, 1);
     expect(snapshot.chaptersCount, 1);
     expect(snapshot.beatsCount, 1);
@@ -150,6 +151,13 @@ void main() {
 
     expect(latestFile.existsSync(), isTrue);
     expect(dailyFile.existsSync(), isTrue);
+
+    final backups = await autoBackupManager.listAvailableBackups();
+    final dailySnapshot = backups.firstWhere((b) => b.fileName == 'rythem_autobackup_2026-09-19.json');
+    expect(dailySnapshot.displayTitle, '2026-09-19');
+
+    final locationDesc = await autoBackupManager.getStorageLocationDescription();
+    expect(locationDesc, isNotEmpty);
 
     // Verify app_settings recorded last backup date
     final recordedDate = await settingsRepo.getSetting('last_auto_backup_date');
