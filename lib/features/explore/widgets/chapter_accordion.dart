@@ -261,48 +261,61 @@ class _ChapterAccordionState extends State<ChapterAccordion>
   }
 
   Widget _buildCategorizedBeatsList(RythemColorTokens themeColors, bool isDark) {
-    // 1. Partition beats into mapped topics, bonus/extras, and uncovered gaps
-    final Map<String, List<BeatEntity>> topicMap = {};
-    final List<BeatEntity> bonusBeats = [];
+    // 1. Separate regular video beats from uncovered syllabus gaps
+    final List<BeatEntity> videoBeats = [];
     final List<BeatEntity> gapBeats = [];
 
-    for (final beat in widget.beats) {
-      if ((beat.id.contains('_gap_') || (beat.sourceUrl == null && beat.syllabusTopicId != null)) &&
-          !beat.isMentorExtra) {
+    // Ensure incoming beats are strictly sorted by sortOrder
+    final sortedBeats = List<BeatEntity>.from(widget.beats)
+      ..sort((a, b) {
+        final cmp = a.sortOrder.compareTo(b.sortOrder);
+        if (cmp != 0) return cmp;
+        return a.createdAt.compareTo(b.createdAt);
+      });
+
+    for (final beat in sortedBeats) {
+      final isGap = beat.id.contains('_gap_') ||
+          (beat.sourceUrl == null && beat.syllabusTopicId != null && !beat.isMentorExtra);
+      if (isGap) {
         gapBeats.add(beat);
-      } else if (beat.isMentorExtra) {
-        bonusBeats.add(beat);
       } else {
-        final topicName = beat.syllabusTopicId ?? 'Core Curriculum';
-        topicMap.putIfAbsent(topicName, () => []).add(beat);
+        videoBeats.add(beat);
       }
     }
 
-    final hasCategories = topicMap.length > 1 || bonusBeats.isNotEmpty || gapBeats.isNotEmpty;
+    // 2. Group video beats into contiguous chronological milestones
+    final List<({String title, List<BeatEntity> beats})> milestoneSections = [];
+    for (final beat in videoBeats) {
+      final milestoneTitle = beat.syllabusTopicId ?? 'Core Curriculum';
+      if (milestoneSections.isEmpty || milestoneSections.last.title != milestoneTitle) {
+        milestoneSections.add((title: milestoneTitle, beats: [beat]));
+      } else {
+        milestoneSections.last.beats.add(beat);
+      }
+    }
 
-    // If no distinct topics exist (e.g. flat unparsed course), render clean flat list
-    if (!hasCategories) {
+    // If there is only 1 flat milestone and no gaps, render flat list
+    if (milestoneSections.length <= 1 && gapBeats.isEmpty) {
       return ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: widget.beats.length,
+        itemCount: sortedBeats.length,
         separatorBuilder: (_, __) => const SizedBox(height: 6),
-        itemBuilder: (context, index) => _buildBeatItem(widget.beats[index], themeColors, isDark),
+        itemBuilder: (context, index) => _buildBeatItem(sortedBeats[index], themeColors, isDark),
       );
     }
 
     final sections = <Widget>[];
 
-    // Render topics in first-seen sequence
-    int topicNumber = 1;
-    for (final entry in topicMap.entries) {
-      final topicName = entry.key;
-      final beats = entry.value;
+    // Render contiguous milestones in strict 1..N order
+    for (int m = 0; m < milestoneSections.length; m++) {
+      final milestone = milestoneSections[m];
+      final beats = milestone.beats;
       final completed = beats.where((b) => b.isCompleted).length;
 
       sections.add(
         _TopicGroupSection(
-          title: 'Topic $topicNumber: $topicName',
+          title: milestone.title,
           subtitle: '$completed/${beats.length} complete • ${beats.length} video${beats.length == 1 ? '' : 's'}',
           icon: Icons.menu_book_rounded,
           accentColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
@@ -311,31 +324,15 @@ class _ChapterAccordionState extends State<ChapterAccordion>
           children: beats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
         ),
       );
-      topicNumber++;
     }
 
-    // Render Bonus & Enrichment if present
-    if (bonusBeats.isNotEmpty) {
-      final completed = bonusBeats.where((b) => b.isCompleted).length;
-      sections.add(
-        _TopicGroupSection(
-          title: '✦ Bonus & Enrichment',
-          subtitle: '$completed/${bonusBeats.length} complete • ${bonusBeats.length} video${bonusBeats.length == 1 ? '' : 's'}',
-          icon: Icons.auto_awesome_rounded,
-          accentColor: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
-          themeColors: themeColors,
-          isDark: isDark,
-          children: bonusBeats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
-        ),
-      );
-    }
-
-    // Render Uncovered Gaps if present
+    // Render Uncovered Syllabus Gaps at the bottom
     if (gapBeats.isNotEmpty) {
+      final completed = gapBeats.where((b) => b.isCompleted).length;
       sections.add(
         _TopicGroupSection(
           title: '⚠️ Uncovered Syllabus Gaps',
-          subtitle: '${gapBeats.length} topic${gapBeats.length == 1 ? '' : 's'} not in playlist',
+          subtitle: '$completed/${gapBeats.length} complete • ${gapBeats.length} topic${gapBeats.length == 1 ? '' : 's'} to study after playlist',
           icon: Icons.warning_amber_rounded,
           accentColor: const Color(0xFFF59E0B),
           themeColors: themeColors,

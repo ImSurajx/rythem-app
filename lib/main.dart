@@ -841,6 +841,17 @@ class _DesignSystemShowcaseScreenState
       isScanningRevision: _isScanningRevision,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
+      onStudyAhead: (roadmap) async {
+        final pulled = await _pacingService.pullNextBeatIntoMission(roadmap.id);
+        await _loadDatabaseState();
+        if (mounted) {
+          if (pulled != null) {
+            _showToast('Added "${pulled.title}" to today\'s session');
+          } else {
+            _showToast('All pending beats in this track are already in focus!');
+          }
+        }
+      },
       onApplyPacingDecision: (roadmap, decision) async {
         await _pacingService.applyPacingDecision(roadmap.id, decision);
         await _loadDatabaseState();

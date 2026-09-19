@@ -69,7 +69,10 @@ class FlowScreen extends StatefulWidget {
     this.onFlagForRevision,
     this.onRequestRevisionRecommendations,
     this.isScanningRevision = false,
+    this.onStudyAhead,
   });
+
+  final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
 
   final List<RevisionItem> revisionItems;
   final ValueChanged<RevisionItem>? onMarkRevised;
@@ -409,6 +412,7 @@ class _FlowScreenState extends State<FlowScreen> {
                 onToggleDelay: widget.onToggleDelay,
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
+                onStudyAhead: widget.onStudyAhead,
                 onOpenDetail: widget.onOpenRoadmapDetail != null
                     ? () => widget.onOpenRoadmapDetail!(rm)
                     : null,
@@ -499,6 +503,7 @@ class _TrackTodoListCard extends StatelessWidget {
   final VoidCallback? onOpenDetail;
   final Set<String> delayedBeatIds;
   final void Function(BeatEntity beat)? onToggleDelay;
+  final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
 
   const _TrackTodoListCard({
     required this.roadmap,
@@ -513,6 +518,7 @@ class _TrackTodoListCard extends StatelessWidget {
     this.onOpenDetail,
     this.delayedBeatIds = const {},
     this.onToggleDelay,
+    this.onStudyAhead,
   });
 
   @override
@@ -820,6 +826,80 @@ class _TrackTodoListCard extends StatelessWidget {
                         );
                       },
                     ),
+                    if (flowBeats.isNotEmpty && flowBeats.every((b) => b.isCompleted))
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0x2210B981) : const Color(0x1810B981),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark ? const Color(0x5510B981) : const Color(0x4010B981),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.nightlight_round, size: 16, color: Color(0xFF10B981)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Evening Unlocked • Daily Rhythm Complete',
+                                      style: RythemTypography.titleMedium.copyWith(
+                                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'You\'ve satisfied today\'s goal. Rest guilt-free, or study ahead if you have momentum.',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              if (onStudyAhead != null && sortedAllBeats.any((b) => !b.isCompleted && !seenIds.contains(b.id))) ...[
+                                const SizedBox(height: 10),
+                                InkWell(
+                                  onTap: () => onStudyAhead!(roadmap),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: themeColors.glassBorder, width: 0.6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.add_rounded, size: 14, color: themeColors.textPrimary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Pull Next Beat • Study Ahead',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            color: themeColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
                     if (allBeats.length > flowBeats.length)
                       GestureDetector(
                         onTap: onOpenDetail,

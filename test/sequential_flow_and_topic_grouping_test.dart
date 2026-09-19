@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rythem_app/core/database/database.dart';
 import 'package:rythem_app/core/pacing/pacing.dart';
+import 'package:rythem_app/core/ai/models/curriculum_audit_result.dart';
+import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -188,10 +190,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify categorized topic section headers are rendered
-    expect(find.text('Topic 1: Functions and Graphs'), findsOneWidget);
-    expect(find.text('Topic 2: Polynomial Functions'), findsOneWidget);
-    expect(find.text('✦ Bonus & Enrichment'), findsOneWidget);
+    // Verify contiguous milestone headers, inline mentor extra, and uncovered gaps
+    expect(find.text('Functions and Graphs'), findsOneWidget);
+    expect(find.text('Polynomial Functions'), findsOneWidget);
+    expect(find.text('MENTOR EXTRA'), findsOneWidget);
     expect(find.text('⚠️ Uncovered Syllabus Gaps'), findsOneWidget);
   });
 
@@ -314,6 +316,59 @@ void main() {
     // Tomorrow's mission starts at b2 (the next sequential beat)
     expect(budgetDay2.todaysBeats.first.id, 'b2');
     expect(budgetDay2.todaysBeats.first.isCompleted, false);
+
+    // 4. Test Zero Surprise Bumps:
+    // Complete all beats in Day 2 mission
+    for (final b in budgetDay2.todaysBeats) {
+      await beatRepo.toggleBeatCompletion(b.id, isCompleted: true);
+    }
+
+    final budgetDay2AfterAllCompleted = await pacingService.computePacingBudget(
+      rm.id,
+      simulatedNow: day2.add(const Duration(hours: 3)),
+    );
+
+    // Assert: Day is 100% complete, NO surprise extra beats auto-spawned!
+    final pendingCount = budgetDay2AfterAllCompleted.todaysBeats.where((b) => !b.isCompleted).length;
+    expect(pendingCount, 0);
+    expect(budgetDay2AfterAllCompleted.isDailyQuotaCompleted, true);
+
+    // 5. Test voluntary Study Ahead via pullNextBeatIntoMission:
+    final pulled = await pacingService.pullNextBeatIntoMission(rm.id, simulatedNow: day2);
+    expect(pulled, isNotNull);
+
+    final budgetAfterStudyAhead = await pacingService.computePacingBudget(
+      rm.id,
+      simulatedNow: day2.add(const Duration(hours: 4)),
+    );
+    expect(budgetAfterStudyAhead.todaysBeats.any((b) => b.id == pulled!.id), true);
+  });
+
+  test('LocalInferenceService synthesizes strictly contiguous milestones for playlist videos', () {
+    final videoTitles = List.generate(20, (i) => 'Video ${i + 1}: Topic Concept $i');
+    final mappings = List.generate(
+      20,
+      (i) => VideoTopicMapping(
+        videoIndex: i,
+        videoTitle: videoTitles[i],
+        matchedTopicTitle: i < 10 ? 'Algorithms' : 'Data Structures',
+        confidence: 0.9,
+        isMentorExtra: false,
+      ),
+    );
+
+    final milestones = LocalInferenceService.generateContiguousMilestones(
+      subjectTitle: 'Computer Science',
+      videoTitles: videoTitles,
+      mappings: mappings,
+    );
+
+    expect(milestones.length, 3);
+    // Ensure contiguous: no gaps, no overlaps
+    expect(milestones[0].startIndex, 0);
+    expect(milestones[1].startIndex, milestones[0].endIndex + 1);
+    expect(milestones[2].startIndex, milestones[1].endIndex + 1);
+    expect(milestones.last.endIndex, 19);
   });
 }
 

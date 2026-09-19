@@ -375,6 +375,7 @@ class CurriculumIngestionService {
       final prevCompleted = existingBeats.any((b) =>
           (b.sourceUrl == rawItem.sourceUrl || b.title == rawItem.title) && b.isCompleted);
 
+
       newBeats.add(BeatEntity(
         id: '${chapterId}_v_$i',
         chapterId: chapterId,

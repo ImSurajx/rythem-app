@@ -121,25 +121,8 @@ class PacingService {
       // Preserve strict sequential chapter-first ordering from allBeats
       todaysBeats = allBeats.where((b) => allMissionIds.contains(b.id)).toList();
 
-      // If all locked beats were completed or deleted, but pending beats exist and daily share has room:
-      final hasPendingInMission = todaysBeats.any((b) => !b.isCompleted);
-      if (!hasPendingInMission && pendingBeats.isNotEmpty && todayEffortShare > 0) {
-        double completedTodayEffort = 0.0;
-        for (final b in beatsCompletedToday) {
-          completedTodayEffort += b.effortWeight;
-        }
-        final extraBudget = (todayEffortShare - completedTodayEffort).clamp(0.0, todayEffortShare);
-        if (extraBudget > 0) {
-          final additional = PacingCalculator.walkQueueToFillBudget(
-            pendingBeats: pendingBeats,
-            targetBudget: extraBudget,
-            chapterOrderMap: chapterOrderMap,
-          );
-          final updatedSet = <String>{...allMissionIds, ...additional.map((b) => b.id)};
-          todaysBeats = allBeats.where((b) => updatedSet.contains(b.id)).toList();
-          unawaited(_settingsRepo.setSetting(missionKey, jsonEncode(updatedSet.toList())));
-        }
-      }
+      // If all locked mission beats are completed, mission is 100% complete for the day.
+      // No surprise bumps or moving goalposts: respects Evening Unlock rest state.
     } else {
       // First calculation of the day: walk sequential pending queue to establish today's mission
       final plannedBeats = PacingCalculator.walkQueueToFillBudget(
@@ -245,6 +228,52 @@ class PacingService {
       roadmapId: roadmapId,
     ));
 
+  }
+
+  /// Voluntarily pulls the next sequential beat from the track queue into today's mission
+  /// when the user chooses to "Study Ahead" without forced surprise bumps.
+  Future<BeatEntity?> pullNextBeatIntoMission(String roadmapId, {DateTime? simulatedNow}) async {
+    final now = simulatedNow ?? DateTime.now();
+    final todayDateStr =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final missionKey = 'daily_mission_beats_${roadmapId}_$todayDateStr';
+
+    final allBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
+    final pendingBeats = allBeats.where((b) => !b.isCompleted).toList();
+    if (pendingBeats.isEmpty) return null;
+
+    final chapters = await _chapterRepo.getChaptersByRoadmapId(roadmapId);
+    final chapterOrderMap = {for (final c in chapters) c.id: c.sortOrder};
+
+    String? lockedMissionJson;
+    try {
+      lockedMissionJson = await _settingsRepo.getSetting(missionKey);
+    } catch (_) {}
+
+    final currentIds = <String>{};
+    if (lockedMissionJson != null && lockedMissionJson.isNotEmpty) {
+      try {
+        final list = jsonDecode(lockedMissionJson) as List<dynamic>;
+        currentIds.addAll(list.map((e) => e.toString()));
+      } catch (_) {}
+    }
+
+    final candidates = PacingCalculator.walkQueueToFillBudget(
+      pendingBeats: pendingBeats.where((b) => !currentIds.contains(b.id)).toList(),
+      targetBudget: 0.1, // Pull exactly 1 beat
+      chapterOrderMap: chapterOrderMap,
+    );
+
+    if (candidates.isNotEmpty) {
+      currentIds.add(candidates.first.id);
+      await _settingsRepo.setSetting(missionKey, jsonEncode(currentIds.toList()));
+      _eventBus.emit(DatabaseEvent(
+        type: DatabaseEventType.roadmapUpdated,
+        roadmapId: roadmapId,
+      ));
+      return candidates.first;
+    }
+    return null;
   }
 
   Future<WeeklyStudySchedule> _getWeeklySchedule() async {

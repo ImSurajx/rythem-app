@@ -643,6 +643,12 @@ _Generated locally by ${info.displayName} in 1.2s_
       }
     }
 
+    final milestones = generateContiguousMilestones(
+      subjectTitle: subjectTitle,
+      videoTitles: videoTitles,
+      mappings: mappings,
+    );
+
     return CurriculumAuditResult(
       subjectTitle: subjectTitle,
       orderedSyllabusTopics: orderedSyllabusTopics,
@@ -650,10 +656,89 @@ _Generated locally by ${info.displayName} in 1.2s_
       uncoveredGaps: uncoveredGaps,
       mentorExtras: mentorExtras,
       mappings: mappings,
+      milestones: milestones,
       coveragePercentage: coveragePercent,
       auditSummaryMarkdown: buffer.toString(),
       evaluatedTier: tier,
     );
+  }
+
+  /// Synthesizes contiguous chronological milestones for a sequential list of videos.
+  /// Enforces:
+  /// - Strict linear ordering: 0..N-1 partitioned into 1 to 5 contiguous ranges.
+  /// - Milestone names derived from prominent syllabus topics or video titles in that range.
+  static List<ContiguousMilestone> generateContiguousMilestones({
+    required String subjectTitle,
+    required List<String> videoTitles,
+    required List<VideoTopicMapping> mappings,
+  }) {
+    final count = videoTitles.length;
+    if (count == 0) return [];
+
+    if (count <= 4) {
+      return [
+        ContiguousMilestone(
+          title: '$subjectTitle: Core Concepts',
+          startIndex: 0,
+          endIndex: count - 1,
+        ),
+      ];
+    }
+
+    // Determine target milestone count (2 to 5)
+    final int milestoneCount;
+    if (count <= 10) {
+      milestoneCount = 2;
+    } else if (count <= 22) {
+      milestoneCount = 3;
+    } else if (count <= 45) {
+      milestoneCount = 4;
+    } else {
+      milestoneCount = 5;
+    }
+
+    final chunkSize = (count / milestoneCount).ceil();
+    final milestones = <ContiguousMilestone>[];
+
+    for (int m = 0; m < milestoneCount; m++) {
+      final start = m * chunkSize;
+      if (start >= count) break;
+      final end = ((m + 1) * chunkSize - 1).clamp(0, count - 1);
+
+      // Find the most frequent or first recognized syllabus topic in this chunk
+      final topicCounts = <String, int>{};
+      for (int i = start; i <= end; i++) {
+        if (i < mappings.length) {
+          final t = mappings[i].matchedTopicTitle;
+          if (t != null && t.trim().isNotEmpty) {
+            topicCounts[t] = (topicCounts[t] ?? 0) + 1;
+          }
+        }
+      }
+
+      String milestoneLabel;
+      if (topicCounts.isNotEmpty) {
+        final best = topicCounts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+        milestoneLabel = best;
+      } else {
+        var cleanTitle = videoTitles[start]
+            .replaceAll(RegExp(r'^(?:video|lecture|part|ch|#)?\s*\d+[\s:\-._]*', caseSensitive: false), '')
+            .replaceAll(RegExp(r'\[.*?\]|\(.*?\)', caseSensitive: false), '')
+            .trim();
+        if (cleanTitle.isEmpty) cleanTitle = 'Phase ${m + 1}';
+        milestoneLabel = cleanTitle;
+      }
+
+      milestones.add(
+        ContiguousMilestone(
+          title: 'Milestone ${m + 1}: $milestoneLabel',
+          startIndex: start,
+          endIndex: end,
+        ),
+      );
+    }
+
+    return milestones;
   }
 
   /// Diagnoses fall-behind conditions using local intelligence & math,
