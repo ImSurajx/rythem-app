@@ -554,7 +554,7 @@ class _DesignSystemShowcaseScreenState
         _chaptersByRoadmap = chaptersByRoadmap;
         _beatsByRoadmap = beatsByRoadmap;
         _budgetsByRoadmap = budgetsByRoadmap;
-        _currentStreak = streak >= 3 ? streak : 3;
+        _currentStreak = streak;
         _recentActivity = recentActivity;
         _pacingBudget = budget;
         _weeklySchedule = weeklySchedule;
@@ -831,6 +831,7 @@ class _DesignSystemShowcaseScreenState
       beatsByRoadmap: _beatsByRoadmap,
       budgetsByRoadmap: _budgetsByRoadmap,
       streakDays: _currentStreak,
+      beatLogRepo: _beatLogRepo,
       onSwitchRoadmap: _showRoadmapSelector,
       onBeatToggled: _setBeatCompletion,
       delayedBeatIds: _delayedBeatIds,

@@ -183,6 +183,26 @@ class BeatLogRepository {
     };
   }
 
+  /// Fetches daily completion counts between [startStr] and [endStr] (inclusive).
+  /// Returns a map of 'YYYY-MM-DD' -> beat count.
+  Future<Map<String, int>> getActivityForDateRange(String startStr, String endStr) async {
+    final db = await _db;
+    final results = await db.rawQuery('''
+      SELECT 
+        ${BeatLogColumns.completedDate} as date,
+        COUNT(*) as count
+      FROM ${DatabaseTables.beatLogs}
+      WHERE ${BeatLogColumns.completedDate} >= ? AND ${BeatLogColumns.completedDate} <= ?
+      GROUP BY ${BeatLogColumns.completedDate}
+      ORDER BY ${BeatLogColumns.completedDate} ASC
+    ''', [startStr, endStr]);
+
+    return {
+      for (final row in results)
+        row['date'] as String: (row['count'] as num).toInt(),
+    };
+  }
+
   /// Fetches all daily completion aggregates across lifetime for growth curves.
   Future<List<DailyBeatCount>> getAllDailyActivity() async {
     final db = await _db;

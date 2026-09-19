@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/database/models/roadmap_entity.dart';
+import 'package:rythem_app/core/database/repositories/beat_log_repository.dart';
 import 'package:rythem_app/core/pacing/pacing.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
@@ -36,6 +37,7 @@ class FlowScreen extends StatefulWidget {
   final Map<String, List<BeatEntity>>? beatsByRoadmap;
   final Map<String, PacingBudget>? budgetsByRoadmap;
   final int streakDays;
+  final BeatLogRepository? beatLogRepo;
   final VoidCallback onSwitchRoadmap;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final VoidCallback? onExploreTracks;
@@ -56,6 +58,7 @@ class FlowScreen extends StatefulWidget {
     this.beatsByRoadmap,
     this.budgetsByRoadmap,
     required this.streakDays,
+    this.beatLogRepo,
     required this.onSwitchRoadmap,
     required this.onBeatToggled,
     this.onExploreTracks,
@@ -286,6 +289,7 @@ class _FlowScreenState extends State<FlowScreen> {
           _FlowStreakCalendar(
             streakDays: widget.streakDays,
             allBeats: widget.allBeats,
+            beatLogRepo: widget.beatLogRepo,
             themeColors: themeColors,
             isDark: isDark,
           ),
@@ -1060,28 +1064,135 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
   }
 }
 
-/// 7-day Ambient Glass Streak Calendar with circular cells and notification badges
-class _FlowStreakCalendar extends StatelessWidget {
+/// 7-day Ambient Glass Streak Calendar with horizontal week scrolling,
+/// chevron navigation, and direct SQLite BeatLogRepository data pipeline.
+class _FlowStreakCalendar extends StatefulWidget {
   final int streakDays;
   final List<BeatEntity> allBeats;
+  final BeatLogRepository? beatLogRepo;
   final RythemColorTokens themeColors;
   final bool isDark;
 
   const _FlowStreakCalendar({
     required this.streakDays,
     required this.allBeats,
+    this.beatLogRepo,
     required this.themeColors,
     required this.isDark,
   });
 
+  @override
+  State<_FlowStreakCalendar> createState() => _FlowStreakCalendarState();
+}
+
+class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
+  int _weekOffset = 0; // 0 = current week, -1 = last week, etc.
+  Map<String, int> _weekActivity = {};
+
   static const _emeraldAccent = Color(0xFF10B981);
+  static const _weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  static const _monthAbbrs = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeekActivity();
+  }
+
+  @override
+  void didUpdateWidget(_FlowStreakCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.streakDays != widget.streakDays ||
+        oldWidget.beatLogRepo != widget.beatLogRepo ||
+        oldWidget.allBeats != widget.allBeats) {
+      _loadWeekActivity();
+    }
+  }
+
+  String _formatDate(DateTime dt) {
+    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
+
+  DateTime _getMondayForOffset(int offset) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    return monday.add(Duration(days: offset * 7));
+  }
+
+  Future<void> _loadWeekActivity() async {
+    final monday = _getMondayForOffset(_weekOffset);
+    final sunday = monday.add(const Duration(days: 6));
+    final startStr = _formatDate(monday);
+    final endStr = _formatDate(sunday);
+
+    if (widget.beatLogRepo != null) {
+      try {
+        final activity = await widget.beatLogRepo!.getActivityForDateRange(startStr, endStr);
+        if (mounted) {
+          setState(() {
+            _weekActivity = activity;
+          });
+        }
+        return;
+      } catch (_) {}
+    }
+
+    // Fallback if beatLogRepo is not provided
+    final fallbackMap = <String, int>{};
+    for (final b in widget.allBeats) {
+      if (b.isCompleted && b.completedAt != null) {
+        final dStr = _formatDate(b.completedAt!);
+        if (dStr.compareTo(startStr) >= 0 && dStr.compareTo(endStr) <= 0) {
+          fallbackMap[dStr] = (fallbackMap[dStr] ?? 0) + 1;
+        }
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _weekActivity = fallbackMap;
+      });
+    }
+  }
+
+  void _previousWeek() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _weekOffset--;
+    });
+    _loadWeekActivity();
+  }
+
+  void _nextWeek() {
+    if (_weekOffset >= 0) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _weekOffset++;
+    });
+    _loadWeekActivity();
+  }
+
+  void _resetToCurrentWeek() {
+    if (_weekOffset == 0) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _weekOffset = 0;
+    });
+    _loadWeekActivity();
+  }
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    // Monday as start of week (weekday: Mon=1..Sun=7)
-    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    const weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final monday = _getMondayForOffset(_weekOffset);
+    final sunday = monday.add(const Duration(days: 6));
+
+    final weekRangeTitle = _weekOffset == 0
+        ? 'STREAK CALENDAR'
+        : '${_monthAbbrs[monday.month - 1].toUpperCase()} ${monday.day} - ${_monthAbbrs[sunday.month - 1].toUpperCase()} ${sunday.day}';
 
     return RepaintBoundary(
       child: Container(
@@ -1090,7 +1201,7 @@ class _FlowStreakCalendar extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: isDark
+              color: widget.isDark
                   ? Colors.black.withOpacity(0.30)
                   : const Color(0xFF0E1420).withOpacity(0.05),
               blurRadius: 16,
@@ -1103,203 +1214,284 @@ class _FlowStreakCalendar extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        const Color(0x28FFFFFF),
-                        const Color(0x14FFFFFF),
-                        const Color(0x0AFFFFFF),
-                      ]
-                    : [
-                        const Color(0x99FFFFFF),
-                        const Color(0x66FFFFFF),
-                        const Color(0x40FFFFFF),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
-                width: 1.0,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  'STREAK CALENDAR',
-                  overflow: TextOverflow.ellipsis,
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: widget.isDark
+                      ? [
+                          const Color(0x28FFFFFF),
+                          const Color(0x14FFFFFF),
+                          const Color(0x0AFFFFFF),
+                        ]
+                      : [
+                          const Color(0x99FFFFFF),
+                          const Color(0x66FFFFFF),
+                          const Color(0x40FFFFFF),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000),
+                  width: 1.0,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                decoration: BoxDecoration(
-                  color: _emeraldAccent.withOpacity(isDark ? 0.2 : 0.12),
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(
-                    color: _emeraldAccent.withOpacity(isDark ? 0.4 : 0.3),
-                    width: 0.8,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('🔥', style: TextStyle(fontSize: 10)),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$streakDays day${streakDays == 1 ? '' : 's'} active',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: _emeraldAccent,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(7, (i) {
-              final dayDate = monday.add(Duration(days: i));
-              final isToday = dayDate.day == now.day &&
-                  dayDate.month == now.month &&
-                  dayDate.year == now.year;
-              final isPastOrToday = !dayDate.isAfter(DateTime(now.year, now.month, now.day));
-
-              // Count beats completed on this day
-              final completedOnDay = allBeats.where((b) {
-                if (!b.isCompleted || b.completedAt == null) return false;
-                final c = b.completedAt!;
-                return c.year == dayDate.year && c.month == dayDate.month && c.day == dayDate.day;
-              }).length;
-
-              final daysDiff = DateTime(now.year, now.month, now.day)
-                  .difference(DateTime(dayDate.year, dayDate.month, dayDate.day))
-                  .inDays;
-              final isWithinStreak = daysDiff >= 0 && daysDiff < streakDays;
-              final isStreakMark = completedOnDay > 0 || isWithinStreak;
-
-              return Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      weekDaysLabels[i],
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: isToday ? themeColors.textPrimary : themeColors.textTertiary,
-                        fontSize: 10,
-                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isToday
-                                ? (completedOnDay > 0
-                                    ? (isDark ? Colors.white : const Color(0xFF16181D))
-                                    : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04)))
-                                : (isStreakMark
-                                    ? (isDark ? _emeraldAccent.withOpacity(0.32) : Colors.teal.shade200)
-                                    : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
-                            border: Border.all(
-                              color: isToday
-                                  ? (isDark ? Colors.white : Colors.black87)
-                                  : (isStreakMark
-                                      ? (isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
-                                      : (isDark ? themeColors.glassBorder : const Color(0x10000000))),
-                              width: isToday ? 1.5 : (isStreakMark ? 1.2 : 0.6),
-                            ),
-                            boxShadow: (isStreakMark || (isToday && completedOnDay > 0))
-                                ? [
-                                    BoxShadow(
-                                      color: _emeraldAccent.withOpacity(isDark ? 0.25 : 0.15),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${dayDate.day}',
-                              style: TextStyle(
-                                color: isToday
-                                    ? (completedOnDay > 0
-                                        ? (isDark ? Colors.black : Colors.white)
-                                        : themeColors.textPrimary)
-                                    : (isStreakMark
-                                        ? (isDark ? Colors.white : Colors.teal.shade900)
-                                        : (isPastOrToday ? themeColors.textSecondary : themeColors.textTertiary)),
-                                fontSize: 11,
-                                fontWeight: isStreakMark || isToday ? FontWeight.w700 : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Top-right notification dot badge with total beats
-                        if (completedOnDay > 0)
-                          Positioned(
-                            top: -2,
-                            right: -2,
-                            child: Container(
-                              constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isDark ? const Color(0xFF181818) : Colors.white,
-                                  width: 1.0,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                weekRangeTitle,
+                                overflow: TextOverflow.ellipsis,
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: widget.themeColors.textTertiary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
-                              child: Center(
-                                child: Text(
-                                  '$completedOnDay',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w800,
+                            ),
+                            if (_weekOffset < 0) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _resetToCurrentWeek,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: widget.themeColors.glassBorder,
+                                      width: 0.6,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'TODAY',
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.8,
+                                      color: widget.themeColors.textPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
+                                  .withOpacity(widget.isDark ? 0.2 : 0.12),
+                              borderRadius: BorderRadius.circular(7),
+                              border: Border.all(
+                                color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
+                                    .withOpacity(widget.isDark ? 0.4 : 0.3),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (widget.streakDays > 0)
+                                  const Text('🔥', style: TextStyle(fontSize: 10)),
+                                if (widget.streakDays > 0)
+                                  const SizedBox(width: 4),
+                                Text(
+                                  widget.streakDays > 0
+                                      ? '${widget.streakDays} day${widget.streakDays == 1 ? '' : 's'} active'
+                                      : '0 days active',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: widget.streakDays > 0
+                                        ? _emeraldAccent
+                                        : widget.themeColors.textTertiary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                      ],
+                          const SizedBox(width: 8),
+                          // Left chevron
+                          GestureDetector(
+                            onTap: _previousWeek,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(
+                                Icons.chevron_left_rounded,
+                                size: 16,
+                                color: widget.themeColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          // Right chevron (disabled on current week)
+                          GestureDetector(
+                            onTap: _weekOffset < 0 ? _nextWeek : null,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: _weekOffset < 0
+                                    ? widget.themeColors.textSecondary
+                                    : widget.themeColors.textTertiary.withOpacity(0.25),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Swipeable Week Row
+                  GestureDetector(
+                    key: const Key('weekly_calendar_swipe_detector'),
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragEnd: (details) {
+                      final vx = details.primaryVelocity ?? 0;
+                      if (vx > 200) {
+                        _previousWeek();
+                      } else if (vx < -200 && _weekOffset < 0) {
+                        _nextWeek();
+                      }
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(7, (i) {
+                        final dayDate = monday.add(Duration(days: i));
+                        final dayStr = _formatDate(dayDate);
+                        final isToday = dayDate.day == now.day &&
+                            dayDate.month == now.month &&
+                            dayDate.year == now.year;
+                        final isPastOrToday = !dayDate.isAfter(DateTime(now.year, now.month, now.day));
+
+                        final completedOnDay = _weekActivity[dayStr] ?? 0;
+                        final isCompleted = completedOnDay > 0;
+
+                        return Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _weekDaysLabels[i],
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                                  fontSize: 10,
+                                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isCompleted
+                                          ? (widget.isDark ? _emeraldAccent.withOpacity(0.32) : Colors.teal.shade200)
+                                          : (isToday
+                                              ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
+                                              : (widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
+                                      border: Border.all(
+                                        color: isToday
+                                            ? (widget.isDark ? Colors.white : Colors.black87)
+                                            : (isCompleted
+                                                ? (widget.isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
+                                                : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))),
+                                        width: isToday ? 1.5 : (isCompleted ? 1.2 : 0.6),
+                                      ),
+                                      boxShadow: isCompleted
+                                          ? [
+                                              BoxShadow(
+                                                color: _emeraldAccent.withOpacity(widget.isDark ? 0.25 : 0.15),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${dayDate.day}',
+                                        style: TextStyle(
+                                          color: isCompleted
+                                              ? (widget.isDark ? Colors.white : Colors.teal.shade900)
+                                              : (isToday
+                                                  ? widget.themeColors.textPrimary
+                                                  : (isPastOrToday ? widget.themeColors.textSecondary : widget.themeColors.textTertiary)),
+                                          fontSize: 11,
+                                          fontWeight: isCompleted || isToday ? FontWeight.w700 : FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (completedOnDay > 0)
+                                    Positioned(
+                                      top: -2,
+                                      right: -2,
+                                      child: Container(
+                                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: widget.isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: widget.isDark ? const Color(0xFF181818) : Colors.white,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$completedOnDay',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
