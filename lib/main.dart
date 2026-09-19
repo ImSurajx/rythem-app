@@ -899,6 +899,7 @@ class _DesignSystemShowcaseScreenState
   Future<void> _handleCreateTrack({
     required String title,
     required String category,
+    DateTime? startDate,
     required DateTime targetDate,
     String? resourceUrl,
     String? syllabusText,
@@ -908,6 +909,7 @@ class _DesignSystemShowcaseScreenState
       await _ingestionService.ingestFromSyllabus(
         title: title,
         category: category,
+        startDate: startDate,
         targetDate: targetDate,
         syllabus: parsed,
         resourceUrl: resourceUrl,
@@ -917,6 +919,7 @@ class _DesignSystemShowcaseScreenState
         url: resourceUrl,
         customRoadmapTitle: title,
         customDescription: category,
+        startDate: startDate,
         targetCompletionDate: targetDate,
       );
     } else {
@@ -925,6 +928,7 @@ class _DesignSystemShowcaseScreenState
         id: id,
         title: title,
         description: category,
+        startDate: startDate ?? DateTime.now(),
         targetCompletionDate: targetDate,
         status: 'active',
         createdAt: DateTime.now(),

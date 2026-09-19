@@ -248,38 +248,6 @@ class _FlowScreenState extends State<FlowScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              // Flow Streak Pill (Zero clock counting)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.black.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? themeColors.glassBorder : const Color(0x18000000),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.offline_bolt_outlined,
-                      size: 15,
-                      color: themeColors.textPrimary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${widget.streakDays} Day Streak',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
 

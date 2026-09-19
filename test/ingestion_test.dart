@@ -212,6 +212,7 @@ void main() {
                 ${RoadmapColumns.id} TEXT PRIMARY KEY,
                 ${RoadmapColumns.title} TEXT NOT NULL,
                 ${RoadmapColumns.description} TEXT,
+                ${RoadmapColumns.startDate} TEXT,
                 ${RoadmapColumns.targetCompletionDate} TEXT,
                 ${RoadmapColumns.status} TEXT NOT NULL DEFAULT 'active',
                 ${RoadmapColumns.isPrimary} INTEGER NOT NULL DEFAULT 0,

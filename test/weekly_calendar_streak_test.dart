@@ -222,7 +222,8 @@ void main() {
 
       expect(find.text('STREAK CALENDAR'), findsOneWidget);
       expect(find.text('0 days active'), findsOneWidget);
-      expect(find.text('0 Day Streak'), findsOneWidget);
+      // Redundant header streak pill removed
+      expect(find.text('0 Day Streak'), findsNothing);
       // Ensure no fake 3-day streak numbers exist
       expect(find.text('3 Day Streak'), findsNothing);
       expect(find.text('3 days active'), findsNothing);

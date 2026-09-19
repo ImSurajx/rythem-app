@@ -113,8 +113,9 @@ void main() {
         ),
       );
 
-      // Streak indicator
-      expect(find.text('5 Day Streak'), findsOneWidget);
+      // Streak indicator removed from top header; exists in weekly calendar
+      expect(find.text('5 Day Streak'), findsNothing);
+      expect(find.text('5 days active'), findsOneWidget);
 
       // Roadmap title (in header and track todo card)
       expect(find.text('Test Engineering Track'), findsWidgets);

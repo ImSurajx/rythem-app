@@ -107,6 +107,7 @@ void main() {
               onCreateTrack: ({
                 required String title,
                 required String category,
+                DateTime? startDate,
                 required DateTime targetDate,
                 String? resourceUrl,
                 String? syllabusText,
@@ -142,6 +143,7 @@ void main() {
               onCreateTrack: ({
                 required String title,
                 required String category,
+                DateTime? startDate,
                 required DateTime targetDate,
                 String? resourceUrl,
                 String? syllabusText,
@@ -172,6 +174,7 @@ void main() {
     testWidgets('submits new track with title and selected category', (tester) async {
       String? createdTitle;
       String? createdCategory;
+      DateTime? createdStartDate;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -186,12 +189,14 @@ void main() {
                       onCreateTrack: ({
                         required String title,
                         required String category,
+                        DateTime? startDate,
                         required DateTime targetDate,
                         String? resourceUrl,
                         String? syllabusText,
                       }) async {
                         createdTitle = title;
                         createdCategory = category;
+                        createdStartDate = startDate;
                       },
                     );
                   },
@@ -208,6 +213,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('CREATE NEW TRACK'), findsOneWidget);
+      expect(find.text('START DATE'), findsOneWidget);
+      expect(find.text('TARGET DATE'), findsOneWidget);
 
       // Enter track title
       await tester.enterText(find.byType(TextField).first, 'Quantum Computing Basics');
@@ -223,6 +230,7 @@ void main() {
 
       expect(createdTitle, 'Quantum Computing Basics');
       expect(createdCategory, 'Mathematics');
+      expect(createdStartDate, isNotNull);
     });
   });
 
@@ -315,7 +323,7 @@ void main() {
               chaptersByRoadmap: {'rm_1': [testChapter1]},
               beatsByRoadmap: {'rm_1': testBeats},
               onBeatToggled: (_, __) async {},
-              onCreateTrack: ({required title, required category, required targetDate, resourceUrl, syllabusText}) async {},
+              onCreateTrack: ({required title, required category, startDate, required targetDate, resourceUrl, syllabusText}) async {},
               onOpenRoadmapDetail: (rm) => openedRoadmap = rm,
             ),
           ),

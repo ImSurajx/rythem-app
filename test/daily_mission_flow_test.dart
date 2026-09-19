@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:rythem_app/core/database/database.dart';
+import 'package:rythem_app/core/ingestion/parsers/syllabus_parser.dart';
+import 'package:rythem_app/core/ingestion/services/curriculum_ingestion_service.dart';
 import 'package:rythem_app/core/pacing/pacing.dart';
 
 void main() {
@@ -62,6 +64,35 @@ void main() {
       expect(retrieved, isNotNull);
       expect(retrieved!.startDate, now);
       expect(retrieved.targetCompletionDate, target);
+    });
+
+    test('CurriculumIngestionService persists custom startDate on created roadmap', () async {
+      final ingestionService = CurriculumIngestionService(
+        roadmapRepo: roadmapRepo,
+        chapterRepo: chapterRepo,
+        beatRepo: beatRepo,
+        dailyMissionRepo: dailyMissionRepo,
+      );
+
+      final startDate = DateTime(2026, 10, 1);
+      final targetDate = DateTime(2026, 11, 15);
+      final parsed = SyllabusParser.parse(
+        'Module 1: Basics\n- Topic A\n- Topic B',
+        defaultTitle: 'Custom Start Track',
+      );
+
+      final res = await ingestionService.ingestFromSyllabus(
+        title: 'Custom Start Track',
+        category: 'Engineering',
+        startDate: startDate,
+        targetDate: targetDate,
+        syllabus: parsed,
+      );
+
+      final retrieved = await roadmapRepo.getRoadmapById(res.roadmapId);
+      expect(retrieved, isNotNull);
+      expect(retrieved!.startDate, startDate);
+      expect(retrieved.targetCompletionDate, targetDate);
     });
   });
 

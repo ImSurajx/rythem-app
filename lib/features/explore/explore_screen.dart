@@ -25,6 +25,7 @@ class ExploreScreen extends StatefulWidget {
   final Future<void> Function({
     required String title,
     required String category,
+    DateTime? startDate,
     required DateTime targetDate,
     String? resourceUrl,
     String? syllabusText,

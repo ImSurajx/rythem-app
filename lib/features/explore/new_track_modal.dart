@@ -13,6 +13,7 @@ class NewTrackModal extends StatefulWidget {
   final Future<void> Function({
     required String title,
     required String category,
+    DateTime? startDate,
     required DateTime targetDate,
     String? resourceUrl,
     String? syllabusText,
@@ -28,6 +29,7 @@ class NewTrackModal extends StatefulWidget {
     required Future<void> Function({
       required String title,
       required String category,
+      DateTime? startDate,
       required DateTime targetDate,
       String? resourceUrl,
       String? syllabusText,
@@ -51,6 +53,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
   final _syllabusController = TextEditingController();
   bool _showSyllabusInput = false;
   String _selectedCategory = 'Engineering';
+  DateTime _startDate = DateTime.now();
   DateTime _targetDate = DateTime.now().add(const Duration(days: 14));
   bool _isLoading = false;
 
@@ -230,6 +233,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
       await widget.onCreateTrack(
         title: title,
         category: _selectedCategory,
+        startDate: _startDate,
         targetDate: _targetDate,
         resourceUrl: resourceUrl,
         syllabusText: syllabusText,
@@ -251,12 +255,42 @@ class _NewTrackModalState extends State<NewTrackModal> {
     }
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickStartDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _targetDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: _startDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Colors.white,
+              onPrimary: Colors.black,
+              surface: Color(0xFF1E1E1E),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked;
+        if (_targetDate.isBefore(_startDate)) {
+          _targetDate = _startDate.add(const Duration(days: 14));
+        }
+      });
+    }
+  }
+
+  Future<void> _pickTargetDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _targetDate.isBefore(_startDate) ? _startDate : _targetDate,
+      firstDate: _startDate,
+      lastDate: _startDate.add(const Duration(days: 365 * 3)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -446,34 +480,113 @@ class _NewTrackModalState extends State<NewTrackModal> {
 
               const SizedBox(height: 16),
 
-              // Target Date
+              // Start Date & Target Date Selection Cards
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Target Completion Date',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textSecondary,
-                          fontSize: 11,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _pickStartDate,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.04)
+                              : Colors.black.withOpacity(0.025),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'START DATE',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textTertiary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 13,
+                                  color: themeColors.textSecondary,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
+                              style: RythemTypography.titleSmall.copyWith(
+                                color: themeColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
-                        style: RythemTypography.titleSmall.copyWith(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.calendar_month_outlined,
-                        color: themeColors.textPrimary, size: 20),
-                    onPressed: _pickDate,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _pickTargetDate,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.04)
+                              : Colors.black.withOpacity(0.025),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'TARGET DATE',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textTertiary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.flag_outlined,
+                                  size: 14,
+                                  color: themeColors.textSecondary,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
+                              style: RythemTypography.titleSmall.copyWith(
+                                color: themeColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
