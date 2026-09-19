@@ -4,6 +4,7 @@ class RoadmapEntity {
   final String id;
   final String title;
   final String? description;
+  final DateTime? startDate;
   final DateTime? targetCompletionDate;
   final String status; // 'active', 'archived', 'completed'
   final bool isPrimary;
@@ -14,6 +15,7 @@ class RoadmapEntity {
     required this.id,
     required this.title,
     this.description,
+    this.startDate,
     this.targetCompletionDate,
     this.status = 'active',
     this.isPrimary = false,
@@ -29,6 +31,7 @@ class RoadmapEntity {
     String? id,
     String? title,
     String? description,
+    DateTime? startDate,
     DateTime? targetCompletionDate,
     String? status,
     bool? isPrimary,
@@ -39,6 +42,7 @@ class RoadmapEntity {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      startDate: startDate ?? this.startDate,
       targetCompletionDate: targetCompletionDate ?? this.targetCompletionDate,
       status: status ?? this.status,
       isPrimary: isPrimary ?? this.isPrimary,
@@ -48,7 +52,7 @@ class RoadmapEntity {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       RoadmapColumns.id: id,
       RoadmapColumns.title: title,
       RoadmapColumns.description: description,
@@ -59,6 +63,10 @@ class RoadmapEntity {
       RoadmapColumns.createdAt: createdAt.toIso8601String(),
       RoadmapColumns.updatedAt: updatedAt.toIso8601String(),
     };
+    if (startDate != null) {
+      map[RoadmapColumns.startDate] = startDate!.toIso8601String();
+    }
+    return map;
   }
 
   factory RoadmapEntity.fromMap(Map<String, dynamic> map) {
@@ -66,6 +74,9 @@ class RoadmapEntity {
       id: map[RoadmapColumns.id] as String,
       title: map[RoadmapColumns.title] as String,
       description: map[RoadmapColumns.description] as String?,
+      startDate: map[RoadmapColumns.startDate] != null
+          ? DateTime.parse(map[RoadmapColumns.startDate] as String)
+          : null,
       targetCompletionDate: map[RoadmapColumns.targetCompletionDate] != null
           ? DateTime.parse(map[RoadmapColumns.targetCompletionDate] as String)
           : null,

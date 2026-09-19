@@ -5,7 +5,7 @@ import 'tables.dart';
 
 class DatabaseService {
   static const String _databaseName = 'rythem.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   DatabaseService._();
 
@@ -53,6 +53,7 @@ class DatabaseService {
         ${RoadmapColumns.id} TEXT PRIMARY KEY,
         ${RoadmapColumns.title} TEXT NOT NULL,
         ${RoadmapColumns.description} TEXT,
+        ${RoadmapColumns.startDate} TEXT,
         ${RoadmapColumns.targetCompletionDate} TEXT,
         ${RoadmapColumns.status} TEXT NOT NULL DEFAULT 'active',
         ${RoadmapColumns.isPrimary} INTEGER NOT NULL DEFAULT 0,
@@ -149,11 +150,56 @@ class DatabaseService {
       );
     ''');
 
+    // 6. Daily Missions Table
+    batch.execute('''
+      CREATE TABLE ${DatabaseTables.dailyMissions} (
+        ${DailyMissionColumns.id} TEXT PRIMARY KEY,
+        ${DailyMissionColumns.roadmapId} TEXT NOT NULL,
+        ${DailyMissionColumns.date} TEXT NOT NULL,
+        ${DailyMissionColumns.beatId} TEXT NOT NULL,
+        ${DailyMissionColumns.sortIndex} INTEGER NOT NULL,
+        ${DailyMissionColumns.createdAt} TEXT NOT NULL,
+        FOREIGN KEY (${DailyMissionColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
+        FOREIGN KEY (${DailyMissionColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
+      );
+    ''');
+    batch.execute('''
+      CREATE INDEX idx_daily_missions_date ON ${DatabaseTables.dailyMissions} (
+        ${DailyMissionColumns.roadmapId},
+        ${DailyMissionColumns.date}
+      );
+    ''');
+
     await batch.commit(noResult: true);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Migration handling will be version-stepped here
+    if (oldVersion < 2) {
+      await db.execute('''
+        ALTER TABLE ${DatabaseTables.roadmaps}
+        ADD COLUMN ${RoadmapColumns.startDate} TEXT;
+      ''');
+
+      await db.execute('''
+        CREATE TABLE ${DatabaseTables.dailyMissions} (
+          ${DailyMissionColumns.id} TEXT PRIMARY KEY,
+          ${DailyMissionColumns.roadmapId} TEXT NOT NULL,
+          ${DailyMissionColumns.date} TEXT NOT NULL,
+          ${DailyMissionColumns.beatId} TEXT NOT NULL,
+          ${DailyMissionColumns.sortIndex} INTEGER NOT NULL,
+          ${DailyMissionColumns.createdAt} TEXT NOT NULL,
+          FOREIGN KEY (${DailyMissionColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
+          FOREIGN KEY (${DailyMissionColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
+        );
+      ''');
+
+      await db.execute('''
+        CREATE INDEX idx_daily_missions_date ON ${DatabaseTables.dailyMissions} (
+          ${DailyMissionColumns.roadmapId},
+          ${DailyMissionColumns.date}
+        );
+      ''');
+    }
   }
 
   Future<void> close() async {

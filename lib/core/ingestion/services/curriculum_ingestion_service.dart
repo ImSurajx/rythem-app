@@ -17,6 +17,7 @@ class CurriculumIngestionService {
   final RoadmapRepository _roadmapRepo;
   final ChapterRepository _chapterRepo;
   final BeatRepository _beatRepo;
+  final DailyMissionRepository _dailyMissionRepo;
   final LocalInferenceService _inferenceService;
 
   CurriculumIngestionService({
@@ -25,12 +26,14 @@ class CurriculumIngestionService {
     RoadmapRepository? roadmapRepo,
     ChapterRepository? chapterRepo,
     BeatRepository? beatRepo,
+    DailyMissionRepository? dailyMissionRepo,
     LocalInferenceService? inferenceService,
   })  : _youtubeClient = youtubeClient ?? YoutubeExtractorService(),
         _matcherService = matcherService ?? SyllabusMatcherService(),
         _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
         _chapterRepo = chapterRepo ?? ChapterRepository(),
         _beatRepo = beatRepo ?? BeatRepository(),
+        _dailyMissionRepo = dailyMissionRepo ?? DailyMissionRepository(),
         _inferenceService = inferenceService ?? LocalInferenceService();
 
   /// Ingests a curriculum from a YouTube URL (playlist or single video).
@@ -418,6 +421,7 @@ class CurriculumIngestionService {
     // Fixed macro subject structure is preserved without touching other chapters.
     await _beatRepo.deleteBeatsByChapterId(chapterId);
     await _beatRepo.createBeatsBatch(newBeats);
+    await _dailyMissionRepo.clearDailyMissions(roadmapId);
 
     DatabaseEventBus.instance.emit(DatabaseEvent(
       type: DatabaseEventType.roadmapUpdated,

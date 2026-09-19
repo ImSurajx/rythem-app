@@ -105,41 +105,45 @@ class PacingCalculator {
   /// and selects beats until their combined effort satisfies [targetBudget].
   /// 
   /// Guarantees:
-  /// - Chapter sequence is strictly preserved (Chapter 1 before Chapter 2).
-  /// - Order is never reshuffled or prioritized out of sequence.
+  /// - Active chapter is completely exhausted before moving to the next chapter.
+  /// - Within each chapter, beats are walked strictly in sortOrder ASC, createdAt ASC.
+  /// - Order is never reshuffled or interleaved across chapters.
   /// - At least 1 beat is selected if pending beats exist.
   /// - Halts immediately once target effort is fulfilled to prevent overload.
   static List<BeatEntity> walkQueueToFillBudget({
     required List<BeatEntity> pendingBeats,
     required double targetBudget,
     Map<String, int>? chapterOrderMap,
+    List<String>? orderedChapterIds,
   }) {
     if (pendingBeats.isEmpty) return [];
 
     final sorted = List<BeatEntity>.from(pendingBeats);
-    if (chapterOrderMap != null && chapterOrderMap.isNotEmpty) {
-      sorted.sort((a, b) {
-        final chA = chapterOrderMap[a.chapterId] ?? 9999;
-        final chB = chapterOrderMap[b.chapterId] ?? 9999;
-        if (chA != chB) return chA.compareTo(chB);
-        final sortCmp = a.sortOrder.compareTo(b.sortOrder);
-        if (sortCmp != 0) return sortCmp;
-        return a.createdAt.compareTo(b.createdAt);
-      });
-    } else {
-      // If all beats belong to the same chapter, sort by beat sortOrder
-      final firstChapterId = sorted.first.chapterId;
-      final isSingleChapter = sorted.every((b) => b.chapterId == firstChapterId);
-      if (isSingleChapter) {
-        sorted.sort((a, b) {
-          final sortCmp = a.sortOrder.compareTo(b.sortOrder);
-          if (sortCmp != 0) return sortCmp;
-          return a.createdAt.compareTo(b.createdAt);
-        });
+
+    int getChapterRank(String chId) {
+      if (orderedChapterIds != null) {
+        final idx = orderedChapterIds.indexOf(chId);
+        if (idx != -1) return idx;
       }
-      // If multi-chapter and no chapterOrderMap provided, preserve the caller's sequence.
-      // Callers such as BeatRepository.getBeatsByRoadmapId already return in chapter-first order.
+      if (chapterOrderMap != null && chapterOrderMap.containsKey(chId)) {
+        return chapterOrderMap[chId]!;
+      }
+      return 999999;
     }
+
+    sorted.sort((a, b) {
+      if (a.chapterId != b.chapterId) {
+        final rankA = getChapterRank(a.chapterId);
+        final rankB = getChapterRank(b.chapterId);
+        if (rankA != rankB) return rankA.compareTo(rankB);
+        // Guarantee beats from different chapters never interleave even if rank is tied
+        final chCmp = a.chapterId.compareTo(b.chapterId);
+        if (chCmp != 0) return chCmp;
+      }
+      final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+      if (sortCmp != 0) return sortCmp;
+      return a.createdAt.compareTo(b.createdAt);
+    });
 
     final selected = <BeatEntity>[];
     double accumulatedEffort = 0.0;

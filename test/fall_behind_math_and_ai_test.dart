@@ -158,6 +158,18 @@ void main() {
           updated_at TEXT NOT NULL
         );
       ''');
+      await testDb.execute('''
+        CREATE TABLE daily_missions (
+          id TEXT PRIMARY KEY,
+          roadmap_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          beat_id TEXT NOT NULL,
+          sort_index INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (beat_id) REFERENCES beats (id) ON DELETE CASCADE,
+          FOREIGN KEY (roadmap_id) REFERENCES roadmaps (id) ON DELETE CASCADE
+        );
+      ''');
 
       DatabaseService.instance.setDatabaseForTesting(testDb);
       roadmapRepo = RoadmapRepository(dbService: DatabaseService.instance);

@@ -743,18 +743,9 @@ class _TrackTodoListCard extends StatelessWidget {
                     return a.sortOrder.compareTo(b.sortOrder);
                   });
 
-                // 1. Calculate today's target effort share
-                final incompleteBeats = sortedAllBeats.where((b) => !b.isCompleted).toList();
-                final remainingEffort = PacingCalculator.calculateRemainingEffort(incompleteBeats);
-                final daysLeft = roadmap.targetCompletionDate != null
-                    ? PacingCalculator.calculateDaysLeft(roadmap.targetCompletionDate!)
-                    : 30;
-                final dailyTargetEffort = pacingBudget != null && pacingBudget!.todayEffortShare > 0
-                    ? pacingBudget!.todayEffortShare
-                    : PacingCalculator.calculateDailyEffortShare(
-                        remainingEffort: remainingEffort,
-                        daysLeft: daysLeft,
-                      );
+                // 1. Incomplete beats for quick fallback if budget has not loaded yet
+                final incompleteBeats =
+                    sortedAllBeats.where((b) => !b.isCompleted).toList();
 
                 // 2. Assemble today's mission beats with strikethrough retention
                 final seenIds = <String>{};
@@ -773,16 +764,11 @@ class _TrackTodoListCard extends StatelessWidget {
                     if (seenIds.add(b.id)) flowBeats.add(b);
                   }
                 } else {
-                  // Fallback: include completed today and walk sequential queue with chapterOrderMap
+                  // Initial fallback while pacing budget is loading
                   for (final b in completedToday) {
                     if (seenIds.add(b.id)) flowBeats.add(b);
                   }
-                  final fallbackPending = PacingCalculator.walkQueueToFillBudget(
-                    pendingBeats: incompleteBeats,
-                    targetBudget: dailyTargetEffort > 0 ? dailyTargetEffort : 1.0,
-                    chapterOrderMap: chapterOrderMap,
-                  );
-                  for (final b in fallbackPending) {
+                  for (final b in incompleteBeats.take(1)) {
                     if (seenIds.add(b.id)) flowBeats.add(b);
                   }
                 }
