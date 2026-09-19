@@ -505,7 +505,29 @@ _Generated locally by ${info.displayName} in 1.2s_
     final t = topicTitle.toLowerCase();
 
     final domainEquivalents = <Set<String>>[
-      {'hash', 'hashing', 'hashmap', 'hash map', 'hash table', 'dictionary', 'dict'},
+      // Conditionals & Control Flow
+      {'condition', 'conditions', 'conditional', 'if else', 'if statement', 'control flow'},
+      // Object Oriented Programming & Classes
+      {'oop', 'object oriented', 'class', 'classes', 'init', 'inheritance', 'encapsulation', 'polymorphism', 'dunder', 'magic methods', 'magic method', 'abstraction'},
+      // Error & Exception Handling
+      {'exception', 'exceptions', 'try except', 'error handling', 'traceback'},
+      // File I/O
+      {'file handling', 'open file', 'read file', 'write file', 'csv', 'json', 'text file', 'text files'},
+      // Modules & Packages
+      {'module', 'modules', 'package', 'packages', 'import', 'pip'},
+      // Virtual Environments
+      {'virtualenv', 'virtual environment', 'venv', 'conda'},
+      // Web Requests & APIs
+      {'requests', 'http requests', 'api', 'rest api', 'endpoints'},
+      // Git & Version Control
+      {'git', 'github', 'version control', 'commit', 'branch', 'pull request', 'pr', 'readme'},
+      // Testing & Quality
+      {'pytest', 'unit test', 'unittests', 'unit testing', 'test case', 'testcases'},
+      // Typing
+      {'type hints', 'type hint', 'type annotations', 'typing'},
+      // DSA - Hash & Maps
+      {'hash', 'hashing', 'hashmap', 'hash map', 'hash table'},
+      // DSA - Search & Graphs
       {'bfs', 'breadth first search', 'queue', 'level order'},
       {'dfs', 'depth first search', 'recursion', 'backtracking'},
       {'dp', 'dynamic programming', 'memoization', 'tabulation'},
@@ -516,8 +538,8 @@ _Generated locally by ${info.displayName} in 1.2s_
       {'heap', 'priority queue', 'min heap', 'max heap'},
       {'graph', 'dag', 'topological sort', 'dijkstra', 'shortest path'},
       {'sorting', 'quicksort', 'mergesort', 'sort'},
-      {'precalculus', 'algebra', 'functions', 'trigonometry', 'trig'},
-      {'calculus', 'derivatives', 'integrals', 'limits'},
+      {'precalculus', 'algebra', 'trigonometry', 'trig'},
+      {'calculus', 'derivatives', 'integrals', 'limits', 'backpropagation'},
       {'test', 'testing', 'test case', 'testcase', 'unit test', 'integration test'},
     ];
 
