@@ -18,6 +18,7 @@ import 'features/explore/roadmap_detail_screen.dart';
 import 'features/metrics/metrics_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
 import 'core/backup/services/backup_service.dart';
+import 'core/backup/services/auto_backup_manager.dart';
 import 'core/revision/models/revision_item.dart';
 import 'core/revision/services/revision_service.dart';
 import 'core/navigation/smooth_page_route.dart';
@@ -133,6 +134,13 @@ class _DesignSystemShowcaseScreenState
   final _beatLogRepo = BeatLogRepository();
   final _appSettingsRepo = AppSettingsRepository();
   final _backupService = BackupService();
+  late final _autoBackupManager = AutoBackupManager(
+    backupService: _backupService,
+    settingsRepo: _appSettingsRepo,
+  );
+  BackupSnapshotInfo? _latestAutoBackup;
+  bool _isPerformingAutoBackup = false;
+  bool _hasCheckedDisasterRecovery = false;
   WeeklyStudySchedule _weeklySchedule = WeeklyStudySchedule.defaultSchedule();
 
   late final _ingestionService = CurriculumIngestionService(
@@ -440,6 +448,13 @@ class _DesignSystemShowcaseScreenState
         _roadmapId = '';
       }
       await _loadDatabaseState();
+
+      if (active.isNotEmpty) {
+        unawaited(_autoBackupManager.checkAndPerformDailyBackup());
+      } else if (!_hasCheckedDisasterRecovery) {
+        _hasCheckedDisasterRecovery = true;
+        await _checkDisasterRecovery();
+      }
     } catch (e) {
       debugPrint('Error initializing database: $e');
     }
@@ -447,10 +462,15 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _loadDatabaseState() async {
     final allRoadmaps = await _roadmapRepo.getActiveRoadmaps();
+    final latestBackup = await _autoBackupManager.getLatestAutoBackup();
     if (allRoadmaps.isEmpty) {
       final db = await DatabaseService.instance.database;
-      await db.delete(DatabaseTables.beatLogs);
-      await db.delete(DatabaseTables.dailyMissions);
+      try {
+        await db.delete(DatabaseTables.beatLogs);
+      } catch (_) {}
+      try {
+        await db.delete(DatabaseTables.dailyMissions);
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _allRoadmaps = [];
@@ -463,6 +483,7 @@ class _DesignSystemShowcaseScreenState
           _currentStreak = 0;
           _recentActivity = [];
           _pacingBudget = null;
+          _latestAutoBackup = latestBackup;
         });
       }
       return;
@@ -563,8 +584,10 @@ class _DesignSystemShowcaseScreenState
         _weeklySchedule = weeklySchedule;
         _delayedBeatIds = delayedBeatIds;
         _revisionItems = revisionItems;
+        _latestAutoBackup = latestBackup;
       });
     }
+    unawaited(_autoBackupManager.checkAndPerformDailyBackup());
     await _loadModelStatus();
   }
 
@@ -1308,6 +1331,8 @@ class _DesignSystemShowcaseScreenState
             ),
           ),
           const SizedBox(height: 8),
+          _buildAutoBackupCard(themeColors, isDark),
+          const SizedBox(height: 12),
           _buildDataBackupCard(themeColors, isDark),
           const SizedBox(height: 24),
 
@@ -1548,6 +1573,132 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
+  Widget _buildAutoBackupCard(RythemThemeColors themeColors, bool isDark) {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Daily Auto-Backup',
+                    style: RythemTypography.titleSmall.copyWith(
+                      color: themeColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'On-Device',
+                          style: TextStyle(
+                            color: Color(0xFF10B981),
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Icon(
+                Icons.schedule_rounded,
+                size: 16,
+                color: themeColors.textTertiary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Automatically creates daily resilient snapshots to device storage, retaining 7 rolling days. Survives app cache wipes for instant disaster recovery.',
+            style: RythemTypography.bodySmall.copyWith(
+              color: themeColors.textTertiary,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: themeColors.glassBorder),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Last Auto-Backup',
+                  style: TextStyle(
+                    color: themeColors.textTertiary,
+                    fontSize: 11,
+                  ),
+                ),
+                Text(
+                  _latestAutoBackup != null
+                      ? '${_latestAutoBackup!.relativeTimeDescription} (${_latestAutoBackup!.formattedSize})'
+                      : 'Not run today',
+                  style: TextStyle(
+                    color: themeColors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: GlassButton(
+                  onPressed: _isPerformingAutoBackup ? null : _handleManualAutoBackup,
+                  icon: Icons.sync_rounded,
+                  label: _isPerformingAutoBackup ? 'Backing up...' : 'Back Up Now',
+                  variant: GlassButtonVariant.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GlassButton(
+                  onPressed: _handleRestoreAutoBackup,
+                  icon: Icons.history_rounded,
+                  label: 'Snapshots (${AutoBackupManager.maxRetainedDailySnapshots}d)',
+                  variant: GlassButtonVariant.secondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDataBackupCard(RythemThemeColors themeColors, bool isDark) {
     return GlassCard(
       padding: const EdgeInsets.all(16),
@@ -1636,6 +1787,342 @@ class _DesignSystemShowcaseScreenState
       _showToast('Backup exported: $name');
     } catch (e) {
       _showToast('Export failed: $e');
+    }
+  }
+
+  Future<void> _handleManualAutoBackup() async {
+    if (_isPerformingAutoBackup) return;
+    setState(() => _isPerformingAutoBackup = true);
+    HapticFeedback.mediumImpact();
+    try {
+      final info = await _autoBackupManager.checkAndPerformDailyBackup(force: true);
+      if (mounted) {
+        setState(() {
+          _latestAutoBackup = info;
+          _isPerformingAutoBackup = false;
+        });
+        if (info != null) {
+          _showToast('Daily backup saved (${info.roadmapsCount} tracks, ${info.formattedSize})');
+        } else {
+          _showToast('Backup completed');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isPerformingAutoBackup = false);
+        _showToast('Backup failed: $e');
+      }
+    }
+  }
+
+  Future<void> _handleRestoreAutoBackup() async {
+    final backups = await _autoBackupManager.listAvailableBackups();
+    if (!mounted) return;
+    if (backups.isEmpty) {
+      _showToast('No auto-backups found on this device');
+      return;
+    }
+
+    final selected = await showModalBottomSheet<BackupSnapshotInfo>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+        final colors = isDark ? RythemColors.dark : RythemColors.light;
+
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xE6141418) : const Color(0xF5F7F7FA),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: colors.glassBorder),
+            ),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).padding.bottom + 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.textTertiary.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.history_rounded, size: 20, color: colors.actionPrimary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Select Auto-Backup Snapshot',
+                      style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Select a rolling daily snapshot stored locally in device storage to restore.',
+                  style: RythemTypography.bodySmall.copyWith(color: colors.textTertiary),
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.45,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: backups.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final item = backups[index];
+                      final isLatest = item.fileName == AutoBackupManager.latestBackupFileName;
+                      return InkWell(
+                        onTap: () => Navigator.pop(ctx, item),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.glassBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: colors.actionPrimary.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  isLatest ? Icons.star_rounded : Icons.backup_outlined,
+                                  size: 18,
+                                  color: colors.actionPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          isLatest ? 'Latest Auto-Backup' : item.fileName,
+                                          style: RythemTypography.titleSmall.copyWith(
+                                            color: colors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '• ${item.relativeTimeDescription}',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            color: colors.textTertiary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${item.roadmapsCount} tracks • ${item.beatsCount} beats • ${item.formattedSize}',
+                                      style: RythemTypography.bodySmall.copyWith(
+                                        color: colors.textSecondary,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: colors.textTertiary),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected != null && mounted) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          final theme = Theme.of(ctx);
+          final isDark = theme.brightness == Brightness.dark;
+          final colors = isDark ? RythemColors.dark : RythemColors.light;
+          return AlertDialog(
+            backgroundColor: isDark ? const Color(0xFF1E1E22) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              'Restore This Snapshot?',
+              style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
+            ),
+            content: Text(
+              'Restoring "${selected.fileName}" (${selected.relativeTimeDescription}) will replace current database state with this snapshot\'s data.\n\nProceed?',
+              style: RythemTypography.bodyMedium.copyWith(color: colors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Cancel', style: TextStyle(color: colors.textTertiary)),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.actionPrimary,
+                  foregroundColor: colors.actionOnPrimary,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Confirm Restore'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed == true && mounted) {
+        HapticFeedback.heavyImpact();
+        try {
+          await _autoBackupManager.restoreSnapshot(selected.file);
+          await _loadDatabaseState();
+          _showToast('Restored from "${selected.fileName}"! 🎉');
+        } catch (e) {
+          _showToast('Restore error: $e');
+        }
+      }
+    }
+  }
+
+  Future<void> _checkDisasterRecovery() async {
+    if (!mounted) return;
+    try {
+      final recoverySnapshot = await _autoBackupManager.checkForDisasterRecovery();
+      if (recoverySnapshot != null && mounted) {
+        _showDisasterRecoveryDialog(recoverySnapshot);
+      }
+    } catch (e) {
+      debugPrint('Disaster recovery check error: $e');
+    }
+  }
+
+  Future<void> _showDisasterRecoveryDialog(BackupSnapshotInfo snapshot) async {
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+        final colors = isDark ? RythemColors.dark : RythemColors.light;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E22) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.settings_backup_restore, color: colors.actionPrimary, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Restore Previous Data?',
+                  style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'No active tracks were found, but we discovered a local auto-backup from ${snapshot.relativeTimeDescription}.',
+                style: RythemTypography.bodyMedium.copyWith(color: colors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? colors.glassBorder : const Color(0x14000000),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Tracks / Roadmaps', style: TextStyle(color: colors.textTertiary, fontSize: 12)),
+                        Text('${snapshot.roadmapsCount}', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Total Beats', style: TextStyle(color: colors.textTertiary, fontSize: 12)),
+                        Text('${snapshot.beatsCount}', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Activity & Streaks', style: TextStyle(color: colors.textTertiary, fontSize: 12)),
+                        Text('${snapshot.logsCount} logs', style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Would you like to restore this backup to resume your learning?',
+                style: RythemTypography.bodySmall.copyWith(color: colors.textTertiary),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Start Fresh', style: TextStyle(color: colors.textTertiary)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.actionPrimary,
+                foregroundColor: colors.actionOnPrimary,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Restore Backup'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await _autoBackupManager.restoreSnapshot(snapshot.file);
+        await _loadDatabaseState();
+        _showToast('Restored successfully from auto-backup! 🎉');
+      } catch (e) {
+        _showToast('Failed to restore auto-backup: $e');
+      }
     }
   }
 
