@@ -16,13 +16,19 @@ Welcome to the Rythem agent documentation hub. This directory contains comprehen
      - Offline private AI mentorship pipeline (Qwen 2.5 SLMs).
    - Key architectural contracts and invariants.
 
-2. **[DEVELOPER_GUIDE.md](file:///Users/itsurajx/Developer/rythem-app/.agents/DEVELOPER_GUIDE.md)**:
+2. **[CODEBASE_MAP.md](file:///Users/itsurajx/Developer/rythem-app/.agents/CODEBASE_MAP.md)**:
+   - Complete file hierarchy and responsibility map.
+   - Root state lifecycle and in-flight toggle pipeline details.
+   - Feature-to-file change matrix (exact files to edit for any feature).
+   - Architectural invariants and development recipes.
+
+3. **[DEVELOPER_GUIDE.md](file:///Users/itsurajx/Developer/rythem-app/.agents/DEVELOPER_GUIDE.md)**:
    - CLI commands (`flutter analyze`, `flutter test`, `flutter build apk`).
    - Core development patterns (Repositories pattern, State management, In-flight sync).
    - Liquid glass design system and rendering performance rules.
    - Testing and verification checklist.
 
-3. **[rules/rules.md](file:///Users/itsurajx/Developer/rythem-app/.agents/rules/rules.md)**:
+4. **[rules/rules.md](file:///Users/itsurajx/Developer/rythem-app/.agents/rules/rules.md)**:
    - Step-by-step implementation rules.
    - Mandatory user checkpoints and permission protocol.
    - Git commit sign-off (`git commit -s`) standards.
