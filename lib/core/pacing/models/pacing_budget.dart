@@ -47,6 +47,12 @@ class PacingBudget {
   /// Required velocity minus actual recent velocity.
   final double velocityDeficit;
 
+  /// Indicates if this track is scheduled to start in the future and has not yet kicked off.
+  final bool isUpcoming;
+
+  /// Number of days remaining until the scheduled kickoff date.
+  final int daysUntilStart;
+
   const PacingBudget({
     required this.roadmapId,
     required this.remainingEffort,
@@ -61,11 +67,14 @@ class PacingBudget {
     this.recentVelocity = 0.0,
     this.shortfallDebt = 0.0,
     this.velocityDeficit = 0.0,
+    this.isUpcoming = false,
+    this.daysUntilStart = 0,
   });
 
   /// Ratio of completed beats today vs total assigned for today.
   double get dailyCompletionRatio {
-    if (todaysBeats.isEmpty) return 1.0;
+    if (isUpcoming) return 0.0;
+    if (todaysBeats.isEmpty) return isRoadmapCompleted ? 1.0 : 0.0;
     final completed = todaysBeats.where((b) => b.isCompleted).length;
     return completed / todaysBeats.length;
   }
@@ -87,6 +96,8 @@ class PacingBudget {
     double? recentVelocity,
     double? shortfallDebt,
     double? velocityDeficit,
+    bool? isUpcoming,
+    int? daysUntilStart,
   }) {
     return PacingBudget(
       roadmapId: roadmapId ?? this.roadmapId,
@@ -102,6 +113,8 @@ class PacingBudget {
       recentVelocity: recentVelocity ?? this.recentVelocity,
       shortfallDebt: shortfallDebt ?? this.shortfallDebt,
       velocityDeficit: velocityDeficit ?? this.velocityDeficit,
+      isUpcoming: isUpcoming ?? this.isUpcoming,
+      daysUntilStart: daysUntilStart ?? this.daysUntilStart,
     );
   }
 }

@@ -448,12 +448,20 @@ class _DesignSystemShowcaseScreenState
   Future<void> _loadDatabaseState() async {
     final allRoadmaps = await _roadmapRepo.getActiveRoadmaps();
     if (allRoadmaps.isEmpty) {
+      final db = await DatabaseService.instance.database;
+      await db.delete(DatabaseTables.beatLogs);
+      await db.delete(DatabaseTables.dailyMissions);
       if (mounted) {
         setState(() {
           _allRoadmaps = [];
           _roadmapId = '';
           _chapters = [];
           _beats = [];
+          _chaptersByRoadmap = {};
+          _beatsByRoadmap = {};
+          _budgetsByRoadmap = {};
+          _currentStreak = 0;
+          _recentActivity = [];
           _pacingBudget = null;
         });
       }
@@ -492,11 +500,6 @@ class _DesignSystemShowcaseScreenState
       } catch (e) {
         debugPrint('Notice: Pacing budget for ${rm.id}: $e');
       }
-    }
-
-    if (allRoadmaps.isEmpty) {
-      final db = await DatabaseService.instance.database;
-      await db.delete(DatabaseTables.beatLogs);
     }
 
     final chapters = chaptersByRoadmap[_roadmapId] ?? [];
@@ -842,6 +845,7 @@ class _DesignSystemShowcaseScreenState
       isScanningRevision: _isScanningRevision,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
+      onStartEarly: _handleStartRoadmapEarly,
       onStudyAhead: (roadmap) async {
         final pulled = await _pacingService.pullNextBeatIntoMission(roadmap.id);
         await _loadDatabaseState();
@@ -970,6 +974,22 @@ class _DesignSystemShowcaseScreenState
     final updated = roadmap.copyWith(status: 'active', updatedAt: DateTime.now());
     await _roadmapRepo.updateRoadmap(updated);
     await _loadDatabaseState();
+  }
+
+  Future<void> _handleStartRoadmapEarly(RoadmapEntity roadmap) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final updated = roadmap.copyWith(startDate: today, updatedAt: now);
+    await _roadmapRepo.updateRoadmap(updated);
+    await _loadDatabaseState();
+    if (mounted) {
+      showGlassToast(
+        context,
+        'Kickoff updated to today! Daily to-do activated.',
+        icon: Icons.bolt_rounded,
+        accentColor: const Color(0xFF10B981),
+      );
+    }
   }
 
   Future<void> _handleDeleteRoadmap(RoadmapEntity roadmap) async {

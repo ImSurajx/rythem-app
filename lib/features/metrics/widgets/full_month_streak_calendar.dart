@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/database/database_event_bus.dart';
 import '../../../core/database/repositories/beat_log_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
@@ -33,10 +35,11 @@ class FullMonthStreakCalendar extends StatefulWidget {
 
 class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
   late DateTime _displayedMonth;
-  late final BeatLogRepository _repo;
+  late BeatLogRepository _repo;
   Map<String, int> _monthlyActivity = {};
   bool _isLoading = true;
   String? _selectedDateStr;
+  StreamSubscription<DatabaseEvent>? _eventSub;
 
   @override
   void initState() {
@@ -46,6 +49,27 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
     _selectedDateStr = null;
     _repo = widget.beatLogRepo ?? BeatLogRepository();
     _loadMonthActivity();
+    _eventSub = DatabaseEventBus.instance.stream.listen((_) {
+      if (mounted) _loadMonthActivity();
+    });
+  }
+
+  @override
+  void dispose() {
+    _eventSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(FullMonthStreakCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.streakDays != widget.streakDays ||
+        oldWidget.beatLogRepo != widget.beatLogRepo) {
+      if (widget.beatLogRepo != null) {
+        _repo = widget.beatLogRepo!;
+      }
+      _loadMonthActivity();
+    }
   }
 
   String _formatDate(DateTime dt) {

@@ -152,11 +152,47 @@ class RoadmapRepository {
 
   Future<void> deleteRoadmap(String id) async {
     final db = await _db;
-    await db.delete(
-      DatabaseTables.roadmaps,
-      where: '${RoadmapColumns.id} = ?',
-      whereArgs: [id],
-    );
+    final existingTables = (await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table'",
+    )).map((r) => r['name'] as String).toSet();
+
+    final batch = db.batch();
+    if (existingTables.contains(DatabaseTables.dailyMissions)) {
+      batch.delete(
+        DatabaseTables.dailyMissions,
+        where: '${DailyMissionColumns.roadmapId} = ?',
+        whereArgs: [id],
+      );
+    }
+    if (existingTables.contains(DatabaseTables.beatLogs)) {
+      batch.delete(
+        DatabaseTables.beatLogs,
+        where: '${BeatLogColumns.roadmapId} = ?',
+        whereArgs: [id],
+      );
+    }
+    if (existingTables.contains(DatabaseTables.beats)) {
+      batch.delete(
+        DatabaseTables.beats,
+        where: '${BeatColumns.roadmapId} = ?',
+        whereArgs: [id],
+      );
+    }
+    if (existingTables.contains(DatabaseTables.chapters)) {
+      batch.delete(
+        DatabaseTables.chapters,
+        where: '${ChapterColumns.roadmapId} = ?',
+        whereArgs: [id],
+      );
+    }
+    if (existingTables.contains(DatabaseTables.roadmaps)) {
+      batch.delete(
+        DatabaseTables.roadmaps,
+        where: '${RoadmapColumns.id} = ?',
+        whereArgs: [id],
+      );
+    }
+    await batch.commit(noResult: true);
     _eventBus.emit(DatabaseEvent(
       type: DatabaseEventType.roadmapDeleted,
       entityId: id,

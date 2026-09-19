@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:rythem_app/core/database/database_event_bus.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/database/models/roadmap_entity.dart';
@@ -73,9 +75,11 @@ class FlowScreen extends StatefulWidget {
     this.onRequestRevisionRecommendations,
     this.isScanningRevision = false,
     this.onStudyAhead,
+    this.onStartEarly,
   });
 
   final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
+  final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
 
   final List<RevisionItem> revisionItems;
   final ValueChanged<RevisionItem>? onMarkRevised;
@@ -346,7 +350,7 @@ class _FlowScreenState extends State<FlowScreen> {
             onMarkRevised: (item) {
               widget.onMarkRevised?.call(item);
             },
-            inferenceService: widget.inferenceService ?? LocalInferenceService(),
+            inferenceService: widget.inferenceService,
             onRequestRecommendations: widget.onRequestRevisionRecommendations,
             isScanning: widget.isScanningRevision,
             themeColors: themeColors,
@@ -385,6 +389,7 @@ class _FlowScreenState extends State<FlowScreen> {
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
                 onStudyAhead: widget.onStudyAhead,
+                onStartEarly: widget.onStartEarly,
                 onOpenDetail: widget.onOpenRoadmapDetail != null
                     ? () => widget.onOpenRoadmapDetail!(rm)
                     : null,
@@ -476,6 +481,7 @@ class _TrackTodoListCard extends StatelessWidget {
   final Set<String> delayedBeatIds;
   final void Function(BeatEntity beat)? onToggleDelay;
   final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
+  final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
 
   const _TrackTodoListCard({
     required this.roadmap,
@@ -491,6 +497,7 @@ class _TrackTodoListCard extends StatelessWidget {
     this.delayedBeatIds = const {},
     this.onToggleDelay,
     this.onStudyAhead,
+    this.onStartEarly,
   });
 
   @override
@@ -715,6 +722,22 @@ class _TrackTodoListCard extends StatelessWidget {
                     return a.sortOrder.compareTo(b.sortOrder);
                   });
 
+                // Check if track is scheduled to start in the future
+                final trackStart = roadmap.startDate != null
+                    ? DateTime(roadmap.startDate!.year, roadmap.startDate!.month, roadmap.startDate!.day)
+                    : todayStart;
+                final isUpcoming = pacingBudget?.isUpcoming == true || todayStart.isBefore(trackStart);
+
+                if (isUpcoming && completedToday.isEmpty) {
+                  final daysUntil = pacingBudget?.daysUntilStart ??
+                      (todayStart.isBefore(trackStart) ? trackStart.difference(todayStart).inDays : 0);
+                  return _buildUpcomingTrackCard(
+                    context: context,
+                    daysUntil: daysUntil,
+                    startDate: roadmap.startDate ?? trackStart,
+                  );
+                }
+
                 // 1. Incomplete beats for quick fallback if budget has not loaded yet
                 final incompleteBeats =
                     sortedAllBeats.where((b) => !b.isCompleted).toList();
@@ -735,8 +758,8 @@ class _TrackTodoListCard extends StatelessWidget {
                   for (final b in pacingBudget!.todaysBeats) {
                     if (seenIds.add(b.id)) flowBeats.add(b);
                   }
-                } else {
-                  // Initial fallback while pacing budget is loading
+                } else if (!isUpcoming) {
+                  // Initial fallback while pacing budget is loading (only if track is not upcoming)
                   for (final b in completedToday) {
                     if (seenIds.add(b.id)) flowBeats.add(b);
                   }
@@ -750,7 +773,7 @@ class _TrackTodoListCard extends StatelessWidget {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
 
-                if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty) {
+                if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty && !isUpcoming) {
                   flowBeats.addAll(sortedAllBeats.take(1));
                 }
 
@@ -888,6 +911,174 @@ class _TrackTodoListCard extends StatelessWidget {
 ),
 ),
 ),
+    );
+  }
+
+  Widget _buildUpcomingTrackCard({
+    required BuildContext context,
+    required int daysUntil,
+    required DateTime startDate,
+  }) {
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final formattedDate = '${monthNames[startDate.month - 1]} ${startDate.day}, ${startDate.year}';
+    final daysText = daysUntil == 1 ? 'Starts tomorrow' : 'Starts in $daysUntil days';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0x1838BDF8) : const Color(0x100284C7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? const Color(0x4038BDF8) : const Color(0x300284C7),
+            width: 0.8,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(isDark ? 0.3 : 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFF38BDF8).withOpacity(isDark ? 0.5 : 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, size: 11, color: Color(0xFF38BDF8)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'KICKOFF $formattedDate'.toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFF38BDF8),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(isDark ? 0.2 : 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    daysText,
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Track Scheduled for $formattedDate',
+              style: RythemTypography.titleMedium.copyWith(
+                color: themeColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Your curriculum and mentor queue are loaded and ready. Daily to-do recommendations will begin on kickoff day.',
+              style: RythemTypography.bodySmall.copyWith(
+                color: themeColors.textSecondary,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                if (onStartEarly != null)
+                  GestureDetector(
+                    onTap: () => onStartEarly!(roadmap),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF10B981), Color(0xFF059669)],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'Start Today Early',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                if (onOpenDetail != null)
+                  GestureDetector(
+                    onTap: onOpenDetail,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.menu_book_rounded, size: 14, color: themeColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Peek Syllabus',
+                            style: TextStyle(
+                              color: themeColors.textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1064,10 +1255,21 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
 
+  StreamSubscription<DatabaseEvent>? _eventSub;
+
   @override
   void initState() {
     super.initState();
     _loadWeekActivity();
+    _eventSub = DatabaseEventBus.instance.stream.listen((_) {
+      if (mounted) _loadWeekActivity();
+    });
+  }
+
+  @override
+  void dispose() {
+    _eventSub?.cancel();
+    super.dispose();
   }
 
   @override

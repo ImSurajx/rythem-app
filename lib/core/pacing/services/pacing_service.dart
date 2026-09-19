@@ -62,6 +62,33 @@ class PacingService {
 
     // 2. Fetch 7-day weekly study schedule to determine today's intensity and target effort
     final now = simulatedNow ?? DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final trackStart = roadmap.startDate != null
+        ? DateTime(roadmap.startDate!.year, roadmap.startDate!.month, roadmap.startDate!.day)
+        : todayStart;
+    final isUpcoming = todayStart.isBefore(trackStart);
+    final daysUntilStart = isUpcoming ? trackStart.difference(todayStart).inDays : 0;
+
+    if (isUpcoming) {
+      final targetDate = roadmap.targetCompletionDate;
+      final int daysLeft = targetDate != null
+          ? PacingCalculator.calculateDaysLeft(targetDate, now: trackStart)
+          : 30;
+
+      return PacingBudget(
+        roadmapId: roadmapId,
+        remainingEffort: remainingEffort,
+        daysLeft: daysLeft,
+        todayEffortShare: 0.0,
+        todaysBeats: const [],
+        todaysSelectedEffort: 0.0,
+        isRoadmapCompleted: false,
+        isDailyQuotaCompleted: false,
+        isUpcoming: true,
+        daysUntilStart: daysUntilStart,
+      );
+    }
+
     String? scheduleJson;
     try {
       scheduleJson = await _settingsRepo.getSetting('study_intensity_schedule');
@@ -94,7 +121,6 @@ class PacingService {
     }
 
     // 4. Check beats completed today
-    final todayStart = DateTime(now.year, now.month, now.day);
     final beatsCompletedToday = completedBeats.where((b) {
       if (b.completedAt == null) return false;
       return b.completedAt!.isAfter(todayStart);

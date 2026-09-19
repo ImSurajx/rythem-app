@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/database/database_event_bus.dart';
 import '../../../core/database/repositories/beat_log_repository.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
@@ -36,17 +38,39 @@ class PerformanceGraphsCard extends StatefulWidget {
 
 class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
   GraphMode _mode = GraphMode.sevenDays;
-  late final BeatLogRepository _repo;
+  late BeatLogRepository _repo;
   List<DailyBeatCount> _allLifetimeLogs = [];
   Map<String, int> _monthDailyLogs = {};
   bool _isLoading = true;
   int? _scrubbedIndex;
+  StreamSubscription<DatabaseEvent>? _eventSub;
 
   @override
   void initState() {
     super.initState();
     _repo = widget.beatLogRepo ?? BeatLogRepository();
     _loadData();
+    _eventSub = DatabaseEventBus.instance.stream.listen((_) {
+      if (mounted) _loadData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _eventSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(PerformanceGraphsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.recentActivity != widget.recentActivity ||
+        oldWidget.beatLogRepo != widget.beatLogRepo) {
+      if (widget.beatLogRepo != null) {
+        _repo = widget.beatLogRepo!;
+      }
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
