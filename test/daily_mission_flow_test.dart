@@ -188,7 +188,7 @@ void main() {
       expect(initialBudget.isDailyQuotaCompleted, false);
 
       // Verify records are saved in daily_missions table
-      final todayDateStr = '2026-09-19';
+      const todayDateStr = '2026-09-19';
       final locked = await dailyMissionRepo.getMissionBeatsForDate('rm_daily_flow', todayDateStr);
       expect(locked.length, 3);
       expect(locked.map((b) => b.id).toList(), ['arr_beat_0', 'arr_beat_1', 'arr_beat_2']);
