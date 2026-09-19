@@ -18,7 +18,6 @@ import 'features/explore/roadmap_detail_screen.dart';
 import 'features/metrics/metrics_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
 import 'core/backup/services/backup_service.dart';
-import 'core/pacing/models/study_intensity.dart';
 import 'core/revision/models/revision_item.dart';
 import 'core/revision/services/revision_service.dart';
 import 'core/navigation/smooth_page_route.dart';

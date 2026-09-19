@@ -750,42 +750,46 @@ class _TrackTodoListCard extends StatelessWidget {
                         daysLeft: daysLeft,
                       );
 
-                // 2. Measure completed effort today
-                double completedEffortToday = 0.0;
-                for (final b in completedToday) {
-                  completedEffortToday += b.effortWeight;
-                }
-
-                // 3. Walk pending queue to automatically fulfill remaining effort budget for today
-                final remainingBudget = (dailyTargetEffort - completedEffortToday).clamp(0.0, dailyTargetEffort);
-                List<BeatEntity> pendingForToday;
-                if (pacingBudget != null && pacingBudget!.todaysBeats.isNotEmpty) {
-                  // Use the mathematically selected pending beats for today's effort
-                  final todayBeatIds = pacingBudget!.todaysBeats.map((b) => b.id).toSet();
-                  pendingForToday = incompleteBeats.where((b) => todayBeatIds.contains(b.id)).toList();
-                  if (pendingForToday.isEmpty && completedToday.isEmpty && incompleteBeats.isNotEmpty) {
-                    pendingForToday = PacingCalculator.walkQueueToFillBudget(
-                      pendingBeats: incompleteBeats,
-                      targetBudget: dailyTargetEffort > 0 ? dailyTargetEffort : 1.0,
-                    );
-                  }
-                } else {
-                  final target = remainingBudget > 0 ? remainingBudget : (dailyTargetEffort > 0 ? dailyTargetEffort : 1.0);
-                  pendingForToday = PacingCalculator.walkQueueToFillBudget(
-                    pendingBeats: incompleteBeats,
-                    targetBudget: target,
-                  );
-                }
-
+                // 2. Assemble today's mission beats with strikethrough retention
                 final seenIds = <String>{};
+
                 final flowBeats = <BeatEntity>[];
                 final delayedBeats = sortedAllBeats.where((b) => !b.isCompleted && delayedBeatIds.contains(b.id)).toList();
-                for (final b in [...delayedBeats, ...completedToday, ...pendingForToday]) {
+
+                // A. Add delayed beats (if any)
+                for (final b in delayedBeats) {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
+
+                // B. Add today's mission beats (preserving both completed tasks with strikethrough and pending tasks)
+                if (pacingBudget != null && pacingBudget!.todaysBeats.isNotEmpty) {
+                  for (final b in pacingBudget!.todaysBeats) {
+                    if (seenIds.add(b.id)) flowBeats.add(b);
+                  }
+                } else {
+                  // Fallback: include completed today and walk sequential queue with chapterOrderMap
+                  for (final b in completedToday) {
+                    if (seenIds.add(b.id)) flowBeats.add(b);
+                  }
+                  final fallbackPending = PacingCalculator.walkQueueToFillBudget(
+                    pendingBeats: incompleteBeats,
+                    targetBudget: dailyTargetEffort > 0 ? dailyTargetEffort : 1.0,
+                    chapterOrderMap: chapterOrderMap,
+                  );
+                  for (final b in fallbackPending) {
+                    if (seenIds.add(b.id)) flowBeats.add(b);
+                  }
+                }
+
+                // C. Ensure any bonus beats completed today are retained on screen with strikethrough
+                for (final b in completedToday) {
+                  if (seenIds.add(b.id)) flowBeats.add(b);
+                }
+
                 if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty) {
                   flowBeats.addAll(sortedAllBeats.take(1));
                 }
+
 
                 return Column(
                   children: [

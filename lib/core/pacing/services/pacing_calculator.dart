@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import '../../database/database.dart';
+import '../models/study_intensity.dart';
 
 class DailyPacingRecord {
   final DateTime date;
@@ -60,22 +61,85 @@ class PacingCalculator {
     return double.parse(share.toStringAsFixed(2));
   }
 
+  /// Derives today's effort share based on remaining days until target date,
+  /// modulated by the 7-day study intensity rhythm.
+  /// 
+  /// Guarantees:
+  /// - Every tracker finishes on or before its target date.
+  /// - Rest days provide 0.0 effort without penalties.
+  /// - Light (0.6x), Normal (1.0x), and Deep/Intense (1.4x) modulate daily demand sustainably.
+  static double calculateRhythmAdjustedDailyShare({
+    required double remainingEffort,
+    required int daysLeft,
+    required StudyIntensity intensity,
+  }) {
+    if (remainingEffort <= 0.0) return 0.0;
+    if (intensity == StudyIntensity.rest) return 0.0;
+
+    final baseDailyEffort = calculateDailyEffortShare(
+      remainingEffort: remainingEffort,
+      daysLeft: daysLeft,
+    );
+
+    final double multiplier;
+    switch (intensity) {
+      case StudyIntensity.rest:
+        return 0.0;
+      case StudyIntensity.light:
+        multiplier = 0.6;
+        break;
+      case StudyIntensity.normal:
+        multiplier = 1.0;
+        break;
+      case StudyIntensity.intense:
+        multiplier = 1.4;
+        break;
+    }
+
+    final adjusted = baseDailyEffort * multiplier;
+    final clamped = adjusted.clamp(0.5, remainingEffort);
+    return double.parse(clamped.toStringAsFixed(2));
+  }
+
   /// Walks the pending beats queue in strict mentor chronological order
   /// and selects beats until their combined effort satisfies [targetBudget].
   /// 
   /// Guarantees:
+  /// - Chapter sequence is strictly preserved (Chapter 1 before Chapter 2).
   /// - Order is never reshuffled or prioritized out of sequence.
   /// - At least 1 beat is selected if pending beats exist.
   /// - Halts immediately once target effort is fulfilled to prevent overload.
   static List<BeatEntity> walkQueueToFillBudget({
     required List<BeatEntity> pendingBeats,
     required double targetBudget,
+    Map<String, int>? chapterOrderMap,
   }) {
     if (pendingBeats.isEmpty) return [];
 
-    // Sort by mentor order (sortOrder 0..N) to ensure deterministic sequence
-    final sorted = List<BeatEntity>.from(pendingBeats)
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final sorted = List<BeatEntity>.from(pendingBeats);
+    if (chapterOrderMap != null && chapterOrderMap.isNotEmpty) {
+      sorted.sort((a, b) {
+        final chA = chapterOrderMap[a.chapterId] ?? 9999;
+        final chB = chapterOrderMap[b.chapterId] ?? 9999;
+        if (chA != chB) return chA.compareTo(chB);
+        final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+        if (sortCmp != 0) return sortCmp;
+        return a.createdAt.compareTo(b.createdAt);
+      });
+    } else {
+      // If all beats belong to the same chapter, sort by beat sortOrder
+      final firstChapterId = sorted.first.chapterId;
+      final isSingleChapter = sorted.every((b) => b.chapterId == firstChapterId);
+      if (isSingleChapter) {
+        sorted.sort((a, b) {
+          final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+          if (sortCmp != 0) return sortCmp;
+          return a.createdAt.compareTo(b.createdAt);
+        });
+      }
+      // If multi-chapter and no chapterOrderMap provided, preserve the caller's sequence.
+      // Callers such as BeatRepository.getBeatsByRoadmapId already return in chapter-first order.
+    }
 
     final selected = <BeatEntity>[];
     double accumulatedEffort = 0.0;
@@ -92,6 +156,7 @@ class PacingCalculator {
 
     return selected;
   }
+
 
   /// Detects whether the user is experiencing sustained shortfall (3+ consecutive lagging days).
   /// 

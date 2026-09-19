@@ -45,4 +45,14 @@ class AppSettingsRepository {
       whereArgs: [key],
     );
   }
+
+  Future<void> removeSettingsStartingWith(String prefix) async {
+    final db = await _dbService.database;
+    await db.delete(
+      DatabaseTables.appSettings,
+      where: '${AppSettingsColumns.key} LIKE ?',
+      whereArgs: ['$prefix%'],
+    );
+  }
 }
+

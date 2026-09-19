@@ -666,13 +666,13 @@ _Generated locally by ${info.displayName} in 1.2s_
         ? await _beatRepo.getBeatsByRoadmapId(roadmapId)
         : <BeatEntity>[];
 
-    // Sort pending beats by sortOrder to find the exact bottleneck
-    final pendingBeats = allBeats.where((b) => !b.isCompleted).toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    // Pending beats in strict sequential chapter-first mentor order
+    final pendingBeats = allBeats.where((b) => !b.isCompleted).toList();
 
     final effectivePending = pendingBeats.isNotEmpty
         ? pendingBeats
         : budget.todaysBeats.where((b) => !b.isCompleted).toList();
+
 
     final bottleneckBeat = effectivePending.firstOrNull;
     final bottleneckTitle = bottleneckBeat?.title ?? 'Core Milestone';

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../database/database.dart';
 import '../models/pacing_budget.dart';
@@ -11,6 +13,7 @@ import 'pacing_calculator.dart';
 /// Pure local math, 0 AI latency, 0 cloud dependencies.
 class PacingService {
   final RoadmapRepository _roadmapRepo;
+  final ChapterRepository _chapterRepo;
   final BeatRepository _beatRepo;
   final BeatLogRepository _beatLogRepo;
   final AppSettingsRepository _settingsRepo;
@@ -18,11 +21,13 @@ class PacingService {
 
   PacingService({
     RoadmapRepository? roadmapRepo,
+    ChapterRepository? chapterRepo,
     BeatRepository? beatRepo,
     BeatLogRepository? beatLogRepo,
     AppSettingsRepository? settingsRepo,
     DatabaseEventBus? eventBus,
   })  : _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
+        _chapterRepo = chapterRepo ?? ChapterRepository(),
         _beatRepo = beatRepo ?? BeatRepository(),
         _beatLogRepo = beatLogRepo ?? BeatLogRepository(),
         _settingsRepo = settingsRepo ?? AppSettingsRepository(),
@@ -39,6 +44,9 @@ class PacingService {
     if (roadmap == null) {
       throw Exception('Roadmap not found with ID "$roadmapId"');
     }
+
+    final chapters = await _chapterRepo.getChaptersByRoadmapId(roadmapId);
+    final chapterOrderMap = {for (final c in chapters) c.id: c.sortOrder};
 
     final allBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
     final pendingBeats = allBeats.where((b) => !b.isCompleted).toList();
@@ -65,20 +73,16 @@ class PacingService {
       daysLeft = 30;
     }
 
-    // 3. Derive today's effort share
+    // 3. Derive today's effort share using goal date and study intensity schedule
     final double todayEffortShare;
     if (scheduleJson != null && scheduleJson.isNotEmpty) {
       final schedule = WeeklyStudySchedule.decode(scheduleJson);
       final todayIntensity = schedule.getIntensity(now.weekday);
-      if (todayIntensity == StudyIntensity.rest) {
-        todayEffortShare = 0.0;
-      } else {
-        todayEffortShare = remainingEffort > 0
-            ? (todayIntensity.targetEffort > remainingEffort
-                ? remainingEffort
-                : todayIntensity.targetEffort)
-            : todayIntensity.targetEffort;
-      }
+      todayEffortShare = PacingCalculator.calculateRhythmAdjustedDailyShare(
+        remainingEffort: remainingEffort,
+        daysLeft: daysLeft,
+        intensity: todayIntensity,
+      );
     } else {
       todayEffortShare = PacingCalculator.calculateDailyEffortShare(
         remainingEffort: remainingEffort,
@@ -93,27 +97,64 @@ class PacingService {
       return b.completedAt!.isAfter(todayStart);
     }).toList();
 
-    double completedTodayEffort = 0.0;
-    for (final b in beatsCompletedToday) {
-      completedTodayEffort += b.effortWeight;
-    }
+    // 5. Daily Mission Persistence & Strikethrough Stability
+    // Locks today's mission beat IDs for today's date so completing task #1 never causes task #2 or #3 to vanish.
+    final todayDateStr =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final missionKey = 'daily_mission_beats_${roadmapId}_$todayDateStr';
 
-    // Walk pending queue to fill the remaining budget for today
-    final remainingBudget = (todayEffortShare - completedTodayEffort).clamp(0.0, todayEffortShare);
-    final pendingBeatsForToday = remainingBudget > 0
-        ? PacingCalculator.walkQueueToFillBudget(
+    List<BeatEntity> todaysBeats;
+    String? lockedMissionJson;
+    try {
+      lockedMissionJson = await _settingsRepo.getSetting(missionKey);
+    } catch (_) {}
+
+    if (lockedMissionJson != null && lockedMissionJson.isNotEmpty) {
+      List<dynamic> rawIds = [];
+      try {
+        rawIds = jsonDecode(lockedMissionJson) as List<dynamic>;
+      } catch (_) {}
+
+      final lockedIds = rawIds.map((e) => e.toString()).toSet();
+      final allMissionIds = <String>{...lockedIds, ...beatsCompletedToday.map((b) => b.id)};
+
+      // Preserve strict sequential chapter-first ordering from allBeats
+      todaysBeats = allBeats.where((b) => allMissionIds.contains(b.id)).toList();
+
+      // If all locked beats were completed or deleted, but pending beats exist and daily share has room:
+      final hasPendingInMission = todaysBeats.any((b) => !b.isCompleted);
+      if (!hasPendingInMission && pendingBeats.isNotEmpty && todayEffortShare > 0) {
+        double completedTodayEffort = 0.0;
+        for (final b in beatsCompletedToday) {
+          completedTodayEffort += b.effortWeight;
+        }
+        final extraBudget = (todayEffortShare - completedTodayEffort).clamp(0.0, todayEffortShare);
+        if (extraBudget > 0) {
+          final additional = PacingCalculator.walkQueueToFillBudget(
             pendingBeats: pendingBeats,
-            targetBudget: remainingBudget,
-          )
-        : (beatsCompletedToday.isEmpty
-            ? PacingCalculator.walkQueueToFillBudget(
-                pendingBeats: pendingBeats,
-                targetBudget: todayEffortShare,
-              )
-            : <BeatEntity>[]);
+            targetBudget: extraBudget,
+            chapterOrderMap: chapterOrderMap,
+          );
+          final updatedSet = <String>{...allMissionIds, ...additional.map((b) => b.id)};
+          todaysBeats = allBeats.where((b) => updatedSet.contains(b.id)).toList();
+          unawaited(_settingsRepo.setSetting(missionKey, jsonEncode(updatedSet.toList())));
+        }
+      }
+    } else {
+      // First calculation of the day: walk sequential pending queue to establish today's mission
+      final plannedBeats = PacingCalculator.walkQueueToFillBudget(
+        pendingBeats: pendingBeats,
+        targetBudget: todayEffortShare > 0 ? todayEffortShare : 1.0,
+        chapterOrderMap: chapterOrderMap,
+      );
 
-    // Todays beats includes beats completed today + pending beats for today
-    final todaysBeats = [...beatsCompletedToday, ...pendingBeatsForToday];
+      final missionIds = <String>{...beatsCompletedToday.map((b) => b.id), ...plannedBeats.map((b) => b.id)};
+      todaysBeats = allBeats.where((b) => missionIds.contains(b.id)).toList();
+
+      if (missionIds.isNotEmpty) {
+        unawaited(_settingsRepo.setSetting(missionKey, jsonEncode(missionIds.toList())));
+      }
+    }
 
     double todaysSelectedEffort = 0.0;
     for (final b in todaysBeats) {
@@ -121,8 +162,10 @@ class PacingService {
     }
     todaysSelectedEffort = double.parse(todaysSelectedEffort.toStringAsFixed(2));
 
+    final completedInMission = todaysBeats.where((b) => b.isCompleted).toList();
     final isDailyQuotaCompleted = isRoadmapCompleted ||
-        (todaysBeats.isNotEmpty && beatsCompletedToday.length >= todaysBeats.length);
+        (todaysBeats.isNotEmpty && completedInMission.length >= todaysBeats.length);
+
 
     // 6. Trend Analysis over the past 7 completed days using math & weekly schedule
     final schedule = await _getWeeklySchedule();
@@ -192,6 +235,8 @@ class PacingService {
 
     // Save recalibration timestamp so past shortfall days don't penalize the user
     await _settingsRepo.setSetting('last_recalibrated_$roadmapId', DateTime.now().toIso8601String());
+    // Invalidate cached daily mission so the new recalibrated pace takes effect immediately
+    await _settingsRepo.removeSettingsStartingWith('daily_mission_beats_${roadmapId}_');
 
     // Emit event to update UI and stream listeners
     _eventBus.emit(DatabaseEvent(
@@ -199,6 +244,7 @@ class PacingService {
       entityId: roadmapId,
       roadmapId: roadmapId,
     ));
+
   }
 
   Future<WeeklyStudySchedule> _getWeeklySchedule() async {

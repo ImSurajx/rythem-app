@@ -115,7 +115,119 @@ void main() {
       expect(selected.map((b) => b.sortOrder), [0, 1, 2]);
     });
 
+    test('walkQueueToFillBudget strictly enforces chapter sequence with overlapping sortOrders', () {
+      final now = DateTime.now();
+      final beats = [
+        BeatEntity(
+          id: 'b_ch2_0',
+          chapterId: 'ch2',
+          roadmapId: 'r1',
+          title: 'Chapter 2 Intro',
+          effortWeight: 1.0,
+          sortOrder: 0,
+          isCompleted: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        BeatEntity(
+          id: 'b_ch1_0',
+          chapterId: 'ch1',
+          roadmapId: 'r1',
+          title: 'Chapter 1 Intro',
+          effortWeight: 1.0,
+          sortOrder: 0,
+          isCompleted: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        BeatEntity(
+          id: 'b_ch1_1',
+          chapterId: 'ch1',
+          roadmapId: 'r1',
+          title: 'Chapter 1 Core',
+          effortWeight: 1.0,
+          sortOrder: 1,
+          isCompleted: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        BeatEntity(
+          id: 'b_ch2_1',
+          chapterId: 'ch2',
+          roadmapId: 'r1',
+          title: 'Chapter 2 Core',
+          effortWeight: 1.0,
+          sortOrder: 1,
+          isCompleted: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      final chapterOrderMap = {'ch1': 0, 'ch2': 1};
+
+      // Budget 2.0 -> Must select Chapter 1 Intro and Chapter 1 Core, NEVER Chapter 2 Intro!
+      final selected = PacingCalculator.walkQueueToFillBudget(
+        pendingBeats: beats,
+        targetBudget: 2.0,
+        chapterOrderMap: chapterOrderMap,
+      );
+
+      expect(selected.length, 2);
+      expect(selected[0].title, 'Chapter 1 Intro');
+      expect(selected[1].title, 'Chapter 1 Core');
+      expect(selected[0].chapterId, 'ch1');
+      expect(selected[1].chapterId, 'ch1');
+    });
+
+    test('calculateRhythmAdjustedDailyShare respects goal date pace and weekly rhythm multipliers', () {
+      const remainingEffort = 20.0;
+      const daysLeft = 10;
+      // base daily pace = 20.0 / 10 = 2.0/day
+
+      // Rest Day -> 0.0
+      expect(
+        PacingCalculator.calculateRhythmAdjustedDailyShare(
+          remainingEffort: remainingEffort,
+          daysLeft: daysLeft,
+          intensity: StudyIntensity.rest,
+        ),
+        0.0,
+      );
+
+      // Light Day -> 2.0 * 0.6 = 1.2
+      expect(
+        PacingCalculator.calculateRhythmAdjustedDailyShare(
+          remainingEffort: remainingEffort,
+          daysLeft: daysLeft,
+          intensity: StudyIntensity.light,
+        ),
+        1.2,
+      );
+
+      // Normal Day -> 2.0 * 1.0 = 2.0
+      expect(
+        PacingCalculator.calculateRhythmAdjustedDailyShare(
+          remainingEffort: remainingEffort,
+          daysLeft: daysLeft,
+          intensity: StudyIntensity.normal,
+        ),
+        2.0,
+      );
+
+      // Deep/Intense Day -> 2.0 * 1.4 = 2.8
+      expect(
+        PacingCalculator.calculateRhythmAdjustedDailyShare(
+          remainingEffort: remainingEffort,
+          daysLeft: daysLeft,
+          intensity: StudyIntensity.intense,
+        ),
+        2.8,
+      );
+    });
+
     test('Smooth Backlog Dilution spreads missed days without compounding spike', () {
+
       const initialEffort = 30.0;
       const initialDays = 10;
 

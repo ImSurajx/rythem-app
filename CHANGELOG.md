@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Sequential Chapter-First Daily Suggestions**: Resolved cross-chapter queue walking bug where beats from disparate chapters with identical sort orders jumped to the front; queue walker now strictly enforces chapter sequence.
+- **Stable Daily Mission & Strikethrough Retention**: Fixed premature disappearance of uncompleted tasks upon marking a beat complete; today's mission is now date-locked in SQLite so completed tasks stay visible with strikethroughs all day without erasing pending tasks.
+- **Goal-Date-Driven Mathematical Pacing**: Replaced flat schedule overrides with required pace calculation ($\text{remainingEffort} / \max(1, \text{daysLeft})$) modulated by weekly study rhythm multipliers.
+- **AI Bottleneck Chapter Alignment**: Preserved chronological chapter sequence during local AI shortfall bottleneck analysis.
+
 ## [1.0.0] - 2026-09-16
 
 ### Initial Production Release
