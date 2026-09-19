@@ -1343,7 +1343,7 @@ class _DesignSystemShowcaseScreenState
           // Quiet Version Metadata
           Center(
             child: Text(
-              'Rythem • Local First • v1.0.0',
+              'Rythem • Local First • v1.0.1',
               style: RythemTypography.labelSmall.copyWith(
                 color: themeColors.textTertiary.withOpacity(0.6),
                 fontSize: 10.5,
