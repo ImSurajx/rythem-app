@@ -332,11 +332,42 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       sections.add(
         _TopicGroupSection(
           title: '⚠️ Uncovered Syllabus Gaps',
-          subtitle: '$completed/${gapBeats.length} complete • ${gapBeats.length} topic${gapBeats.length == 1 ? '' : 's'} to study after playlist',
+          subtitle: '$completed/${gapBeats.length} complete • ${gapBeats.length} gap${gapBeats.length == 1 ? '' : 's'}',
           icon: Icons.warning_amber_rounded,
           accentColor: const Color(0xFFF59E0B),
           themeColors: themeColors,
           isDark: isDark,
+          trailingAction: widget.onAttachResourceToChapter != null
+              ? GestureDetector(
+                  onTap: () => widget.onAttachResourceToChapter?.call(widget.chapter),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(isDark ? 0.2 : 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(0.4),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_link_rounded, size: 12, color: Color(0xFFF59E0B)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Fill Gap',
+                          style: TextStyle(
+                            color: Color(0xFFF59E0B),
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
           children: gapBeats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
         ),
       );
@@ -380,6 +411,7 @@ class _TopicGroupSection extends StatelessWidget {
   final Color accentColor;
   final RythemColorTokens themeColors;
   final bool isDark;
+  final Widget? trailingAction;
   final List<Widget> children;
 
   const _TopicGroupSection({
@@ -389,6 +421,7 @@ class _TopicGroupSection extends StatelessWidget {
     required this.accentColor,
     required this.themeColors,
     required this.isDark,
+    this.trailingAction,
     required this.children,
   });
 
@@ -454,6 +487,10 @@ class _TopicGroupSection extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (trailingAction != null) ...[
+                        const SizedBox(width: 8),
+                        trailingAction!,
+                      ],
                     ],
                   ),
                 ),
@@ -627,6 +664,35 @@ class BeatTile extends StatelessWidget {
                             ),
                           ),
                         ],
+                        // Stacked Resource Badge (Resource 2, 3, etc.)
+                        () {
+                          final match = RegExp(r'_r(\d+)_').firstMatch(beat.id);
+                          final rNum = match != null ? int.tryParse(match.group(1)!) : null;
+                          if (rNum != null && rNum > 1) {
+                            return Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withOpacity(isDark ? 0.22 : 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFF6366F1).withOpacity(0.4),
+                                  width: 0.6,
+                                ),
+                              ),
+                              child: Text(
+                                'RESOURCE $rNum',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }(),
                         // Mentor Extra Badge
                         if (beat.isMentorExtra) ...[
                           Container(

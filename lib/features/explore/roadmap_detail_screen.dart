@@ -363,9 +363,18 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                       final targetCh = _currentChapters
                                           .where((c) => c.id == selectedChapterId)
                                           .firstOrNull;
+                                      final targetChBeats = _currentBeats
+                                          .where((b) => b.chapterId == selectedChapterId)
+                                          .toList();
+                                      final remainingGaps = targetChBeats
+                                          .where((b) => b.sourceUrl == null || b.sourceUrl!.isEmpty)
+                                          .length;
+                                      final gapMsg = remainingGaps > 0
+                                          ? ' ($remainingGaps syllabus gap${remainingGaps == 1 ? '' : 's'} remaining)'
+                                          : ' (100% syllabus covered!)';
                                       showGlassToast(
                                         context,
-                                        'Attached playlist to ${targetCh?.title ?? "Subject"}! AI audit complete.',
+                                        'Attached to ${targetCh?.title ?? "Subject"}!$gapMsg',
                                         icon: Icons.check_circle_outline_rounded,
                                         accentColor: const Color(0xFF10B981),
                                       );

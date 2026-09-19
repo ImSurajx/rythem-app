@@ -353,13 +353,26 @@ class CurriculumIngestionService {
     }
 
     // Benchmark topics: existing beats before attachment
+    final existingVideoBeats = existingBeats.where((b) => b.sourceUrl != null && b.sourceUrl!.isNotEmpty).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final existingGapBeats = existingBeats.where((b) => b.sourceUrl == null || b.sourceUrl!.isEmpty).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+    final isFirstResource = existingVideoBeats.isEmpty;
+
     final isInitialPlaceholder = existingBeats.length == 1 &&
         (existingBeats.first.title.toLowerCase().contains('initial orientation') ||
             existingBeats.first.title.toLowerCase().contains('core foundations'));
 
-    final syllabusTopicTitles = isInitialPlaceholder
-        ? <String>[targetChapter.title]
-        : existingBeats.map((b) => b.title).toList();
+    final List<String> syllabusTopicTitles;
+    if (isFirstResource) {
+      syllabusTopicTitles = isInitialPlaceholder
+          ? <String>[targetChapter.title]
+          : existingBeats.map((b) => b.title).toList();
+    } else {
+      // In multi-resource mode, benchmark topics are strictly the remaining uncovered gap topics
+      syllabusTopicTitles = existingGapBeats.map((b) => b.title).toList();
+    }
 
     final videoTitles = extracted.items.map((i) => i.title).toList();
 
@@ -372,10 +385,35 @@ class CurriculumIngestionService {
 
     // 2. Prepare replacement beats for this chapter
     final now = DateTime.now();
-    final newBeats = <BeatEntity>[];
-    int sortIndex = 0;
 
-    // A. Videos in exact original mentor order (0..N-1)
+    // Determine the resource index (1 for first resource, 2 for second, etc.)
+    int nextResourceIndex = 1;
+    for (final b in existingVideoBeats) {
+      final match = RegExp(r'_r(\d+)_').firstMatch(b.id);
+      if (match != null) {
+        final idx = int.tryParse(match.group(1)!) ?? 1;
+        if (idx >= nextResourceIndex) {
+          nextResourceIndex = idx + 1;
+        }
+      } else if (b.id.contains('_v_') || b.id.contains('_beat_')) {
+        if (nextResourceIndex <= 1) {
+          nextResourceIndex = 2;
+        }
+      }
+    }
+
+    final resPrefix = nextResourceIndex == 1 ? 'v' : 'r${nextResourceIndex}_v';
+
+    // Normalize existing video beats to retain their exact order and preserve progress
+    final normalizedExistingBeats = <BeatEntity>[];
+    for (int i = 0; i < existingVideoBeats.length; i++) {
+      normalizedExistingBeats.add(existingVideoBeats[i].copyWith(sortOrder: i));
+    }
+
+    int currentSortIndex = normalizedExistingBeats.length;
+
+    // A. Videos from the newly attached resource in exact original mentor order
+    final newResourceBeats = <BeatEntity>[];
     for (int i = 0; i < extracted.items.length; i++) {
       final rawItem = extracted.items[i];
       final effort = EffortWeightCalculator.calculate(rawItem.durationSeconds);
@@ -384,18 +422,17 @@ class CurriculumIngestionService {
       final prevCompleted = existingBeats.any((b) =>
           (b.sourceUrl == rawItem.sourceUrl || b.title == rawItem.title) && b.isCompleted);
 
-
-      newBeats.add(BeatEntity(
-        id: '${chapterId}_v_$i',
+      newResourceBeats.add(BeatEntity(
+        id: '${chapterId}_${resPrefix}_$i',
         chapterId: chapterId,
         roadmapId: roadmapId,
         title: rawItem.title,
         sourceUrl: rawItem.sourceUrl,
         timestampSeconds: rawItem.timestampSeconds,
         effortWeight: effort,
-        sortOrder: sortIndex++,
+        sortOrder: currentSortIndex++,
         isCompleted: prevCompleted,
-        isMentorExtra: mapping?.isMentorExtra ?? false,
+        isMentorExtra: mapping?.isMentorExtra ?? (syllabusTopicTitles.isEmpty),
         matchConfidence: mapping?.confidence,
         syllabusTopicId: mapping?.matchedTopicId,
         createdAt: now,
@@ -403,10 +440,11 @@ class CurriculumIngestionService {
       ));
     }
 
-    // B. Uncovered syllabus benchmark gaps placed at the end of the chapter
+    // B. Uncovered syllabus benchmark gaps placed at the very end of the chapter
+    final remainingGapBeats = <BeatEntity>[];
     for (int g = 0; g < audit.uncoveredGaps.length; g++) {
       final gapTitle = audit.uncoveredGaps[g];
-      newBeats.add(BeatEntity(
+      remainingGapBeats.add(BeatEntity(
         id: '${chapterId}_gap_$g',
         chapterId: chapterId,
         roadmapId: roadmapId,
@@ -414,7 +452,7 @@ class CurriculumIngestionService {
         sourceUrl: null,
         timestampSeconds: null,
         effortWeight: 1.0,
-        sortOrder: sortIndex++,
+        sortOrder: currentSortIndex++,
         isCompleted: false,
         isMentorExtra: false,
         syllabusTopicId: gapTitle,
@@ -423,10 +461,16 @@ class CurriculumIngestionService {
       ));
     }
 
-    // 3. Atomically replace ONLY this chapter's beats.
-    // Fixed macro subject structure is preserved without touching other chapters.
+    final combinedBeats = [
+      ...normalizedExistingBeats,
+      ...newResourceBeats,
+      ...remainingGapBeats,
+    ];
+
+    // 3. Atomically update this chapter's beats.
+    // Existing video beats from previous resources are preserved with their completions intact.
     await _beatRepo.deleteBeatsByChapterId(chapterId);
-    await _beatRepo.createBeatsBatch(newBeats);
+    await _beatRepo.createBeatsBatch(combinedBeats);
     await _dailyMissionRepo.clearDailyMissions(roadmapId);
 
     DatabaseEventBus.instance.emit(DatabaseEvent(
