@@ -613,7 +613,7 @@ class YoutubeExtractorService implements IYoutubeClient {
 
       final rawItems = <RawResourceItem>[];
 
-      if (timestampSegments.isNotEmpty) {
+      if (timestampSegments.length >= 2) {
         for (int i = 0; i < timestampSegments.length; i++) {
           final seg = timestampSegments[i];
           final deepLink = '$videoUrl&t=${seg.startSeconds}s';
@@ -661,6 +661,260 @@ class YoutubeExtractorService implements IYoutubeClient {
     }
   }
 
+  /// Extracts single video with native YouTube chapters via Innertube Next endpoint.
+  /// Seamlessly parses macroMarkersListItemRenderer, chapterRenderer, and full description timestamps.
+  Future<ExtractedResource?> _extractVideoViaInnertubeNext(String videoId) async {
+    try {
+      final resp = await _httpClient.post(
+        Uri.parse('https://www.youtube.com/youtubei/v1/next?prettyPrint=false'),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'X-YouTube-Client-Name': '1',
+          'X-YouTube-Client-Version': '2.20231201.00.00',
+        },
+        body: jsonEncode({
+          'context': {
+            'client': {
+              'clientName': 'WEB',
+              'clientVersion': '2.20231201.00.00',
+              'hl': 'en',
+              'gl': 'US',
+            },
+          },
+          'videoId': videoId,
+        }),
+      );
+
+      if (resp.statusCode != 200) return null;
+
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+
+      String title = 'YouTube Video';
+      String author = 'YouTube Creator';
+      final videoUrl = 'https://www.youtube.com/watch?v=$videoId';
+      final defaultThumbnail = 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
+
+      final seenStarts = <int>{};
+      final rawMarkers = <({String title, int startSeconds, int? durationSeconds, String? thumbnail})>[];
+      final descriptionLines = <String>[];
+
+      void walkNodes(dynamic node) {
+        if (node is Map<String, dynamic>) {
+          if (node.containsKey('videoPrimaryInfoRenderer')) {
+            final vpir = node['videoPrimaryInfoRenderer'] as Map<String, dynamic>;
+            final tObj = vpir['title'] as Map<String, dynamic>?;
+            final t = tObj?['simpleText']?.toString() ??
+                (tObj?['runs'] is List && (tObj!['runs'] as List).isNotEmpty
+                    ? tObj['runs'][0]['text']?.toString()
+                    : null);
+            if (t != null && t.trim().isNotEmpty) {
+              title = t.trim();
+            }
+          }
+
+          if (node.containsKey('videoSecondaryInfoRenderer')) {
+            final vsir = node['videoSecondaryInfoRenderer'] as Map<String, dynamic>;
+            final ownerObj = vsir['owner']?['videoOwnerRenderer']?['title'] as Map<String, dynamic>?;
+            final a = ownerObj?['simpleText']?.toString() ??
+                (ownerObj?['runs'] is List && (ownerObj!['runs'] as List).isNotEmpty
+                    ? ownerObj['runs'][0]['text']?.toString()
+                    : null);
+            if (a != null && a.trim().isNotEmpty) {
+              author = a.trim();
+            }
+
+            final descObj = vsir['description'] as Map<String, dynamic>?;
+            if (descObj != null) {
+              if (descObj['simpleText'] != null) {
+                descriptionLines.add(descObj['simpleText'].toString());
+              } else if (descObj['runs'] is List) {
+                for (final r in descObj['runs'] as List) {
+                  final text = r['text']?.toString();
+                  if (text != null) descriptionLines.add(text);
+                }
+              }
+            }
+          }
+
+          // 1. Native Chapter Markers: macroMarkersListItemRenderer
+          if (node.containsKey('macroMarkersListItemRenderer')) {
+            final mr = node['macroMarkersListItemRenderer'] as Map<String, dynamic>;
+            final tObj = mr['title'] as Map<String, dynamic>?;
+            final markerTitle = tObj?['simpleText']?.toString() ??
+                (tObj?['runs'] is List && (tObj!['runs'] as List).isNotEmpty
+                    ? tObj['runs'][0]['text']?.toString()
+                    : null) ?? 'Chapter';
+
+            int? startSec = mr['onTap']?['watchEndpoint']?['startTimeSeconds'] as int?;
+            if (startSec == null && mr['timeDescription'] is Map) {
+              final timeStr = mr['timeDescription']['simpleText']?.toString() ?? '';
+              final parts = timeStr.split(':').map((p) => int.tryParse(p.trim())).whereType<int>().toList();
+              if (parts.length == 2) {
+                startSec = parts[0] * 60 + parts[1];
+              } else if (parts.length == 3) {
+                startSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+              }
+            }
+
+            int? duration;
+            final repeatCmd = mr['repeatButton']?['toggleButtonRenderer']?['defaultServiceEndpoint']?['repeatChapterCommand'] as Map<String, dynamic>?;
+            if (repeatCmd != null) {
+              final startMs = int.tryParse(repeatCmd['startTimeMs']?.toString() ?? '');
+              final endMs = int.tryParse(repeatCmd['endTimeMs']?.toString() ?? '');
+              if (startMs != null && endMs != null && endMs > startMs) {
+                duration = (endMs - startMs) ~/ 1000;
+              }
+            }
+
+            String? thumb;
+            final thumbs = mr['thumbnail']?['thumbnails'] as List?;
+            if (thumbs != null && thumbs.isNotEmpty) {
+              thumb = thumbs.last['url']?.toString();
+            }
+
+            if (startSec != null && !seenStarts.contains(startSec)) {
+              seenStarts.add(startSec);
+              rawMarkers.add((
+                title: markerTitle.trim(),
+                startSeconds: startSec,
+                durationSeconds: duration,
+                thumbnail: thumb,
+              ));
+            }
+          }
+
+          // 2. Native Chapter Markers: chapterRenderer
+          if (node.containsKey('chapterRenderer')) {
+            final cr = node['chapterRenderer'] as Map<String, dynamic>;
+            final tObj = cr['title'] as Map<String, dynamic>?;
+            final markerTitle = tObj?['simpleText']?.toString() ??
+                (tObj?['runs'] is List && (tObj!['runs'] as List).isNotEmpty
+                    ? tObj['runs'][0]['text']?.toString()
+                    : null) ?? 'Chapter';
+
+            final startMs = int.tryParse(cr['timeRangeStartMillis']?.toString() ?? '');
+            final startSec = startMs != null ? startMs ~/ 1000 : null;
+
+            String? thumb;
+            final thumbs = cr['thumbnail']?['thumbnails'] as List?;
+            if (thumbs != null && thumbs.isNotEmpty) {
+              thumb = thumbs.last['url']?.toString();
+            }
+
+            if (startSec != null && !seenStarts.contains(startSec)) {
+              seenStarts.add(startSec);
+              rawMarkers.add((
+                title: markerTitle.trim(),
+                startSeconds: startSec,
+                durationSeconds: null,
+                thumbnail: thumb,
+              ));
+            }
+          }
+
+          for (final val in node.values) {
+            walkNodes(val);
+          }
+        } else if (node is List) {
+          for (final item in node) {
+            walkNodes(item);
+          }
+        }
+      }
+
+      walkNodes(data);
+
+      // Sort markers chronologically
+      rawMarkers.sort((a, b) => a.startSeconds.compareTo(b.startSeconds));
+
+      // Case A: Native chapter markers were found
+      if (rawMarkers.length >= 2) {
+        final items = <RawResourceItem>[];
+        for (int i = 0; i < rawMarkers.length; i++) {
+          final m = rawMarkers[i];
+          final nextStart = (i + 1 < rawMarkers.length)
+              ? rawMarkers[i + 1].startSeconds
+              : m.startSeconds + (m.durationSeconds ?? 600);
+          final duration = m.durationSeconds ?? (nextStart - m.startSeconds).clamp(60, 86400);
+          final deepLink = '$videoUrl&t=${m.startSeconds}s';
+
+          items.add(RawResourceItem(
+            title: m.title,
+            sourceUrl: deepLink,
+            timestampSeconds: m.startSeconds,
+            durationSeconds: duration,
+            index: i,
+            thumbnailUrl: m.thumbnail ?? defaultThumbnail,
+          ));
+        }
+
+        return ExtractedResource(
+          title: title,
+          description: descriptionLines.join('\n'),
+          author: author,
+          sourceUrl: videoUrl,
+          resourceType: ExtractedResourceType.singleVideoWithTimestamps,
+          items: items,
+        );
+      }
+
+      // Case B: No native markers, but description in next endpoint has timestamps
+      if (descriptionLines.isNotEmpty) {
+        final fullDesc = descriptionLines.join('\n');
+        final tsSegments = TimestampParser.parseDescription(fullDesc);
+        if (tsSegments.length >= 2) {
+          final items = <RawResourceItem>[];
+          for (int i = 0; i < tsSegments.length; i++) {
+            final seg = tsSegments[i];
+            final deepLink = '$videoUrl&t=${seg.startSeconds}s';
+            items.add(RawResourceItem(
+              title: seg.title,
+              sourceUrl: deepLink,
+              timestampSeconds: seg.startSeconds,
+              durationSeconds: seg.durationSeconds,
+              index: i,
+              thumbnailUrl: defaultThumbnail,
+            ));
+          }
+
+          return ExtractedResource(
+            title: title,
+            description: fullDesc,
+            author: author,
+            sourceUrl: videoUrl,
+            resourceType: ExtractedResourceType.singleVideoWithTimestamps,
+            items: items,
+          );
+        }
+      }
+
+      // Return basic metadata fallback if no chapters found
+      return ExtractedResource(
+        title: title,
+        description: descriptionLines.join('\n'),
+        author: author,
+        sourceUrl: videoUrl,
+        resourceType: ExtractedResourceType.singleVideo,
+        items: [
+          RawResourceItem(
+            title: title,
+            sourceUrl: videoUrl,
+            timestampSeconds: 0,
+            durationSeconds: 900,
+            index: 0,
+            description: descriptionLines.join('\n'),
+            thumbnailUrl: defaultThumbnail,
+          ),
+        ],
+      );
+    } catch (e) {
+      debugPrint('Notice: Innertube next chapter extraction fell back: $e');
+      return null;
+    }
+  }
+
   /// Direct HTML metadata extraction fallback for single video.
   Future<ExtractedResource?> _extractVideoViaHtml(String videoId) async {
     try {
@@ -684,6 +938,33 @@ class YoutubeExtractorService implements IYoutubeClient {
 
       final videoUrl = 'https://www.youtube.com/watch?v=$videoId';
       final thumbnailUrl = 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
+
+      // Check description in HTML for timestamps
+      final tsSegments = TimestampParser.parseDescription(description);
+      if (tsSegments.length >= 2) {
+        final rawItems = <RawResourceItem>[];
+        for (int i = 0; i < tsSegments.length; i++) {
+          final seg = tsSegments[i];
+          final deepLink = '$videoUrl&t=${seg.startSeconds}s';
+          rawItems.add(RawResourceItem(
+            title: seg.title,
+            sourceUrl: deepLink,
+            timestampSeconds: seg.startSeconds,
+            durationSeconds: seg.durationSeconds,
+            index: i,
+            thumbnailUrl: thumbnailUrl,
+          ));
+        }
+
+        return ExtractedResource(
+          title: title,
+          description: description,
+          author: 'YouTube Creator',
+          sourceUrl: videoUrl,
+          resourceType: ExtractedResourceType.singleVideoWithTimestamps,
+          items: rawItems,
+        );
+      }
 
       return ExtractedResource(
         title: title,
@@ -716,13 +997,23 @@ class YoutubeExtractorService implements IYoutubeClient {
       throw Exception('Invalid YouTube video link: "$videoUrl"');
     }
 
-    // 1. Primary: Direct Innertube Player API (fast, robust on Android/iOS, never fails on ?si=)
-    final innertubeResource = await _extractVideoViaInnertubePlayer(videoId);
-    if (innertubeResource != null && innertubeResource.items.isNotEmpty) {
-      return innertubeResource;
+    // 1. Primary: Direct Innertube Next endpoint for native YouTube chapters & full description
+    final nextResource = await _extractVideoViaInnertubeNext(videoId);
+    if (nextResource != null &&
+        nextResource.resourceType == ExtractedResourceType.singleVideoWithTimestamps &&
+        nextResource.items.length >= 2) {
+      return nextResource;
     }
 
-    // 2. Secondary: youtube_explode_dart using clean video ID
+    // 2. Secondary: Direct Innertube Player API for description timestamps
+    final playerResource = await _extractVideoViaInnertubePlayer(videoId);
+    if (playerResource != null &&
+        playerResource.resourceType == ExtractedResourceType.singleVideoWithTimestamps &&
+        playerResource.items.length >= 2) {
+      return playerResource;
+    }
+
+    // 3. Tertiary: youtube_explode_dart using clean video ID
     try {
       final video = await _yt.videos.get(videoId);
       final totalDurationSec = video.duration?.inSeconds ?? 900;
@@ -733,9 +1024,8 @@ class YoutubeExtractorService implements IYoutubeClient {
         totalVideoDurationSeconds: totalDurationSec,
       );
 
-      final rawItems = <RawResourceItem>[];
-
-      if (timestampSegments.isNotEmpty) {
+      if (timestampSegments.length >= 2) {
+        final rawItems = <RawResourceItem>[];
         for (int i = 0; i < timestampSegments.length; i++) {
           final seg = timestampSegments[i];
           final deepLink = '${video.url}&t=${seg.startSeconds}s';
@@ -757,39 +1047,45 @@ class YoutubeExtractorService implements IYoutubeClient {
           resourceType: ExtractedResourceType.singleVideoWithTimestamps,
           items: rawItems,
         );
-      } else {
-        rawItems.add(RawResourceItem(
-          title: video.title,
-          sourceUrl: video.url,
-          timestampSeconds: 0,
-          durationSeconds: totalDurationSec,
-          index: 0,
-          description: video.description,
-          thumbnailUrl: video.thumbnails.highResUrl,
-        ));
-
-        return ExtractedResource(
-          title: video.title,
-          description: video.description,
-          author: video.author,
-          sourceUrl: video.url,
-          resourceType: ExtractedResourceType.singleVideo,
-          items: rawItems,
-        );
       }
     } catch (e) {
-      debugPrint('Secondary video extraction via youtube_explode failed: $e');
+      debugPrint('Tertiary video extraction via youtube_explode failed: $e');
     }
 
-    // 3. Fallback: Direct HTML metadata extraction
+    // 4. Quaternary: Direct HTML metadata extraction
+    final htmlResource = await _extractVideoViaHtml(videoId);
+    if (htmlResource != null &&
+        htmlResource.resourceType == ExtractedResourceType.singleVideoWithTimestamps &&
+        htmlResource.items.length >= 2) {
+      return htmlResource;
+    }
+
+    // 5. Final fallback: Video genuinely has no chapters. Return single video representation.
+    if (playerResource != null) return playerResource;
+    if (nextResource != null) return nextResource;
+    if (htmlResource != null) return htmlResource;
+
     try {
-      final htmlResource = await _extractVideoViaHtml(videoId);
-      if (htmlResource != null) {
-        return htmlResource;
-      }
-    } catch (e) {
-      debugPrint('HTML video extraction fallback failed: $e');
-    }
+      final video = await _yt.videos.get(videoId);
+      return ExtractedResource(
+        title: video.title,
+        description: video.description,
+        author: video.author,
+        sourceUrl: video.url,
+        resourceType: ExtractedResourceType.singleVideo,
+        items: [
+          RawResourceItem(
+            title: video.title,
+            sourceUrl: video.url,
+            timestampSeconds: 0,
+            durationSeconds: video.duration?.inSeconds ?? 900,
+            index: 0,
+            description: video.description,
+            thumbnailUrl: video.thumbnails.highResUrl,
+          ),
+        ],
+      );
+    } catch (_) {}
 
     throw Exception(
       'Could not extract video details for "$videoId". Please verify the URL and ensure the video is public.',

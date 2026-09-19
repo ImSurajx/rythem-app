@@ -26,9 +26,11 @@ class TimestampParser {
 
   /// Parses video description text for structured timestamps and chapter titles.
   /// If [totalVideoDurationSeconds] is provided, it calculates each segment's duration.
+  /// Requires at least [minSegments] (default 2) to prevent false positives on single timestamp mentions.
   static List<ParsedTimestampSegment> parseDescription(
     String description, {
     int totalVideoDurationSeconds = 0,
+    int minSegments = 2,
   }) {
     final lines = description.split('\n');
     final rawEntries = <({int startSeconds, String title})>[];
@@ -51,8 +53,13 @@ class TimestampParser {
 
         // Extract title by stripping the timestamp part
         String title = trimmed.replaceFirst(match.group(0)!, '').trim();
-        // Clean leading separators like '-', ':', '|', '.', '–'
-        title = title.replaceAll(RegExp(r'^[-\:\.\|\–\—\s]+'), '').trim();
+        // Clean leading bracketed numbers e.g. [1], [02], (3)
+        title = title.replaceAll(RegExp(r'^[\[\(]\s*\d+\s*[\]\)]\s*'), '').trim();
+        // Clean leading separators like '-', ':', '|', '.', '–', bullets, and numbering
+        title = title.replaceAll(RegExp(r'^[•\*\-\:\.\|\–\—\s]+'), '').trim();
+        title = title.replaceAll(RegExp(r'^\d+[\.\)\-\:\s]+'), '').trim();
+        // Clean trailing separators, brackets, and parentheses
+        title = title.replaceAll(RegExp(r'[-\:\.\|\–\—\s\[\]\(\)]+$'), '').trim();
 
         if (title.isEmpty) {
           title = 'Beat at ${match.group(0)!.trim()}';
@@ -62,18 +69,26 @@ class TimestampParser {
       }
     }
 
-    if (rawEntries.isEmpty) {
+    if (rawEntries.length < minSegments) {
       return [];
     }
 
     // Sort by chronological start timestamp
     rawEntries.sort((a, b) => a.startSeconds.compareTo(b.startSeconds));
 
+    // Deduplicate entries with identical start timestamps (preserve first descriptive title)
+    final deduplicated = <({int startSeconds, String title})>[];
+    for (final entry in rawEntries) {
+      if (deduplicated.isEmpty || deduplicated.last.startSeconds != entry.startSeconds) {
+        deduplicated.add(entry);
+      }
+    }
+
     final segments = <ParsedTimestampSegment>[];
-    for (int i = 0; i < rawEntries.length; i++) {
-      final current = rawEntries[i];
-      final nextStart = (i + 1 < rawEntries.length)
-          ? rawEntries[i + 1].startSeconds
+    for (int i = 0; i < deduplicated.length; i++) {
+      final current = deduplicated[i];
+      final nextStart = (i + 1 < deduplicated.length)
+          ? deduplicated[i + 1].startSeconds
           : (totalVideoDurationSeconds > current.startSeconds
               ? totalVideoDurationSeconds
               : current.startSeconds + 600); // 10 min default fallback
