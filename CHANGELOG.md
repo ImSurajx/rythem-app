@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.2-pre] - 2026-09-24
 
 ### Added
+- **UI Polish: Card Layout, Video Timestamps & Icon Balancing**:
+  - Full-width title layout in Flow and Tracker by shifting badges to a top wrap, eliminating horizontal squishing.
+  - Video timestamps rendered directly on cards with glowing pills (`⏱️ 14:25`) for single-video courses and timestamped lessons.
+  - Perfectly balanced right-hand action cluster with direct play, resume, and flag actions plus consolidated `...` secondary options menu.
+- **YouTube Resource Sync & Re-Fetch Engine**:
+  - Direct "Sync" button in Tracker AppBar and pull-to-refresh on track detail screen.
+  - Live playlist re-sync via `ResourceSyncService`: updates changed video titles and effort durations from YouTube and appends newly published videos.
+  - Zero data loss guarantee: existing completion states (`isCompleted`, `completedAt`, `completedParts`) and notes are 100% immutable.
+- **Post-Backup Automatic YouTube Enrichment**:
+  - Auto-backup restore, disaster recovery, and manual backup imports trigger automatic background enrichment from YouTube to keep local tracks fresh.
 - **Feature 1: Core Decoupling & Pure User-Driven "Today's Focus"**:
   - Decoupled Daily Missions from rigid calendar days and automated over-allocation.
   - "Today's Focus" is purely user-driven: users select what they want to tackle today with dedicated Add/Remove sheet and custom reordering.

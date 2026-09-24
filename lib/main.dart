@@ -26,6 +26,7 @@ import 'core/navigation/smooth_page_route.dart';
 import 'core/updater/updater.dart';
 import 'features/settings/widgets/software_update_card.dart';
 import 'features/settings/widgets/update_modal_sheet.dart';
+import 'core/ingestion/services/resource_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -173,6 +174,7 @@ class _DesignSystemShowcaseScreenState
 
   late final _githubReleaseService = GithubReleaseService();
   late final _nativeInstallerService = NativeInstallerService();
+  late final _resourceSyncService = ResourceSyncService();
   UpdateReleaseInfo? _latestReleaseInfo;
   bool _isCheckingForUpdates = false;
 
@@ -1112,6 +1114,7 @@ class _DesignSystemShowcaseScreenState
           onDeleteRoadmap: _handleDeleteRoadmap,
           onAttachResource: _handleAttachResource,
           onAttachResourceToBeat: _handleAttachResourceToBeat,
+          onSyncResource: _handleSyncResource,
           onSplitBeat: _handleSplitBeat,
           onIncrementBeatPart: _handleIncrementBeatPart,
           onDecrementBeatPart: _handleDecrementBeatPart,
@@ -1269,6 +1272,39 @@ class _DesignSystemShowcaseScreenState
     } catch (e) {
       debugPrint('Error attaching resource to beat: $e');
       rethrow;
+    }
+  }
+
+  Future<ResourceSyncResult> _handleSyncResource(
+    RoadmapEntity roadmap, {
+    String? overrideUrl,
+  }) async {
+    final result = await _resourceSyncService.syncRoadmapResource(
+      roadmap: roadmap,
+      overrideUrl: overrideUrl,
+    );
+    await _loadDatabaseState();
+    return result;
+  }
+
+  Future<void> _enrichRestoredTracksInBackground() async {
+    try {
+      debugPrint('Starting post-restore YouTube playlist enrichment...');
+      final results = await _resourceSyncService.syncAllRoadmaps();
+      final updatedTracks = results
+          .where((r) => r.success && (r.updatedBeatsCount > 0 || r.newBeatsCount > 0))
+          .toList();
+      if (mounted && updatedTracks.isNotEmpty) {
+        await _loadDatabaseState();
+        final totalUpdated = updatedTracks.fold(0, (sum, r) => sum + r.updatedBeatsCount);
+        final totalNew = updatedTracks.fold(0, (sum, r) => sum + r.newBeatsCount);
+        _showToast(
+          'Synced with YouTube: refreshed $totalUpdated lessons'
+          '${totalNew > 0 ? ', added $totalNew new videos' : ''} across ${updatedTracks.length} track${updatedTracks.length == 1 ? '' : 's'}',
+        );
+      }
+    } catch (e) {
+      debugPrint('Post-restore YouTube enrichment failed or offline: $e');
     }
   }
 
@@ -2298,6 +2334,7 @@ class _DesignSystemShowcaseScreenState
           await _autoBackupManager.restoreSnapshot(selected.file);
           await _loadDatabaseState();
           _showToast('Restored from "${selected.displayTitle}"! 🎉');
+          unawaited(_enrichRestoredTracksInBackground());
         } catch (e) {
           _showToast('Restore error: $e');
         }
@@ -2417,6 +2454,7 @@ class _DesignSystemShowcaseScreenState
         await _autoBackupManager.restoreSnapshot(snapshot.file);
         await _loadDatabaseState();
         _showToast('Restored successfully from auto-backup! 🎉');
+        unawaited(_enrichRestoredTracksInBackground());
       } catch (e) {
         _showToast('Failed to restore auto-backup: $e');
       }
@@ -2467,6 +2505,7 @@ class _DesignSystemShowcaseScreenState
       if (success != null) {
         await _loadDatabaseState();
         _showToast('Backup successfully restored!');
+        unawaited(_enrichRestoredTracksInBackground());
       } else {
         _showToast('Restore cancelled or failed');
       }

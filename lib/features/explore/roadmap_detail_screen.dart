@@ -25,6 +25,7 @@ import '../../core/navigation/smooth_page_route.dart';
 import 'widgets/chapter_accordion.dart';
 import '../flow/widgets/timeline_adjuster_sheet.dart';
 import '../../core/pacing/models/pacing_budget.dart';
+import '../../core/ingestion/services/resource_sync_service.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
 /// - Opened from Explore or Metrics
@@ -47,6 +48,7 @@ class RoadmapDetailScreen extends StatefulWidget {
   final Future<void> Function(RoadmapEntity roadmap)? onDeleteRoadmap;
   final Future<void> Function(String roadmapId, String resourceUrl, {String? chapterId})? onAttachResource;
   final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
+  final Future<ResourceSyncResult> Function(RoadmapEntity roadmap, {String? overrideUrl})? onSyncResource;
   final Future<void> Function(BeatEntity beat, int totalParts)? onSplitBeat;
   final Future<void> Function(BeatEntity beat)? onIncrementBeatPart;
   final Future<void> Function(BeatEntity beat)? onDecrementBeatPart;
@@ -68,6 +70,7 @@ class RoadmapDetailScreen extends StatefulWidget {
     this.onDeleteRoadmap,
     this.onAttachResource,
     this.onAttachResourceToBeat,
+    this.onSyncResource,
     this.onSplitBeat,
     this.onIncrementBeatPart,
     this.onDecrementBeatPart,
@@ -99,6 +102,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   final _beatRepo = BeatRepository();
   StreamSubscription<DatabaseEvent>? _eventSub;
   bool _isAttaching = false;
+  bool _isSyncing = false;
+  final _syncService = ResourceSyncService();
 
   @override
   void initState() {
@@ -566,6 +571,50 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     );
   }
 
+  Future<void> _handleSyncResource() async {
+    if (_isSyncing) return;
+    setState(() => _isSyncing = true);
+    showGlassToast(
+      context,
+      'Syncing with YouTube...',
+      icon: Icons.sync_rounded,
+    );
+    try {
+      final result = widget.onSyncResource != null
+          ? await widget.onSyncResource!(_currentRoadmap)
+          : await _syncService.syncRoadmapResource(roadmap: _currentRoadmap);
+      await _reloadFromDb();
+      if (mounted) {
+        if (result.success) {
+          showGlassToast(
+            context,
+            result.message ?? 'Synced with YouTube successfully!',
+            icon: Icons.check_circle_outline_rounded,
+            accentColor: const Color(0xFF10B981),
+          );
+        } else {
+          showGlassToast(
+            context,
+            result.message ?? 'No YouTube resource found to sync',
+            icon: Icons.info_outline_rounded,
+            accentColor: const Color(0xFFF59E0B),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showGlassToast(
+          context,
+          'Sync failed: $e',
+          icon: Icons.error_outline_rounded,
+          accentColor: Colors.redAccent,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
   void _showAttachResourceToBeatDialog(BeatEntity beat) {
     final controller = TextEditingController(text: beat.sourceUrl ?? '');
     showModalBottomSheet(
@@ -831,7 +880,16 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
+                          GlassButton(
+                            label: 'Sync',
+                            icon: Icons.sync_rounded,
+                            height: 32,
+                            variant: GlassButtonVariant.secondary,
+                            isLoading: _isSyncing,
+                            onPressed: _isSyncing ? () {} : _handleSyncResource,
+                          ),
+                          const SizedBox(width: 6),
                           GlassButton(
                             label: 'Add',
                             icon: Icons.link_rounded,
@@ -863,12 +921,17 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
               ),
             ),
 
-              // Scrollable Content
+              // Scrollable Content with Pull-To-Refresh
               Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
-                  child: Column(
+                child: RefreshIndicator(
+                  onRefresh: _handleSyncResource,
+                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Roadmap Header & Stats Card
@@ -1352,6 +1415,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),
