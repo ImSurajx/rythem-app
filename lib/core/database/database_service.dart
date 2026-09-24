@@ -5,7 +5,7 @@ import 'tables.dart';
 
 class DatabaseService {
   static const String _databaseName = 'rythem.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   DatabaseService._();
 
@@ -97,6 +97,8 @@ class DatabaseService {
         ${BeatColumns.isMentorExtra} INTEGER NOT NULL DEFAULT 0,
         ${BeatColumns.matchConfidence} REAL,
         ${BeatColumns.syllabusTopicId} TEXT,
+        ${BeatColumns.totalParts} INTEGER NOT NULL DEFAULT 1,
+        ${BeatColumns.completedParts} INTEGER NOT NULL DEFAULT 0,
         ${BeatColumns.createdAt} TEXT NOT NULL,
         ${BeatColumns.updatedAt} TEXT NOT NULL,
         FOREIGN KEY (${BeatColumns.chapterId}) REFERENCES ${DatabaseTables.chapters} (${ChapterColumns.id}) ON DELETE CASCADE,
@@ -198,6 +200,17 @@ class DatabaseService {
           ${DailyMissionColumns.roadmapId},
           ${DailyMissionColumns.date}
         );
+      ''');
+    }
+
+    if (oldVersion < 3) {
+      await db.execute('''
+        ALTER TABLE ${DatabaseTables.beats}
+        ADD COLUMN ${BeatColumns.totalParts} INTEGER NOT NULL DEFAULT 1;
+      ''');
+      await db.execute('''
+        ALTER TABLE ${DatabaseTables.beats}
+        ADD COLUMN ${BeatColumns.completedParts} INTEGER NOT NULL DEFAULT 0;
       ''');
     }
   }

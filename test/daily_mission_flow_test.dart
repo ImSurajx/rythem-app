@@ -204,19 +204,29 @@ void main() {
       );
       await beatRepo.createBeatsBatch(beats);
 
-      // 1. Initial computation on launch -> locks 3 beats into SQLite daily_missions
+      // 1. Initial computation on launch -> clean slate (0 beats auto-spawned)
       final initialBudget = await pacingService.computePacingBudget(
         'rm_daily_flow',
         simulatedNow: now,
       );
+      expect(initialBudget.todaysBeats, isEmpty);
 
-      expect(initialBudget.todaysBeats.length, 3);
-      expect(initialBudget.todaysBeats.map((b) => b.id).toList(), [
+      // User queues 3 beats into today's focus
+      await pacingService.queueNextBeatIntoTodayFocus('rm_daily_flow', simulatedNow: now);
+      await pacingService.queueNextBeatIntoTodayFocus('rm_daily_flow', simulatedNow: now);
+      await pacingService.queueNextBeatIntoTodayFocus('rm_daily_flow', simulatedNow: now);
+
+      final budgetWithThree = await pacingService.computePacingBudget(
+        'rm_daily_flow',
+        simulatedNow: now,
+      );
+      expect(budgetWithThree.todaysBeats.length, 3);
+      expect(budgetWithThree.todaysBeats.map((b) => b.id).toList(), [
         'arr_beat_0',
         'arr_beat_1',
         'arr_beat_2',
       ]);
-      expect(initialBudget.isDailyQuotaCompleted, false);
+      expect(budgetWithThree.isDailyQuotaCompleted, false);
 
       // Verify records are saved in daily_missions table
       const todayDateStr = '2026-09-19';

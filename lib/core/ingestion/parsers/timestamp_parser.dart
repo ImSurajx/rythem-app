@@ -18,13 +18,32 @@ class TimestampParser {
   TimestampParser._();
 
   // Matches timestamps like:
-  // 01:23, 1:23, 01:23:45, 1:23:45, [01:23], (01:23), 00:00 - Introduction
+  // 01:23, 1:23, 01:23:45, 1:23:45, [01:23], (01:23), 00:00 - Introduction, Intro - 00:00
   static final RegExp _timestampPattern = RegExp(
-    r'(?:^|[\s\[\(\-])(?:(?<hours>\d{1,2}):)?(?<minutes>\d{1,2}):(?<seconds>\d{2})(?:[\]\)\-\s]*)',
+    r'(?:^|[\s\[\(\-\*_•|~])(?:(?<hours>\d{1,2}):)?(?<minutes>\d{1,2}):(?<seconds>\d{2})(?:[\]\)\-\s\*_•|~]*)',
     multiLine: true,
   );
 
-  /// Parses video description text for structured timestamps and chapter titles.
+  /// Splits text into lines, handling both newline-delimited timestamps and inline lists.
+  static List<String> _extractLines(String text) {
+    final rawLines = text.split('\n');
+    final result = <String>[];
+    for (final line in rawLines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      // If multiple timestamps appear on a single line separated by delimiters (e.g. •, |, ~)
+      if ((trimmed.contains('•') || trimmed.contains('|') || trimmed.contains('~') || trimmed.contains(' - ')) &&
+          _timestampPattern.allMatches(trimmed).length >= 2) {
+        final parts = trimmed.split(RegExp(r'\s*[•|~]\s+|\s{3,}'));
+        result.addAll(parts.map((p) => p.trim()).where((p) => p.isNotEmpty));
+      } else {
+        result.add(trimmed);
+      }
+    }
+    return result;
+  }
+
+  /// Parses video description or comment text for structured timestamps and chapter titles.
   /// If [totalVideoDurationSeconds] is provided, it calculates each segment's duration.
   /// Requires at least [minSegments] (default 2) to prevent false positives on single timestamp mentions.
   static List<ParsedTimestampSegment> parseDescription(
@@ -32,11 +51,10 @@ class TimestampParser {
     int totalVideoDurationSeconds = 0,
     int minSegments = 2,
   }) {
-    final lines = description.split('\n');
+    final lines = _extractLines(description);
     final rawEntries = <({int startSeconds, String title})>[];
 
-    for (final line in lines) {
-      final trimmed = line.trim();
+    for (final trimmed in lines) {
       if (trimmed.isEmpty) continue;
 
       final match = _timestampPattern.firstMatch(trimmed);
@@ -56,10 +74,11 @@ class TimestampParser {
         // Clean leading bracketed numbers e.g. [1], [02], (3)
         title = title.replaceAll(RegExp(r'^[\[\(]\s*\d+\s*[\]\)]\s*'), '').trim();
         // Clean leading separators like '-', ':', '|', '.', '–', bullets, and numbering
-        title = title.replaceAll(RegExp(r'^[•\*\-\:\.\|\–\—\s]+'), '').trim();
+        title = title.replaceAll(RegExp(r'^[•\*\-\:\.\|\–\—\s_~]+'), '').trim();
         title = title.replaceAll(RegExp(r'^\d+[\.\)\-\:\s]+'), '').trim();
-        // Clean trailing separators, brackets, and parentheses
-        title = title.replaceAll(RegExp(r'[-\:\.\|\–\—\s\[\]\(\)]+$'), '').trim();
+        // Clean trailing separators, preserving balanced parentheses in titles
+        title = title.replaceAll(RegExp(r'[•\*\-\:\.\|\–\—\s_~]+$'), '').trim();
+        title = title.replaceAll(RegExp(r'[\[\(]+$'), '').trim();
 
         if (title.isEmpty) {
           title = 'Beat at ${match.group(0)!.trim()}';
@@ -87,21 +106,49 @@ class TimestampParser {
     final segments = <ParsedTimestampSegment>[];
     for (int i = 0; i < deduplicated.length; i++) {
       final current = deduplicated[i];
+      // Zero-drop boundary guarantee: if early intro begins <= 90s, clamp to 0
+      final startSec = (i == 0 && current.startSeconds <= 90) ? 0 : current.startSeconds;
       final nextStart = (i + 1 < deduplicated.length)
           ? deduplicated[i + 1].startSeconds
-          : (totalVideoDurationSeconds > current.startSeconds
+          : (totalVideoDurationSeconds > startSec
               ? totalVideoDurationSeconds
-              : current.startSeconds + 600); // 10 min default fallback
+              : startSec + 600); // 10 min default fallback
 
-      final duration = (nextStart - current.startSeconds).clamp(60, 86400);
+      final duration = (nextStart - startSec).clamp(60, 86400);
 
       segments.add(ParsedTimestampSegment(
         title: current.title,
-        startSeconds: current.startSeconds,
+        startSeconds: startSec,
         durationSeconds: duration,
       ));
     }
 
     return segments;
+  }
+
+  /// Parses multiple community comments and returns the highest quality chapter breakdown.
+  /// Prioritizes comments with the most structured, chronological coverage.
+  static List<ParsedTimestampSegment> parseComments(
+    List<String> commentTexts, {
+    int totalVideoDurationSeconds = 0,
+    int minSegments = 2,
+  }) {
+    List<ParsedTimestampSegment> bestSegments = [];
+
+    for (final comment in commentTexts) {
+      if (comment.trim().isEmpty) continue;
+      final segments = parseDescription(
+        comment,
+        totalVideoDurationSeconds: totalVideoDurationSeconds,
+        minSegments: minSegments,
+      );
+
+      // Select candidate with the most comprehensive breakdown
+      if (segments.length > bestSegments.length) {
+        bestSegments = segments;
+      }
+    }
+
+    return bestSegments;
   }
 }

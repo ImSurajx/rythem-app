@@ -50,6 +50,8 @@ class BeatColumns {
   static const String isMentorExtra = 'is_mentor_extra';
   static const String matchConfidence = 'match_confidence';
   static const String syllabusTopicId = 'syllabus_topic_id';
+  static const String totalParts = 'total_parts';
+  static const String completedParts = 'completed_parts';
   static const String createdAt = 'created_at';
   static const String updatedAt = 'updated_at';
 }

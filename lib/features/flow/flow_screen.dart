@@ -16,8 +16,11 @@ import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
+import 'split_task_sheet.dart';
 import 'widgets/backlog_decision_sheet.dart';
 import 'widgets/daily_revision_board.dart';
+import 'widgets/pace_coach_card.dart';
+import 'widgets/timeline_adjuster_sheet.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/revision/models/revision_item.dart';
 import '../../core/navigation/smooth_page_route.dart';
@@ -70,20 +73,38 @@ class FlowScreen extends StatefulWidget {
     this.delayedBeatIds = const {},
     this.onToggleDelay,
     this.revisionItems = const [],
+    this.allShelfItems,
     this.onMarkRevised,
     this.onFlagForRevision,
+    this.onMarkForRevision,
+    this.onUnshelf,
+    this.onReschedule,
     this.onRequestRevisionRecommendations,
     this.isScanningRevision = false,
     this.onStudyAhead,
     this.onStartEarly,
+    this.onRemoveFromFocus,
+    this.onSplitBeat,
+    this.onIncrementBeatPart,
+    this.onDecrementBeatPart,
+    this.onUpdateTargetDate,
   });
 
   final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
   final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
+  final Future<void> Function(RoadmapEntity roadmap, BeatEntity beat)? onRemoveFromFocus;
+  final Future<void> Function(BeatEntity beat, int totalParts)? onSplitBeat;
+  final Future<void> Function(BeatEntity beat)? onIncrementBeatPart;
+  final Future<void> Function(BeatEntity beat)? onDecrementBeatPart;
+  final Future<void> Function(RoadmapEntity roadmap, DateTime? newTargetDate)? onUpdateTargetDate;
 
   final List<RevisionItem> revisionItems;
+  final List<RevisionItem>? allShelfItems;
   final ValueChanged<RevisionItem>? onMarkRevised;
   final ValueChanged<BeatEntity>? onFlagForRevision;
+  final ValueChanged<BeatEntity>? onMarkForRevision;
+  final ValueChanged<RevisionItem>? onUnshelf;
+  final ValueChanged<RevisionItem>? onReschedule;
   final VoidCallback? onRequestRevisionRecommendations;
   final bool isScanningRevision;
 
@@ -266,7 +287,37 @@ class _FlowScreenState extends State<FlowScreen> {
             isDark: isDark,
           ),
 
-          // Sustained Lag Non-Punitive Recalibration Banner
+          // Feature 4: Intelligent Pace Coach Card (GPS ETA, zero backlog debt)
+          if (widget.activeRoadmap != null &&
+              widget.pacingBudget != null &&
+              !widget.pacingBudget!.isUpcoming &&
+              !widget.pacingBudget!.isRoadmapCompleted &&
+              (widget.pacingBudget!.targetDate != null || widget.pacingBudget!.isBehindSchedule)) ...[
+            const SizedBox(height: 16),
+            PaceCoachCard(
+              roadmap: widget.activeRoadmap!,
+              pacingBudget: widget.pacingBudget!,
+              themeColors: themeColors,
+              isDark: isDark,
+              onOpenTimelineAdjuster: () {
+                TimelineAdjusterSheet.show(
+                  context,
+                  roadmap: widget.activeRoadmap!,
+                  pacingBudget: widget.pacingBudget!,
+                  onTargetDateSelected: (newDate) {
+                    widget.onUpdateTargetDate?.call(widget.activeRoadmap!, newDate);
+                  },
+                );
+              },
+              onQuickExtendSevenDays: () {
+                final base = widget.activeRoadmap!.targetCompletionDate ?? DateTime.now();
+                final newTarget = base.add(const Duration(days: 7));
+                widget.onUpdateTargetDate?.call(widget.activeRoadmap!, newTarget);
+              },
+            ),
+          ],
+
+          // Sustained Lag Non-Punitive Recalibration Banner (retained for backward compatibility and AI diagnosis)
           if (laggingRoadmap != null && laggingBudget != null) ...[
             const SizedBox(height: 16),
             _SustainedLagRecalibrationBanner(
@@ -344,12 +395,15 @@ class _FlowScreenState extends State<FlowScreen> {
 
           const SizedBox(height: 12),
 
-          // Daily Revision Board placed prominently just below Today's Focus
+          // Daily Revision Board & Clean Revision Shelf
           DailyRevisionBoard(
             revisionItems: effectiveRevisionItems,
+            allShelfItems: widget.allShelfItems,
             onMarkRevised: (item) {
               widget.onMarkRevised?.call(item);
             },
+            onUnshelf: widget.onUnshelf,
+            onReschedule: widget.onReschedule,
             inferenceService: widget.inferenceService,
             onRequestRecommendations: widget.onRequestRevisionRecommendations,
             isScanning: widget.isScanningRevision,
@@ -387,9 +441,16 @@ class _FlowScreenState extends State<FlowScreen> {
                 delayedBeatIds: widget.delayedBeatIds,
                 onToggleDelay: widget.onToggleDelay,
                 onBeatToggled: widget.onBeatToggled,
+                onRemoveFromFocus: widget.onRemoveFromFocus,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
                 onStudyAhead: widget.onStudyAhead,
                 onStartEarly: widget.onStartEarly,
+                onSplitBeat: widget.onSplitBeat,
+                onIncrementBeatPart: widget.onIncrementBeatPart,
+                onDecrementBeatPart: widget.onDecrementBeatPart,
+                onUpdateTargetDate: widget.onUpdateTargetDate,
+                revisionShelfBeatIds: widget.allShelfItems?.map((i) => i.beatId).toSet() ?? const {},
+                onMarkForRevision: widget.onMarkForRevision,
                 onOpenDetail: widget.onOpenRoadmapDetail != null
                     ? () => widget.onOpenRoadmapDetail!(rm)
                     : null,
@@ -482,6 +543,13 @@ class _TrackTodoListCard extends StatelessWidget {
   final void Function(BeatEntity beat)? onToggleDelay;
   final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
   final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
+  final Future<void> Function(RoadmapEntity roadmap, BeatEntity beat)? onRemoveFromFocus;
+  final Future<void> Function(BeatEntity beat, int totalParts)? onSplitBeat;
+  final Future<void> Function(BeatEntity beat)? onIncrementBeatPart;
+  final Future<void> Function(BeatEntity beat)? onDecrementBeatPart;
+  final Future<void> Function(RoadmapEntity roadmap, DateTime? newTargetDate)? onUpdateTargetDate;
+  final Set<String> revisionShelfBeatIds;
+  final ValueChanged<BeatEntity>? onMarkForRevision;
 
   const _TrackTodoListCard({
     required this.roadmap,
@@ -498,6 +566,13 @@ class _TrackTodoListCard extends StatelessWidget {
     this.onToggleDelay,
     this.onStudyAhead,
     this.onStartEarly,
+    this.onRemoveFromFocus,
+    this.onSplitBeat,
+    this.onIncrementBeatPart,
+    this.onDecrementBeatPart,
+    this.onUpdateTargetDate,
+    this.revisionShelfBeatIds = const {},
+    this.onMarkForRevision,
   });
 
   @override
@@ -598,33 +673,74 @@ class _TrackTodoListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (pacingBudget?.isSustainedLag == true ||
-                          (pacingBudget?.shortfallDebt != null && pacingBudget!.shortfallDebt > 0)) ...[
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(isDark ? 0.22 : 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: Colors.amber.withOpacity(isDark ? 0.45 : 0.3),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.schedule_rounded, size: 10, color: Colors.amber),
-                              const SizedBox(width: 3),
-                              Text(
-                                'BACKLOG: ${pacingBudget!.shortfallDebt.toStringAsFixed(1)} pts',
-                                style: const TextStyle(
-                                  color: Colors.amber,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                      if (pacingBudget?.isBehindSchedule == true) ...[
+                        GestureDetector(
+                          onTap: onUpdateTargetDate != null
+                              ? () {
+                                  TimelineAdjusterSheet.show(
+                                    context,
+                                    roadmap: roadmap,
+                                    pacingBudget: pacingBudget!,
+                                    onTargetDateSelected: (newDate) {
+                                      onUpdateTargetDate!(roadmap, newDate);
+                                    },
+                                  );
+                                }
+                              : null,
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                            decoration: BoxDecoration(
+                              color: pacingBudget!.isBehindSchedule
+                                  ? (isDark ? const Color(0xFFF59E0B).withOpacity(0.2) : const Color(0xFFFEF3C7))
+                                  : pacingBudget!.isOpenPace
+                                      ? (isDark ? const Color(0xFFA78BFA).withOpacity(0.2) : const Color(0xFFEDE9FE))
+                                      : (isDark ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFFD1FAE5)),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: pacingBudget!.isBehindSchedule
+                                    ? const Color(0xFFF59E0B).withOpacity(0.4)
+                                    : pacingBudget!.isOpenPace
+                                        ? const Color(0xFFA78BFA).withOpacity(0.4)
+                                        : const Color(0xFF10B981).withOpacity(0.4),
+                                width: 0.8,
                               ),
-                            ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  pacingBudget!.isBehindSchedule
+                                      ? Icons.schedule_rounded
+                                      : pacingBudget!.isOpenPace
+                                          ? Icons.all_inclusive_rounded
+                                          : Icons.check_circle_outline_rounded,
+                                  size: 10,
+                                  color: pacingBudget!.isBehindSchedule
+                                      ? const Color(0xFFF59E0B)
+                                      : pacingBudget!.isOpenPace
+                                          ? const Color(0xFFA78BFA)
+                                          : const Color(0xFF10B981),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  pacingBudget!.isBehindSchedule
+                                      ? 'BEHIND PACE'
+                                      : pacingBudget!.isOpenPace
+                                          ? 'OPEN PACE'
+                                          : 'ON TRACK',
+                                  style: TextStyle(
+                                    color: pacingBudget!.isBehindSchedule
+                                        ? const Color(0xFFF59E0B)
+                                        : pacingBudget!.isOpenPace
+                                            ? const Color(0xFFA78BFA)
+                                            : const Color(0xFF10B981),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -738,13 +854,8 @@ class _TrackTodoListCard extends StatelessWidget {
                   );
                 }
 
-                // 1. Incomplete beats for quick fallback if budget has not loaded yet
-                final incompleteBeats =
-                    sortedAllBeats.where((b) => !b.isCompleted).toList();
-
-                // 2. Assemble today's mission beats with strikethrough retention
+                // Assemble today's mission beats with strikethrough retention
                 final seenIds = <String>{};
-
                 final flowBeats = <BeatEntity>[];
                 final delayedBeats = sortedAllBeats.where((b) => !b.isCompleted && delayedBeatIds.contains(b.id)).toList();
 
@@ -753,17 +864,9 @@ class _TrackTodoListCard extends StatelessWidget {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
 
-                // B. Add today's mission beats (preserving both completed tasks with strikethrough and pending tasks)
+                // B. Add today's mission beats (user-curated)
                 if (pacingBudget != null && pacingBudget!.todaysBeats.isNotEmpty) {
                   for (final b in pacingBudget!.todaysBeats) {
-                    if (seenIds.add(b.id)) flowBeats.add(b);
-                  }
-                } else if (!isUpcoming) {
-                  // Initial fallback while pacing budget is loading (only if track is not upcoming)
-                  for (final b in completedToday) {
-                    if (seenIds.add(b.id)) flowBeats.add(b);
-                  }
-                  for (final b in incompleteBeats.take(1)) {
                     if (seenIds.add(b.id)) flowBeats.add(b);
                   }
                 }
@@ -773,10 +876,86 @@ class _TrackTodoListCard extends StatelessWidget {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
 
-                if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty && !isUpcoming) {
-                  flowBeats.addAll(sortedAllBeats.take(1));
+                if (flowBeats.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0x12FFFFFF) : const Color(0x06000000),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.wb_sunny_outlined,
+                            size: 28,
+                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Your slate is clean for today',
+                            style: RythemTypography.titleMedium.copyWith(
+                              color: themeColors.textPrimary,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Queue the next lesson or choose topics from the track.',
+                            textAlign: TextAlign.center,
+                            style: RythemTypography.bodySmall.copyWith(
+                              color: themeColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (onStudyAhead != null && sortedAllBeats.any((b) => !b.isCompleted))
+                                ElevatedButton.icon(
+                                  onPressed: () => onStudyAhead!(roadmap),
+                                  icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                                  label: const Text('Queue Next Lesson'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isDark ? const Color(0xFF4F46E5) : const Color(0xFF4338CA),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              if (onOpenDetail != null) ...[
+                                const SizedBox(width: 8),
+                                OutlinedButton.icon(
+                                  onPressed: onOpenDetail,
+                                  icon: const Icon(Icons.menu_book_rounded, size: 15),
+                                  label: const Text('Browse Track'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: themeColors.textPrimary,
+                                    side: BorderSide(color: themeColors.glassBorder),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
 
+                final bool allCompleted = flowBeats.isNotEmpty && flowBeats.every((b) => b.isCompleted);
+                final bool hasMoreInTrack = sortedAllBeats.any((b) => !b.isCompleted && !seenIds.contains(b.id));
 
                 return Column(
                   children: [
@@ -796,6 +975,22 @@ class _TrackTodoListCard extends StatelessWidget {
                           isDelayed: delayedBeatIds.contains(beat.id),
                           onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
                           onToggle: (val) => onBeatToggled(beat, val),
+                          onRemoveFromFocus: onRemoveFromFocus != null && !beat.isCompleted
+                              ? () => onRemoveFromFocus!(roadmap, beat)
+                              : null,
+                          onSplit: onSplitBeat != null && !beat.isCompleted
+                              ? () => SplitTaskSheet.show(
+                                    context,
+                                    beat: beat,
+                                    onSave: (parts) => onSplitBeat!(beat, parts),
+                                  )
+                              : null,
+                          onIncrementPart: onIncrementBeatPart != null && !beat.isCompleted
+                              ? () => onIncrementBeatPart!(beat)
+                              : null,
+                          onDecrementPart: onDecrementBeatPart != null
+                              ? () => onDecrementBeatPart!(beat)
+                              : null,
                           onOpenResource: () => ResourceLauncher.openResource(
                             context,
                             url: beat.sourceUrl,
@@ -804,10 +999,12 @@ class _TrackTodoListCard extends StatelessWidget {
                           onFlag: () {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },
+                          isInRevisionShelf: revisionShelfBeatIds.contains(beat.id),
+                          onMarkForRevision: onMarkForRevision != null ? () => onMarkForRevision!(beat) : null,
                         );
                       },
                     ),
-                    if (flowBeats.isNotEmpty && flowBeats.every((b) => b.isCompleted))
+                    if (allCompleted)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
                         child: Container(
@@ -825,11 +1022,11 @@ class _TrackTodoListCard extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.nightlight_round, size: 16, color: Color(0xFF10B981)),
+                                  const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF10B981)),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Evening Unlocked • Daily Rhythm Complete',
+                                      'Today\'s Goal Complete! 🎉',
                                       style: RythemTypography.titleMedium.copyWith(
                                         color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                                         fontSize: 12.5,
@@ -841,13 +1038,13 @@ class _TrackTodoListCard extends StatelessWidget {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'You\'ve satisfied today\'s goal. Rest guilt-free, or study ahead if you have momentum.',
+                                'You\'ve finished everything in today\'s focus. Rest guilt-free, or queue another lesson if you want to keep going.',
                                 style: RythemTypography.bodySmall.copyWith(
                                   color: themeColors.textSecondary,
                                   fontSize: 11,
                                 ),
                               ),
-                              if (onStudyAhead != null && sortedAllBeats.any((b) => !b.isCompleted && !seenIds.contains(b.id))) ...[
+                              if (onStudyAhead != null && hasMoreInTrack) ...[
                                 const SizedBox(height: 10),
                                 InkWell(
                                   onTap: () => onStudyAhead!(roadmap),
@@ -865,7 +1062,7 @@ class _TrackTodoListCard extends StatelessWidget {
                                         Icon(Icons.add_rounded, size: 14, color: themeColors.textPrimary),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'Pull Next Beat • Study Ahead',
+                                          'Queue Another Lesson',
                                           style: RythemTypography.labelSmall.copyWith(
                                             color: themeColors.textPrimary,
                                             fontWeight: FontWeight.w600,
@@ -878,6 +1075,35 @@ class _TrackTodoListCard extends StatelessWidget {
                                 ),
                               ],
                             ],
+                          ),
+                        ),
+                      )
+                    else if (onStudyAhead != null && hasMoreInTrack)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: InkWell(
+                            onTap: () => onStudyAhead!(roadmap),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.add_rounded, size: 14, color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '+ Queue Next Lesson',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),

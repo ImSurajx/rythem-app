@@ -1,6 +1,25 @@
 import 'dart:math' as math;
 import '../../database/database.dart';
+import '../models/pacing_budget.dart';
 import '../models/study_intensity.dart';
+
+class PaceHealthResult {
+  final PaceStatus status;
+  final DateTime? projectedCompletionDate;
+  final int daysAheadOrBehind;
+  final double dailyEffortGuideline;
+  final double currentVelocity;
+  final String guidelineMessage;
+
+  const PaceHealthResult({
+    required this.status,
+    this.projectedCompletionDate,
+    required this.daysAheadOrBehind,
+    required this.dailyEffortGuideline,
+    required this.currentVelocity,
+    required this.guidelineMessage,
+  });
+}
 
 class DailyPacingRecord {
   final DateTime date;
@@ -39,12 +58,19 @@ class PacingCalculator {
   }
 
   /// Calculates total remaining effort across all incomplete beats.
+  /// Accurately scales remaining effort proportionally for multi-part beats.
   static double calculateRemainingEffort(List<BeatEntity> incompleteBeats) {
     if (incompleteBeats.isEmpty) return 0.0;
     double sum = 0.0;
     for (final b in incompleteBeats) {
       if (!b.isCompleted) {
-        sum += b.effortWeight;
+        if (b.isMultiPart && b.completedParts > 0) {
+          final fractionRemaining =
+              (b.totalParts - b.completedParts).clamp(0, b.totalParts) / b.totalParts;
+          sum += b.effortWeight * fractionRemaining;
+        } else {
+          sum += b.effortWeight;
+        }
       }
     }
     return double.parse(sum.toStringAsFixed(2));
@@ -272,5 +298,94 @@ class PacingCalculator {
 
     final total = activeDays.fold(0.0, (sum, e) => sum + e);
     return double.parse((total / activeDays.length).toStringAsFixed(2));
+  }
+
+  /// Evaluates user pace health, projected finish date, and non-intrusive advisory guidelines.
+  /// Eliminates artificial backlog debt in favor of supportive, guilt-free GPS-like guidance.
+  static PaceHealthResult calculatePaceHealth({
+    required double remainingEffort,
+    required DateTime? targetDate,
+    required List<DailyPacingRecord> pastDaysRecords,
+    DateTime? now,
+  }) {
+    final current = now ?? DateTime.now();
+    final today = DateTime(current.year, current.month, current.day);
+
+    // 1. Calculate user's active velocity (effort completed per active study day)
+    final activeRecords = pastDaysRecords.where((r) => r.completedEffort > 0.0).toList();
+    final double velocity;
+    if (activeRecords.isNotEmpty) {
+      final totalEffort = activeRecords.fold(0.0, (sum, r) => sum + r.completedEffort);
+      velocity = double.parse((totalEffort / activeRecords.length).toStringAsFixed(2));
+    } else {
+      if (targetDate != null) {
+        final days = calculateDaysLeft(targetDate, now: current);
+        velocity = double.parse((remainingEffort / days).clamp(0.5, 4.0).toStringAsFixed(2));
+      } else {
+        velocity = 1.0;
+      }
+    }
+
+    // 2. Compute Projected Completion Date
+    if (remainingEffort <= 0.0) {
+      return PaceHealthResult(
+        status: PaceStatus.onTrack,
+        projectedCompletionDate: today,
+        daysAheadOrBehind: 0,
+        dailyEffortGuideline: 0.0,
+        currentVelocity: velocity,
+        guidelineMessage: 'Track complete! Rhythm achieved.',
+      );
+    }
+
+    final effectiveVelocity = math.max(0.1, velocity);
+    final projectedDays = (remainingEffort / effectiveVelocity).ceil();
+    final projectedDate = today.add(Duration(days: projectedDays));
+
+    // 3. Status Classification & Advisory Guidance
+    if (targetDate == null) {
+      return PaceHealthResult(
+        status: PaceStatus.openPace,
+        projectedCompletionDate: projectedDate,
+        daysAheadOrBehind: 0,
+        dailyEffortGuideline: velocity,
+        currentVelocity: velocity,
+        guidelineMessage: 'Self-paced learning (~${velocity.toStringAsFixed(1)} lessons/active day).',
+      );
+    }
+
+    final daysLeft = calculateDaysLeft(targetDate, now: current);
+    final guideline = double.parse((remainingEffort / daysLeft).toStringAsFixed(1));
+    final targetDay = DateTime(targetDate.year, targetDate.month, targetDate.day);
+    final daysAheadOrBehind = projectedDate.difference(targetDay).inDays;
+
+    final PaceStatus status;
+    final String message;
+
+    if (daysAheadOrBehind <= 0) {
+      status = PaceStatus.onTrack;
+      final ahead = -daysAheadOrBehind;
+      if (ahead > 1) {
+        message = 'On track! Projected to finish $ahead days ahead of target.';
+      } else {
+        message = 'On track to finish on time. Aim for ~${guideline.toStringAsFixed(1)} lessons/day.';
+      }
+    } else if (daysAheadOrBehind <= 2) {
+      // Minor variance is still considered on track
+      status = PaceStatus.onTrack;
+      message = 'Slight variance. Aim for ~${guideline.toStringAsFixed(1)} lessons/day to hit target.';
+    } else {
+      status = PaceStatus.behindSchedule;
+      message = 'Current pace finishes $daysAheadOrBehind days behind target (${targetDate.day}/${targetDate.month}).';
+    }
+
+    return PaceHealthResult(
+      status: status,
+      projectedCompletionDate: projectedDate,
+      daysAheadOrBehind: daysAheadOrBehind,
+      dailyEffortGuideline: guideline,
+      currentVelocity: velocity,
+      guidelineMessage: message,
+    );
   }
 }

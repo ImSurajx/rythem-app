@@ -17,6 +17,8 @@ class RevisionItem {
   final double beatPoints;
   final String? microRecallPrompt;
   final String? prerequisiteTargetTitle;
+  final DateTime? scheduledReviewDate;
+  final int? intervalDays;
 
   const RevisionItem({
     required this.beatId,
@@ -34,9 +36,19 @@ class RevisionItem {
     this.beatPoints = 0.5,
     this.microRecallPrompt,
     this.prerequisiteTargetTitle,
+    this.scheduledReviewDate,
+    this.intervalDays,
   });
 
   bool get isCompletedToday => isCompleted;
+
+  /// Returns true if this topic is due for review today or on-demand.
+  bool get isDueToday {
+    if (scheduledReviewDate == null) return true;
+    final now = DateTime.now();
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    return !scheduledReviewDate!.isAfter(todayEnd);
+  }
 
   RevisionItem copyWith({
     String? beatId,
@@ -54,6 +66,8 @@ class RevisionItem {
     double? beatPoints,
     String? microRecallPrompt,
     String? prerequisiteTargetTitle,
+    DateTime? scheduledReviewDate,
+    int? intervalDays,
   }) {
     return RevisionItem(
       beatId: beatId ?? this.beatId,
@@ -71,6 +85,8 @@ class RevisionItem {
       beatPoints: beatPoints ?? this.beatPoints,
       microRecallPrompt: microRecallPrompt ?? this.microRecallPrompt,
       prerequisiteTargetTitle: prerequisiteTargetTitle ?? this.prerequisiteTargetTitle,
+      scheduledReviewDate: scheduledReviewDate ?? this.scheduledReviewDate,
+      intervalDays: intervalDays ?? this.intervalDays,
     );
   }
 
@@ -91,6 +107,8 @@ class RevisionItem {
       'beatPoints': beatPoints,
       'microRecallPrompt': microRecallPrompt,
       'prerequisiteTargetTitle': prerequisiteTargetTitle,
+      'scheduledReviewDate': scheduledReviewDate?.toIso8601String(),
+      'intervalDays': intervalDays,
     };
   }
 
@@ -111,6 +129,8 @@ class RevisionItem {
       beatPoints: (map['beatPoints'] as num?)?.toDouble() ?? 0.5,
       microRecallPrompt: map['microRecallPrompt'] as String?,
       prerequisiteTargetTitle: map['prerequisiteTargetTitle'] as String?,
+      scheduledReviewDate: map['scheduledReviewDate'] != null ? DateTime.tryParse(map['scheduledReviewDate'] as String) : null,
+      intervalDays: map['intervalDays'] as int?,
     );
   }
 

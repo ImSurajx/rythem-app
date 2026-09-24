@@ -25,6 +25,18 @@ class ChapterAccordion extends StatefulWidget {
   final Future<void> Function(BeatEntity beat)? onRejectMatch;
   final Set<String>? delayedBeatIds;
   final void Function(BeatEntity beat)? onToggleDelay;
+  final Set<String>? todaysBeatIds;
+  final void Function(BeatEntity beat)? onToggleFocusBeat;
+  final void Function(BeatEntity beat)? onSplitBeat;
+  final void Function(BeatEntity beat)? onIncrementBeatPart;
+  final void Function(BeatEntity beat)? onDecrementBeatPart;
+  final void Function(ChapterEntity chapter)? onAddTopic;
+  final void Function(BeatEntity beat)? onEditBeat;
+  final void Function(BeatEntity beat)? onDeleteBeat;
+  final void Function(ChapterEntity chapter)? onEditChapter;
+  final void Function(ChapterEntity chapter)? onDeleteChapter;
+  final Set<String>? revisionShelfBeatIds;
+  final void Function(BeatEntity beat)? onMarkForRevision;
 
   const ChapterAccordion({
     super.key,
@@ -40,6 +52,18 @@ class ChapterAccordion extends StatefulWidget {
     this.onRejectMatch,
     this.delayedBeatIds,
     this.onToggleDelay,
+    this.todaysBeatIds,
+    this.onToggleFocusBeat,
+    this.onSplitBeat,
+    this.onIncrementBeatPart,
+    this.onDecrementBeatPart,
+    this.onAddTopic,
+    this.onEditBeat,
+    this.onDeleteBeat,
+    this.onEditChapter,
+    this.onDeleteChapter,
+    this.revisionShelfBeatIds,
+    this.onMarkForRevision,
   });
 
   @override
@@ -200,6 +224,48 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                     const SizedBox(width: 4),
                   ],
 
+                  if (widget.onEditChapter != null || widget.onDeleteChapter != null) ...[
+                    PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_vert_rounded,
+                        size: 19,
+                        color: themeColors.textSecondary,
+                      ),
+                      tooltip: 'Chapter options',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      onSelected: (val) {
+                        if (val == 'edit') widget.onEditChapter?.call(widget.chapter);
+                        if (val == 'delete') widget.onDeleteChapter?.call(widget.chapter);
+                      },
+                      itemBuilder: (ctx) => [
+                        if (widget.onEditChapter != null)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.drive_file_rename_outline_rounded, size: 16),
+                                SizedBox(width: 8),
+                                Text('Rename Chapter'),
+                              ],
+                            ),
+                          ),
+                        if (widget.onDeleteChapter != null)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                                SizedBox(width: 8),
+                                Text('Delete Chapter', style: TextStyle(color: Colors.redAccent)),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+
                   // Animated Rotating Chevron
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0.0,
@@ -227,8 +293,10 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-                  child: widget.beats.isEmpty
-                      ? Padding(
+                  child: Column(
+                    children: [
+                      if (widget.beats.isEmpty)
+                        Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Center(
                             child: Text(
@@ -239,7 +307,14 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                             ),
                           ),
                         )
-                      : _buildCategorizedBeatsList(themeColors, isDark),
+                      else
+                        _buildCategorizedBeatsList(themeColors, isDark),
+                      if (widget.onAddTopic != null) ...[
+                        const SizedBox(height: 10),
+                        _buildAddTopicButton(themeColors, isDark),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -380,6 +455,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
   }
 
   Widget _buildBeatItem(BeatEntity beat, RythemColorTokens themeColors, bool isDark) {
+    final isInFocus = widget.todaysBeatIds?.contains(beat.id) ?? false;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: BeatTile(
@@ -387,8 +463,13 @@ class _ChapterAccordionState extends State<ChapterAccordion>
         themeColors: themeColors,
         isDark: isDark,
         isDelayed: widget.delayedBeatIds?.contains(beat.id) ?? false,
+        isInFocus: isInFocus,
+        onToggleFocus: widget.onToggleFocusBeat != null ? () => widget.onToggleFocusBeat!(beat) : null,
         onToggleDelay: widget.onToggleDelay != null ? () => widget.onToggleDelay!(beat) : null,
         onToggle: (val) => widget.onBeatToggled(beat, val),
+        onSplit: widget.onSplitBeat != null ? () => widget.onSplitBeat!(beat) : null,
+        onIncrementPart: widget.onIncrementBeatPart != null ? () => widget.onIncrementBeatPart!(beat) : null,
+        onDecrementPart: widget.onDecrementBeatPart != null ? () => widget.onDecrementBeatPart!(beat) : null,
         onOpenResource: () => ResourceLauncher.openResource(
           context,
           url: beat.sourceUrl,
@@ -398,6 +479,50 @@ class _ChapterAccordionState extends State<ChapterAccordion>
         onAttachResource: widget.onAttachResource != null ? () => widget.onAttachResource!(beat) : null,
         onConfirmMatch: widget.onConfirmMatch != null ? () => widget.onConfirmMatch!(beat) : null,
         onRejectMatch: widget.onRejectMatch != null ? () => widget.onRejectMatch!(beat) : null,
+        onEdit: widget.onEditBeat != null ? () => widget.onEditBeat!(beat) : null,
+        onDelete: widget.onDeleteBeat != null ? () => widget.onDeleteBeat!(beat) : null,
+        isInRevisionShelf: widget.revisionShelfBeatIds?.contains(beat.id) ?? false,
+        onMarkForRevision: widget.onMarkForRevision != null ? () => widget.onMarkForRevision!(beat) : null,
+      ),
+    );
+  }
+
+  Widget _buildAddTopicButton(RythemColorTokens themeColors, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        widget.onAddTopic?.call(widget.chapter);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black12,
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add_rounded,
+              size: 16,
+              color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Add Topic to Chapter',
+              style: RythemTypography.bodySmall.copyWith(
+                color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -514,6 +639,16 @@ class BeatTile extends StatelessWidget {
   final VoidCallback? onRejectMatch;
   final bool isDelayed;
   final VoidCallback? onToggleDelay;
+  final bool isInFocus;
+  final VoidCallback? onToggleFocus;
+  final VoidCallback? onRemoveFromFocus;
+  final VoidCallback? onSplit;
+  final VoidCallback? onIncrementPart;
+  final VoidCallback? onDecrementPart;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final bool isInRevisionShelf;
+  final VoidCallback? onMarkForRevision;
 
   const BeatTile({
     super.key,
@@ -528,6 +663,16 @@ class BeatTile extends StatelessWidget {
     this.onRejectMatch,
     this.isDelayed = false,
     this.onToggleDelay,
+    this.isInFocus = false,
+    this.onToggleFocus,
+    this.onRemoveFromFocus,
+    this.onSplit,
+    this.onIncrementPart,
+    this.onDecrementPart,
+    this.onEdit,
+    this.onDelete,
+    this.isInRevisionShelf = false,
+    this.onMarkForRevision,
   });
 
   @override
@@ -578,43 +723,77 @@ class BeatTile extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-            // Interactive Checkbox
+            // Interactive Checkbox / Multi-Part Progress Indicator
             GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
-                onToggle(!beat.isCompleted);
+                if (beat.isMultiPart && !beat.isCompleted && onIncrementPart != null) {
+                  onIncrementPart!();
+                } else {
+                  onToggle(!beat.isCompleted);
+                }
               },
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: beat.isCompleted
-                        ? themeColors.textPrimary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: beat.isCompleted
-                          ? themeColors.textPrimary
-                          : themeColors.textTertiary,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: AnimatedScale(
-                    scale: beat.isCompleted ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: isDark ? Colors.black : Colors.white,
-                    ),
-                  ),
-                ),
+                child: beat.isMultiPart && !beat.isCompleted
+                    ? AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: beat.completedParts > 0
+                              ? (isDark ? const Color(0x33818CF8) : const Color(0x204F46E5))
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: beat.completedParts > 0
+                                ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+                                : themeColors.textTertiary,
+                            width: 1.5,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${beat.completedParts}',
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: beat.completedParts > 0
+                                ? (isDark ? Colors.white : const Color(0xFF4F46E5))
+                                : themeColors.textTertiary,
+                          ),
+                        ),
+                      )
+                    : AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: beat.isCompleted
+                              ? themeColors.textPrimary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: beat.isCompleted
+                                ? themeColors.textPrimary
+                                : themeColors.textTertiary,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: AnimatedScale(
+                          scale: beat.isCompleted ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutBack,
+                          child: Icon(
+                            Icons.check_rounded,
+                            size: 13,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                        ),
+                      ),
               ),
             ),
             const SizedBox(width: 8),
@@ -791,8 +970,63 @@ class BeatTile extends StatelessWidget {
                             fontSize: 9.5,
                           ),
                         ),
+                        if (beat.isMultiPart) ...[
+                          Text(
+                            '•',
+                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                          ),
+                          Text(
+                            'part ${beat.completedParts}/${beat.totalParts}',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: beat.completedParts > 0
+                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                  : themeColors.textTertiary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
+                    if (beat.isMultiPart) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: List.generate(beat.totalParts, (index) {
+                                final isDone = index < beat.completedParts;
+                                return Expanded(
+                                  child: Container(
+                                    height: 3,
+                                    margin: EdgeInsets.only(
+                                      right: index < beat.totalParts - 1 ? 2.5 : 0,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(1.5),
+                                      color: isDone
+                                          ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+                                          : (isDark ? const Color(0x30FFFFFF) : const Color(0x20000000)),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${(beat.partProgress * 100).toInt()}%',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: beat.completedParts > 0
+                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                  : themeColors.textTertiary,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -840,6 +1074,51 @@ class BeatTile extends StatelessWidget {
                 tooltip: isDelayed ? 'Resume beat into active flow' : 'Delay beat for later',
               ),
 
+            if (onSplit != null && !beat.isCompleted)
+              IconButton(
+                icon: Icon(
+                  Icons.call_split_rounded,
+                  size: 15,
+                  color: beat.isMultiPart
+                      ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+                      : themeColors.textTertiary,
+                ),
+                onPressed: onSplit,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: beat.isMultiPart
+                    ? 'Part ${beat.completedParts} of ${beat.totalParts} (tap to edit parts)'
+                    : 'Complete in parts (split task)',
+              ),
+
+            if (onToggleFocus != null && !beat.isCompleted)
+              IconButton(
+                icon: Icon(
+                  isInFocus ? Icons.playlist_add_check_rounded : Icons.playlist_add_rounded,
+                  size: 17,
+                  color: isInFocus
+                      ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+                      : themeColors.textTertiary,
+                ),
+                onPressed: onToggleFocus,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: isInFocus ? 'In Today\'s Focus (tap to remove)' : 'Add to Today\'s Focus',
+              ),
+
+            if (onRemoveFromFocus != null)
+              IconButton(
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 15,
+                  color: themeColors.textTertiary,
+                ),
+                onPressed: onRemoveFromFocus,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: 'Remove from Today\'s Focus',
+              ),
+
             if (onFlag != null)
               IconButton(
                 icon: Icon(
@@ -850,6 +1129,77 @@ class BeatTile extends StatelessWidget {
                 onPressed: onFlag,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+              ),
+
+            if (beat.isCompleted && onMarkForRevision != null)
+              IconButton(
+                icon: Icon(
+                  isInRevisionShelf ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
+                  size: 15,
+                  color: isInRevisionShelf
+                      ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF6366F1))
+                      : themeColors.textTertiary,
+                ),
+                onPressed: onMarkForRevision,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: isInRevisionShelf ? 'In Revision Shelf' : 'Mark for Revision',
+              ),
+
+            if (onEdit != null || onDelete != null || (beat.isCompleted && onMarkForRevision != null))
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: 15,
+                  color: themeColors.textTertiary,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: 'Topic options',
+                onSelected: (val) {
+                  if (val == 'edit') onEdit?.call();
+                  if (val == 'delete') onDelete?.call();
+                  if (val == 'revision') onMarkForRevision?.call();
+                },
+                itemBuilder: (ctx) => [
+                  if (beat.isCompleted && onMarkForRevision != null)
+                    PopupMenuItem(
+                      value: 'revision',
+                      child: Row(
+                        children: [
+                          Icon(
+                            isInRevisionShelf ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
+                            size: 16,
+                            color: isInRevisionShelf ? const Color(0xFF6366F1) : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(isInRevisionShelf ? 'Modify Revision Shelf' : 'Mark for Revision'),
+                        ],
+                      ),
+                    ),
+                  if (onEdit != null)
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 16),
+                          SizedBox(width: 8),
+                          Text('Edit Topic'),
+                        ],
+                      ),
+                    ),
+                  if (onDelete != null)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                          SizedBox(width: 8),
+                          Text('Delete Topic', style: TextStyle(color: Colors.redAccent)),
+                        ],
+                      ),
+                    ),
+                ],
               ),
           ],
         ),

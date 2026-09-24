@@ -5,6 +5,7 @@ import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/database/models/roadmap_entity.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
+import 'package:rythem_app/core/pacing/pacing.dart';
 import 'package:rythem_app/features/flow/flow_screen.dart';
 import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
 
@@ -54,7 +55,16 @@ void main() {
               allRoadmaps: [testRoadmap],
               chapters: [testChapterLong],
               allBeats: [testBeatLong],
-              pacingBudget: null,
+              pacingBudget: PacingBudget(
+                roadmapId: testRoadmap.id,
+                todaysBeats: [testBeatLong],
+                todayEffortShare: 2.5,
+                todaysSelectedEffort: 2.5,
+                remainingEffort: 2.5,
+                daysLeft: 1,
+                isRoadmapCompleted: false,
+                isDailyQuotaCompleted: false,
+              ),
               chaptersByRoadmap: {
                 testRoadmap.id: [testChapterLong],
               },

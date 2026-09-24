@@ -18,8 +18,13 @@ import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 import 'package:rythem_app/features/flow/session_detail_screen.dart';
+import 'package:rythem_app/features/flow/split_task_sheet.dart';
+import 'widgets/add_topic_sheet.dart';
+import 'widgets/add_chapter_sheet.dart';
 import '../../core/navigation/smooth_page_route.dart';
 import 'widgets/chapter_accordion.dart';
+import '../flow/widgets/timeline_adjuster_sheet.dart';
+import '../../core/pacing/models/pacing_budget.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
 /// - Opened from Explore or Metrics
@@ -34,24 +39,42 @@ class RoadmapDetailScreen extends StatefulWidget {
   final RoadmapEntity roadmap;
   final List<ChapterEntity> chapters;
   final List<BeatEntity> beats;
+  final Set<String>? todaysBeatIds;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
+  final Future<void> Function(BeatEntity beat)? onToggleFocusBeat;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onDeleteRoadmap;
   final Future<void> Function(String roadmapId, String resourceUrl, {String? chapterId})? onAttachResource;
   final Future<void> Function(String beatId, String resourceUrl)? onAttachResourceToBeat;
+  final Future<void> Function(BeatEntity beat, int totalParts)? onSplitBeat;
+  final Future<void> Function(BeatEntity beat)? onIncrementBeatPart;
+  final Future<void> Function(BeatEntity beat)? onDecrementBeatPart;
+  final Future<void> Function(RoadmapEntity roadmap, DateTime? newTargetDate)? onUpdateTargetDate;
+  final PacingBudget? pacingBudget;
+  final Set<String>? revisionShelfBeatIds;
+  final void Function(BeatEntity beat)? onMarkForRevision;
 
   const RoadmapDetailScreen({
     super.key,
     required this.roadmap,
     required this.chapters,
     required this.beats,
+    this.todaysBeatIds,
     required this.onBeatToggled,
+    this.onToggleFocusBeat,
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
     this.onDeleteRoadmap,
     this.onAttachResource,
     this.onAttachResourceToBeat,
+    this.onSplitBeat,
+    this.onIncrementBeatPart,
+    this.onDecrementBeatPart,
+    this.onUpdateTargetDate,
+    this.pacingBudget,
+    this.revisionShelfBeatIds,
+    this.onMarkForRevision,
   });
 
   @override
@@ -62,6 +85,14 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   late RoadmapEntity _currentRoadmap;
   late List<ChapterEntity> _currentChapters;
   late List<BeatEntity> _currentBeats;
+
+  late Set<String> _todaysBeatIds;
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'No Deadline (Open Pace)';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
 
   final _roadmapRepo = RoadmapRepository();
   final _chapterRepo = ChapterRepository();
@@ -75,11 +106,25 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     _currentRoadmap = widget.roadmap;
     _currentChapters = List.from(widget.chapters);
     _currentBeats = List.from(widget.beats);
+    _todaysBeatIds = Set<String>.from(widget.todaysBeatIds ?? const {});
 
     _eventSub = DatabaseEventBus.instance.stream.listen((_) {
       _reloadFromDb();
     });
     _reloadFromDb();
+  }
+
+  Future<void> _handleToggleFocus(BeatEntity beat) async {
+    setState(() {
+      if (_todaysBeatIds.contains(beat.id)) {
+        _todaysBeatIds.remove(beat.id);
+      } else {
+        _todaysBeatIds.add(beat.id);
+      }
+    });
+    if (widget.onToggleFocusBeat != null) {
+      await widget.onToggleFocusBeat!(beat);
+    }
   }
 
   @override
@@ -186,6 +231,121 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
         icon: Icons.psychology_outlined,
       );
       await _reloadFromDb();
+    }
+  }
+
+  Future<void> _handleSplitBeat(BeatEntity beat, int totalParts) async {
+    if (widget.onSplitBeat != null) {
+      await widget.onSplitBeat!(beat, totalParts);
+    } else {
+      await _beatRepo.updateBeatParts(beat.id, totalParts);
+    }
+    if (mounted) {
+      await _reloadFromDb();
+      if (mounted) {
+        showGlassToast(
+          context,
+          totalParts > 1
+              ? 'Split into $totalParts parts'
+              : 'Reset to single task',
+          icon: Icons.call_split_rounded,
+        );
+      }
+    }
+  }
+
+  Future<void> _handleIncrementBeatPart(BeatEntity beat) async {
+    if (widget.onIncrementBeatPart != null) {
+      await widget.onIncrementBeatPart!(beat);
+    } else {
+      await _beatRepo.incrementBeatPart(beat.id);
+    }
+    if (mounted) {
+      await _reloadFromDb();
+    }
+  }
+
+  Future<void> _handleDecrementBeatPart(BeatEntity beat) async {
+    if (widget.onDecrementBeatPart != null) {
+      await widget.onDecrementBeatPart!(beat);
+    } else {
+      await _beatRepo.decrementBeatPart(beat.id);
+    }
+    if (mounted) {
+      await _reloadFromDb();
+    }
+  }
+
+  void _openAddTopicSheet(ChapterEntity chapter) {
+    AddTopicSheet.show(
+      context,
+      chapter: chapter,
+      roadmapId: _currentRoadmap.id,
+      beatRepo: _beatRepo,
+      onTopicSaved: (_) => _reloadFromDb(),
+    );
+  }
+
+  void _openEditTopicSheet(BeatEntity beat) {
+    final chapter = _currentChapters.where((c) => c.id == beat.chapterId).firstOrNull;
+    if (chapter == null) return;
+    AddTopicSheet.show(
+      context,
+      chapter: chapter,
+      roadmapId: _currentRoadmap.id,
+      existingBeat: beat,
+      beatRepo: _beatRepo,
+      onTopicSaved: (_) => _reloadFromDb(),
+    );
+  }
+
+  Future<void> _handleDeleteBeat(BeatEntity beat) async {
+    HapticFeedback.mediumImpact();
+    await _beatRepo.deleteBeat(beat.id);
+    if (mounted) {
+      await _reloadFromDb();
+      if (mounted) {
+        showGlassToast(
+          context,
+          'Deleted "${beat.title}"',
+          icon: Icons.delete_outline_rounded,
+        );
+      }
+    }
+  }
+
+  void _openAddChapterSheet() {
+    AddChapterSheet.show(
+      context,
+      roadmapId: _currentRoadmap.id,
+      chapterRepo: _chapterRepo,
+      onChapterSaved: (_) => _reloadFromDb(),
+    );
+  }
+
+  void _openEditChapterSheet(ChapterEntity chapter) {
+    AddChapterSheet.show(
+      context,
+      roadmapId: _currentRoadmap.id,
+      existingChapter: chapter,
+      chapterRepo: _chapterRepo,
+      onChapterSaved: (_) => _reloadFromDb(),
+    );
+  }
+
+  Future<void> _handleDeleteChapter(ChapterEntity chapter) async {
+    HapticFeedback.heavyImpact();
+    await _chapterRepo.deleteChapter(chapter.id);
+    await _beatRepo.deleteBeatsByChapterId(chapter.id);
+    if (mounted) {
+      await _reloadFromDb();
+      if (mounted) {
+        showGlassToast(
+          context,
+          'Deleted chapter "${chapter.title}"',
+          icon: Icons.delete_outline_rounded,
+        );
+      }
     }
   }
 
@@ -864,6 +1024,75 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               ),
                             ],
                           ),
+                          // Pace & Target Date Row (Feature 4)
+                          if (_currentRoadmap.targetCompletionDate != null || widget.pacingBudget != null) ...[
+                            const SizedBox(height: 10),
+                            InkWell(
+                              onTap: (widget.onUpdateTargetDate != null && widget.pacingBudget != null)
+                                  ? () {
+                                      TimelineAdjusterSheet.show(
+                                        context,
+                                        roadmap: _currentRoadmap,
+                                        pacingBudget: widget.pacingBudget!,
+                                        onTargetDateSelected: (newDate) async {
+                                          await widget.onUpdateTargetDate!(_currentRoadmap, newDate);
+                                          await _reloadFromDb();
+                                        },
+                                      );
+                                    }
+                                  : null,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _currentRoadmap.targetCompletionDate == null
+                                          ? Icons.all_inclusive_rounded
+                                          : Icons.event_rounded,
+                                      size: 16,
+                                      color: const Color(0xFF6366F1),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _currentRoadmap.targetCompletionDate == null
+                                            ? 'Target: Open Pace (No Deadline)'
+                                            : 'Target: ${_formatDate(_currentRoadmap.targetCompletionDate)}',
+                                        style: RythemTypography.bodySmall.copyWith(
+                                          color: themeColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    if (widget.onUpdateTargetDate != null && widget.pacingBudget != null) ...[
+                                      Text(
+                                        'Adjust',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          color: const Color(0xFF6366F1),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      const Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 16,
+                                        color: Color(0xFF6366F1),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 14),
 
                           // Attach Resource Action Button (Primary Action)
@@ -1051,6 +1280,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           chapter: chapter,
                           beats: beats,
                           initialExpanded: isFirstChapter,
+                          todaysBeatIds: _todaysBeatIds,
+                          onToggleFocusBeat: _handleToggleFocus,
                           onBeatToggled: _handleBeatToggle,
                           onBeatTapped: _openFocusSession,
                           onAttachResource: _showAttachResourceToBeatDialog,
@@ -1062,8 +1293,61 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           onFlagBeat: (beat) {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },
+                          onSplitBeat: (beat) {
+                            SplitTaskSheet.show(
+                              context,
+                              beat: beat,
+                              onSave: (parts) => _handleSplitBeat(beat, parts),
+                            );
+                          },
+                          onIncrementBeatPart: _handleIncrementBeatPart,
+                          onDecrementBeatPart: _handleDecrementBeatPart,
+                          onAddTopic: _openAddTopicSheet,
+                          onEditBeat: _openEditTopicSheet,
+                          onDeleteBeat: _handleDeleteBeat,
+                          onEditChapter: _openEditChapterSheet,
+                          onDeleteChapter: _handleDeleteChapter,
+                          revisionShelfBeatIds: widget.revisionShelfBeatIds,
+                          onMarkForRevision: widget.onMarkForRevision,
                         );
                       }),
+                      const SizedBox(height: 16),
+                      // Add Custom Chapter Button
+                      GestureDetector(
+                        onTap: _openAddChapterSheet,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.create_new_folder_rounded,
+                                size: 18,
+                                color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Add Custom Chapter',
+                                style: RythemTypography.bodyMedium.copyWith(
+                                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
                   ],
                 ),
               ),

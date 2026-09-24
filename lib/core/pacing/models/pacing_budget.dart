@@ -1,4 +1,10 @@
-import '../../database/database.dart';
+import '../../database/models/beat_entity.dart';
+
+enum PaceStatus {
+  onTrack,
+  behindSchedule,
+  openPace,
+}
 
 /// Represents the calculated daily pacing budget derived strictly from math.
 /// 
@@ -53,6 +59,26 @@ class PacingBudget {
   /// Number of days remaining until the scheduled kickoff date.
   final int daysUntilStart;
 
+  /// High-level navigation status (onTrack, behindSchedule, openPace).
+  final PaceStatus paceStatus;
+
+  /// Projected calendar completion date based on actual user velocity.
+  final DateTime? projectedCompletionDate;
+
+  /// Difference in calendar days between projected completion and target date.
+  /// Positive means behind target (e.g. +4 = 4 days behind).
+  /// Negative or zero means ahead or on time (e.g. -2 = 2 days ahead).
+  final int daysAheadOrBehind;
+
+  /// Informational recommended lessons/day to hit target date.
+  final double dailyEffortGuideline;
+
+  /// Non-intrusive advisory coaching message.
+  final String guidelineMessage;
+
+  /// Target completion date if set.
+  final DateTime? targetDate;
+
   const PacingBudget({
     required this.roadmapId,
     required this.remainingEffort,
@@ -69,7 +95,17 @@ class PacingBudget {
     this.velocityDeficit = 0.0,
     this.isUpcoming = false,
     this.daysUntilStart = 0,
+    this.paceStatus = PaceStatus.openPace,
+    this.projectedCompletionDate,
+    this.daysAheadOrBehind = 0,
+    this.dailyEffortGuideline = 1.0,
+    this.guidelineMessage = '',
+    this.targetDate,
   });
+
+  bool get isOnTrack => paceStatus == PaceStatus.onTrack;
+  bool get isBehindSchedule => paceStatus == PaceStatus.behindSchedule;
+  bool get isOpenPace => paceStatus == PaceStatus.openPace;
 
   /// Ratio of completed beats today vs total assigned for today.
   double get dailyCompletionRatio {
@@ -98,6 +134,12 @@ class PacingBudget {
     double? velocityDeficit,
     bool? isUpcoming,
     int? daysUntilStart,
+    PaceStatus? paceStatus,
+    DateTime? projectedCompletionDate,
+    int? daysAheadOrBehind,
+    double? dailyEffortGuideline,
+    String? guidelineMessage,
+    DateTime? targetDate,
   }) {
     return PacingBudget(
       roadmapId: roadmapId ?? this.roadmapId,
@@ -115,6 +157,12 @@ class PacingBudget {
       velocityDeficit: velocityDeficit ?? this.velocityDeficit,
       isUpcoming: isUpcoming ?? this.isUpcoming,
       daysUntilStart: daysUntilStart ?? this.daysUntilStart,
+      paceStatus: paceStatus ?? this.paceStatus,
+      projectedCompletionDate: projectedCompletionDate ?? this.projectedCompletionDate,
+      daysAheadOrBehind: daysAheadOrBehind ?? this.daysAheadOrBehind,
+      dailyEffortGuideline: dailyEffortGuideline ?? this.dailyEffortGuideline,
+      guidelineMessage: guidelineMessage ?? this.guidelineMessage,
+      targetDate: targetDate ?? this.targetDate,
     );
   }
 }

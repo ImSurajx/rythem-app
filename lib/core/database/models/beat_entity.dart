@@ -14,6 +14,8 @@ class BeatEntity {
   final bool isMentorExtra;
   final double? matchConfidence;
   final String? syllabusTopicId;
+  final int totalParts;
+  final int completedParts;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -31,9 +33,16 @@ class BeatEntity {
     this.isMentorExtra = false,
     this.matchConfidence,
     this.syllabusTopicId,
+    this.totalParts = 1,
+    this.completedParts = 0,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  bool get isMultiPart => totalParts > 1;
+  double get partProgress =>
+      totalParts > 0 ? (completedParts / totalParts).clamp(0.0, 1.0) : 0.0;
+  int get remainingParts => (totalParts - completedParts).clamp(0, totalParts);
 
   BeatEntity copyWith({
     String? id,
@@ -50,6 +59,8 @@ class BeatEntity {
     bool? isMentorExtra,
     double? matchConfidence,
     String? syllabusTopicId,
+    int? totalParts,
+    int? completedParts,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -67,6 +78,8 @@ class BeatEntity {
       isMentorExtra: isMentorExtra ?? this.isMentorExtra,
       matchConfidence: matchConfidence ?? this.matchConfidence,
       syllabusTopicId: syllabusTopicId ?? this.syllabusTopicId,
+      totalParts: totalParts ?? this.totalParts,
+      completedParts: completedParts ?? this.completedParts,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -87,6 +100,8 @@ class BeatEntity {
       BeatColumns.isMentorExtra: isMentorExtra ? 1 : 0,
       BeatColumns.matchConfidence: matchConfidence,
       BeatColumns.syllabusTopicId: syllabusTopicId,
+      BeatColumns.totalParts: totalParts,
+      BeatColumns.completedParts: completedParts,
       BeatColumns.createdAt: createdAt.toIso8601String(),
       BeatColumns.updatedAt: updatedAt.toIso8601String(),
     };
@@ -109,6 +124,8 @@ class BeatEntity {
       isMentorExtra: (map[BeatColumns.isMentorExtra] as int?) == 1,
       matchConfidence: (map[BeatColumns.matchConfidence] as num?)?.toDouble(),
       syllabusTopicId: map[BeatColumns.syllabusTopicId] as String?,
+      totalParts: (map[BeatColumns.totalParts] as int?) ?? 1,
+      completedParts: (map[BeatColumns.completedParts] as int?) ?? 0,
       createdAt: DateTime.parse(map[BeatColumns.createdAt] as String),
       updatedAt: DateTime.parse(map[BeatColumns.updatedAt] as String),
     );
@@ -126,5 +143,5 @@ class BeatEntity {
 
   @override
   String toString() =>
-      'BeatEntity(id: $id, title: $title, isCompleted: $isCompleted, isMentorExtra: $isMentorExtra, effortWeight: $effortWeight)';
+      'BeatEntity(id: $id, title: $title, isCompleted: $isCompleted, totalParts: $totalParts, completedParts: $completedParts, effortWeight: $effortWeight)';
 }

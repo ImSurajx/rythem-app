@@ -15,12 +15,15 @@ abstract class IYoutubeClient {
 class YoutubeExtractorService implements IYoutubeClient {
   final yt.YoutubeExplode _yt;
   final http.Client _httpClient;
+  final Future<List<String>> Function(String videoId)? _customCommentsProvider;
 
   YoutubeExtractorService({
     yt.YoutubeExplode? client,
     http.Client? httpClient,
+    Future<List<String>> Function(String videoId)? customCommentsProvider,
   })  : _yt = client ?? yt.YoutubeExplode(),
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client(),
+        _customCommentsProvider = customCommentsProvider;
 
   @override
   void close() {
@@ -699,6 +702,7 @@ class YoutubeExtractorService implements IYoutubeClient {
       final seenStarts = <int>{};
       final rawMarkers = <({String title, int startSeconds, int? durationSeconds, String? thumbnail})>[];
       final descriptionLines = <String>[];
+      final communityComments = <String>[];
 
       void walkNodes(dynamic node) {
         if (node is Map<String, dynamic>) {
@@ -814,6 +818,33 @@ class YoutubeExtractorService implements IYoutubeClient {
             }
           }
 
+          // 3. Community Comments (pinned & regular comments in initial payload)
+          if (node.containsKey('commentRenderer')) {
+            final cr = node['commentRenderer'] as Map<String, dynamic>;
+            final contentObj = cr['contentText'] as Map<String, dynamic>?;
+            if (contentObj != null) {
+              final sb = StringBuffer();
+              if (contentObj['runs'] is List) {
+                for (final r in contentObj['runs'] as List) {
+                  final text = r['text']?.toString();
+                  if (text != null) sb.write(text);
+                }
+              } else if (contentObj['simpleText'] != null) {
+                sb.write(contentObj['simpleText'].toString());
+              }
+              final text = sb.toString().trim();
+              if (text.isNotEmpty) {
+                final isPinned = cr.containsKey('pinnedCommentBadge') ||
+                    cr['pinnedCommentBadge'] != null;
+                if (isPinned) {
+                  communityComments.insert(0, text);
+                } else {
+                  communityComments.add(text);
+                }
+              }
+            }
+          }
+
           for (final val in node.values) {
             walkNodes(val);
           }
@@ -882,6 +913,35 @@ class YoutubeExtractorService implements IYoutubeClient {
           return ExtractedResource(
             title: title,
             description: fullDesc,
+            author: author,
+            sourceUrl: videoUrl,
+            resourceType: ExtractedResourceType.singleVideoWithTimestamps,
+            items: items,
+          );
+        }
+      }
+
+      // Case C: Community comments found directly in Innertube next response
+      if (communityComments.isNotEmpty) {
+        final commentSegments = TimestampParser.parseComments(communityComments);
+        if (commentSegments.length >= 2) {
+          final items = <RawResourceItem>[];
+          for (int i = 0; i < commentSegments.length; i++) {
+            final seg = commentSegments[i];
+            final deepLink = '$videoUrl&t=${seg.startSeconds}s';
+            items.add(RawResourceItem(
+              title: seg.title,
+              sourceUrl: deepLink,
+              timestampSeconds: seg.startSeconds,
+              durationSeconds: seg.durationSeconds,
+              index: i,
+              thumbnailUrl: defaultThumbnail,
+            ));
+          }
+
+          return ExtractedResource(
+            title: title,
+            description: descriptionLines.join('\n'),
             author: author,
             sourceUrl: videoUrl,
             resourceType: ExtractedResourceType.singleVideoWithTimestamps,
@@ -990,6 +1050,88 @@ class YoutubeExtractorService implements IYoutubeClient {
     }
   }
 
+  /// Extracts chapters by scanning community comments (creator-hearted, pinned, and top-voted).
+  Future<ExtractedResource?> _extractVideoViaComments(
+    String videoId, {
+    String? title,
+    String? author,
+    String? description,
+    int? durationSeconds,
+    String? defaultThumbnail,
+  }) async {
+    final videoUrl = 'https://www.youtube.com/watch?v=$videoId';
+    final candidateComments = <String>[];
+
+    // 1. Custom comments provider (useful for testing or specialized APIs)
+    final customProvider = _customCommentsProvider;
+    if (customProvider != null) {
+      try {
+        final custom = await customProvider(videoId);
+        candidateComments.addAll(custom);
+      } catch (e) {
+        debugPrint('Custom comments provider error: $e');
+      }
+    }
+
+    // 2. Fetch comments via youtube_explode_dart commentsClient
+    try {
+      final video = await _yt.videos.get(videoId);
+      final comments = await _yt.videos.commentsClient.getComments(video);
+      if (comments != null) {
+        final hearted = <String>[];
+        final regular = <String>[];
+        for (final c in comments) {
+          if (c.isHearted) {
+            hearted.add(c.text);
+          } else {
+            regular.add(c.text);
+          }
+        }
+        candidateComments.addAll(hearted);
+        candidateComments.addAll(regular);
+      }
+    } catch (e) {
+      debugPrint('Notice: commentsClient fetch fell back: $e');
+    }
+
+    if (candidateComments.isEmpty) return null;
+
+    final segments = TimestampParser.parseComments(
+      candidateComments,
+      totalVideoDurationSeconds: durationSeconds ?? 900,
+    );
+
+    if (segments.length < 2) return null;
+
+    final resolvedTitle = title ?? 'YouTube Video';
+    final resolvedAuthor = author ?? 'YouTube Creator';
+    final resolvedDesc = description ?? '';
+    final resolvedThumb = defaultThumbnail ?? 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
+
+    final items = <RawResourceItem>[];
+    for (int i = 0; i < segments.length; i++) {
+      final seg = segments[i];
+      final deepLink = '$videoUrl&t=${seg.startSeconds}s';
+      items.add(RawResourceItem(
+        title: seg.title,
+        sourceUrl: deepLink,
+        timestampSeconds: seg.startSeconds,
+        durationSeconds: seg.durationSeconds,
+        index: i,
+        thumbnailUrl: resolvedThumb,
+      ));
+    }
+
+    return ExtractedResource(
+      title: resolvedTitle,
+      description: resolvedDesc,
+      author: resolvedAuthor,
+      sourceUrl: videoUrl,
+      resourceType: ExtractedResourceType.singleVideoWithTimestamps,
+      items: items,
+    );
+  }
+
   @override
   Future<ExtractedResource> extractVideo(String videoUrl) async {
     final videoId = parseVideoId(videoUrl);
@@ -1014,14 +1156,22 @@ class YoutubeExtractorService implements IYoutubeClient {
     }
 
     // 3. Tertiary: youtube_explode_dart using clean video ID
+    int? ytDurationSec;
+    String? ytTitle;
+    String? ytAuthor;
+    String? ytDesc;
+    String? ytThumb;
     try {
       final video = await _yt.videos.get(videoId);
-      final totalDurationSec = video.duration?.inSeconds ?? 900;
-      final description = video.description;
+      ytDurationSec = video.duration?.inSeconds ?? 900;
+      ytTitle = video.title;
+      ytAuthor = video.author;
+      ytDesc = video.description;
+      ytThumb = video.thumbnails.highResUrl;
 
       final timestampSegments = TimestampParser.parseDescription(
-        description,
-        totalVideoDurationSeconds: totalDurationSec,
+        ytDesc,
+        totalVideoDurationSeconds: ytDurationSec,
       );
 
       if (timestampSegments.length >= 2) {
@@ -1035,14 +1185,14 @@ class YoutubeExtractorService implements IYoutubeClient {
             timestampSeconds: seg.startSeconds,
             durationSeconds: seg.durationSeconds,
             index: i,
-            thumbnailUrl: video.thumbnails.highResUrl,
+            thumbnailUrl: ytThumb,
           ));
         }
 
         return ExtractedResource(
-          title: video.title,
-          description: video.description,
-          author: video.author,
+          title: ytTitle,
+          description: ytDesc,
+          author: ytAuthor,
           sourceUrl: video.url,
           resourceType: ExtractedResourceType.singleVideoWithTimestamps,
           items: rawItems,
@@ -1060,7 +1210,27 @@ class YoutubeExtractorService implements IYoutubeClient {
       return htmlResource;
     }
 
-    // 5. Final fallback: Video genuinely has no chapters. Return single video representation.
+    // 5. Quinary: Community comments chapter extraction fallback (creator-hearted, pinned, and top community timestamps)
+    final fallbackTitle = ytTitle ?? nextResource?.title ?? playerResource?.title ?? htmlResource?.title;
+    final fallbackAuthor = ytAuthor ?? nextResource?.author ?? playerResource?.author ?? htmlResource?.author;
+    final fallbackDesc = ytDesc ?? nextResource?.description ?? playerResource?.description ?? htmlResource?.description;
+    final fallbackThumb = ytThumb ?? nextResource?.items.firstOrNull?.thumbnailUrl ?? playerResource?.items.firstOrNull?.thumbnailUrl;
+
+    final commentResource = await _extractVideoViaComments(
+      videoId,
+      title: fallbackTitle,
+      author: fallbackAuthor,
+      description: fallbackDesc,
+      durationSeconds: ytDurationSec,
+      defaultThumbnail: fallbackThumb,
+    );
+    if (commentResource != null &&
+        commentResource.resourceType == ExtractedResourceType.singleVideoWithTimestamps &&
+        commentResource.items.length >= 2) {
+      return commentResource;
+    }
+
+    // 6. Final fallback: Video genuinely has no chapters. Return single video representation.
     if (playerResource != null) return playerResource;
     if (nextResource != null) return nextResource;
     if (htmlResource != null) return htmlResource;

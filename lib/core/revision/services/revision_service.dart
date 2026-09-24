@@ -79,6 +79,76 @@ class RevisionService {
     }
   }
 
+  /// Adds or updates a topic on the Spaced Revision Shelf with an optional spaced interval.
+  Future<RevisionItem> addToRevisionShelf({
+    required BeatEntity beat,
+    required String roadmapTitle,
+    int? intervalDays,
+    String? note,
+  }) async {
+    await init();
+
+    final now = DateTime.now();
+    final scheduledDate = intervalDays != null
+        ? DateTime(now.year, now.month, now.day).add(Duration(days: intervalDays))
+        : null;
+
+    final existing = _records[beat.id];
+    final updated = RevisionItem(
+      beatId: beat.id,
+      roadmapId: beat.roadmapId,
+      roadmapTitle: roadmapTitle,
+      title: beat.title,
+      isFlaggedWeak: existing?.isFlaggedWeak ?? false,
+      flagNote: note ?? existing?.flagNote,
+      lastRevisedAt: existing?.lastRevisedAt,
+      revisionCount: existing?.revisionCount ?? 0,
+      stabilityDays: existing?.stabilityDays ?? (intervalDays != null ? intervalDays.toDouble() : 1.0),
+      retentionScore: existing?.retentionScore ?? 1.0,
+      suggestedReason: intervalDays != null
+          ? 'Scheduled review in $intervalDays days'
+          : 'Saved in shelf for on-demand practice',
+      isCompleted: false,
+      scheduledReviewDate: scheduledDate,
+      intervalDays: intervalDays,
+    );
+
+    _records[beat.id] = updated;
+    await _persist();
+    return updated;
+  }
+
+  /// Removes a topic completely from the Revision Shelf.
+  Future<void> removeFromRevisionShelf(String beatId) async {
+    await init();
+    if (_records.containsKey(beatId)) {
+      _records.remove(beatId);
+      await _persist();
+    }
+  }
+
+  /// Retrieves all items currently stored in the revision shelf.
+  Future<List<RevisionItem>> getRevisionShelfItems() async {
+    await init();
+    final list = _records.values.toList();
+    list.sort((a, b) {
+      if (a.isDueToday && !b.isDueToday) return -1;
+      if (!a.isDueToday && b.isDueToday) return 1;
+      if (a.scheduledReviewDate != null && b.scheduledReviewDate != null) {
+        return a.scheduledReviewDate!.compareTo(b.scheduledReviewDate!);
+      }
+      if (a.scheduledReviewDate != null) return -1;
+      if (b.scheduledReviewDate != null) return 1;
+      return a.title.compareTo(b.title);
+    });
+    return list;
+  }
+
+  /// Checks if a beat is currently stored in the revision shelf.
+  bool isInRevisionShelf(String beatId) {
+    return _records.containsKey(beatId);
+  }
+
   /// Marks a concept as revised today, updating its stability and repetition interval.
   Future<RevisionItem> markTopicRevised(BeatEntity beat, {required String roadmapTitle}) async {
     await init();
@@ -111,6 +181,8 @@ class RevisionService {
       retentionScore: 1.0,
       suggestedReason: reason,
       isCompleted: true,
+      scheduledReviewDate: existing?.scheduledReviewDate,
+      intervalDays: existing?.intervalDays,
     );
 
     _records[beat.id] = updated;
@@ -196,6 +268,11 @@ class RevisionService {
         // Candidate must be completed OR explicitly flagged
         if (!isCompleted && !isFlagged) continue;
 
+        // If explicitly scheduled for a future date, do not recommend today
+        if (record?.scheduledReviewDate != null && !record!.isDueToday) {
+          continue;
+        }
+
         // Topics completed today do not need same-day revision unless explicitly flagged weak
         if (!isFlagged && beat.completedAt != null && beat.completedAt!.isAfter(todayStart) && record?.lastRevisedAt == null) {
           continue;
@@ -223,6 +300,8 @@ class RevisionService {
               prerequisiteTargetTitle: aiEval?.prerequisiteForTitle,
               beatPoints: (aiEval?.isPrerequisite == true || isFlagged) ? 1.0 : 0.5,
               isCompleted: true,
+              scheduledReviewDate: record.scheduledReviewDate,
+              intervalDays: record.intervalDays,
             ),
           );
           continue;
@@ -277,6 +356,8 @@ class RevisionService {
             prerequisiteTargetTitle: aiEval?.prerequisiteForTitle,
             beatPoints: points,
             isCompleted: false,
+            scheduledReviewDate: record?.scheduledReviewDate,
+            intervalDays: record?.intervalDays,
           ),
         );
       }

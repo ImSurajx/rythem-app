@@ -8,12 +8,15 @@ import '../../../core/revision/models/revision_item.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/typography.dart';
 
-/// Clean, lightweight Today's Revision Suggestion Board.
-/// Suggests 2-3 high-yield topics to revisit so the user doesn't forget.
-/// If no topics need revision, renders empty (SizedBox.shrink).
-class DailyRevisionBoard extends StatelessWidget {
+/// Clean Revision Shelf & Spaced Retention Board.
+/// Separates past concept retention into a dedicated, guilt-free shelf in Flow.
+/// Supports both Due-Today priority items and browsing the entire Revision Shelf.
+class DailyRevisionBoard extends StatefulWidget {
   final List<RevisionItem> revisionItems;
+  final List<RevisionItem>? allShelfItems;
   final ValueChanged<RevisionItem> onMarkRevised;
+  final ValueChanged<RevisionItem>? onUnshelf;
+  final ValueChanged<RevisionItem>? onReschedule;
   final LocalInferenceService? inferenceService;
   final VoidCallback? onRequestRecommendations;
   final bool isScanning;
@@ -23,7 +26,10 @@ class DailyRevisionBoard extends StatelessWidget {
   const DailyRevisionBoard({
     super.key,
     required this.revisionItems,
+    this.allShelfItems,
     required this.onMarkRevised,
+    this.onUnshelf,
+    this.onReschedule,
     this.inferenceService,
     this.onRequestRecommendations,
     this.isScanning = false,
@@ -32,10 +38,17 @@ class DailyRevisionBoard extends StatelessWidget {
   });
 
   @override
+  State<DailyRevisionBoard> createState() => _DailyRevisionBoardState();
+}
+
+class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
+  int _selectedTab = 0; // 0: Due Today, 1: All in Shelf
+
+  @override
   Widget build(BuildContext context) {
-    final isDownloading = inferenceService?.isModelDownloading == true;
-    final downloadProgress = inferenceService?.downloadProgressNotifier.value;
-    final downloadingTier = inferenceService?.downloadingTier;
+    final isDownloading = widget.inferenceService?.isModelDownloading == true;
+    final downloadProgress = widget.inferenceService?.downloadProgressNotifier.value;
+    final downloadingTier = widget.inferenceService?.downloadingTier;
 
     if (isDownloading) {
       return _buildEngineSyncingCard(
@@ -45,15 +58,20 @@ class DailyRevisionBoard extends StatelessWidget {
       );
     }
 
-    if (revisionItems.isEmpty) {
-      if (onRequestRecommendations != null) {
+    final hasAllShelf = widget.allShelfItems != null && widget.allShelfItems!.isNotEmpty;
+    final displayedItems = _selectedTab == 0
+        ? widget.revisionItems
+        : (widget.allShelfItems ?? widget.revisionItems);
+
+    if (displayedItems.isEmpty && widget.revisionItems.isEmpty && !hasAllShelf) {
+      if (widget.onRequestRecommendations != null) {
         return _buildAskAiCard(context);
       }
       return const SizedBox.shrink();
     }
 
-    final dueCount = revisionItems.where((i) => !i.isCompletedToday).length;
-    final isAllDone = revisionItems.isNotEmpty && dueCount == 0;
+    final dueCount = widget.revisionItems.where((i) => !i.isCompletedToday).length;
+    final isAllDone = widget.revisionItems.isNotEmpty && dueCount == 0;
     final badgeColor = isAllDone ? const Color(0xFF10B981) : Colors.amber;
 
     return RepaintBoundary(
@@ -63,7 +81,7 @@ class DailyRevisionBoard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: isDark
+              color: widget.isDark
                   ? Colors.black.withOpacity(0.28)
                   : const Color(0xFF0E1420).withOpacity(0.05),
               blurRadius: 16,
@@ -80,7 +98,7 @@ class DailyRevisionBoard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: isDark
+                  colors: widget.isDark
                       ? [
                           const Color(0x24FFFFFF),
                           const Color(0x12FFFFFF),
@@ -94,7 +112,7 @@ class DailyRevisionBoard extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                  color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000),
                   width: 0.9,
                 ),
               ),
@@ -115,7 +133,7 @@ class DailyRevisionBoard extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.all(4.5),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(isDark ? 0.2 : 0.12),
+                                    color: Colors.amber.withOpacity(widget.isDark ? 0.2 : 0.12),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -128,7 +146,7 @@ class DailyRevisionBoard extends StatelessWidget {
                                 Text(
                                   "TODAY'S REVISION",
                                   style: RythemTypography.titleMedium.copyWith(
-                                    color: themeColors.textPrimary,
+                                    color: widget.themeColors.textPrimary,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13.5,
                                     letterSpacing: 0.8,
@@ -138,7 +156,7 @@ class DailyRevisionBoard extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withOpacity(isDark ? 0.2 : 0.12),
+                                    color: const Color(0xFF10B981).withOpacity(widget.isDark ? 0.2 : 0.12),
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
                                       color: const Color(0xFF10B981).withOpacity(0.35),
@@ -167,13 +185,13 @@ class DailyRevisionBoard extends StatelessWidget {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (onRequestRecommendations != null)
+                                if (widget.onRequestRecommendations != null)
                                   GestureDetector(
-                                    onTap: isScanning ? null : onRequestRecommendations,
+                                    onTap: widget.isScanning ? null : widget.onRequestRecommendations,
                                     behavior: HitTestBehavior.opaque,
                                     child: Padding(
                                       padding: const EdgeInsets.only(right: 6),
-                                      child: isScanning
+                                      child: widget.isScanning
                                           ? const SizedBox(
                                               width: 12,
                                               height: 12,
@@ -182,17 +200,17 @@ class DailyRevisionBoard extends StatelessWidget {
                                           : Icon(
                                               Icons.refresh_rounded,
                                               size: 14,
-                                              color: themeColors.textTertiary,
+                                              color: widget.themeColors.textTertiary,
                                             ),
                                     ),
                                   ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                                   decoration: BoxDecoration(
-                                    color: badgeColor.withOpacity(isDark ? 0.22 : 0.15),
+                                    color: badgeColor.withOpacity(widget.isDark ? 0.22 : 0.15),
                                     borderRadius: BorderRadius.circular(7),
                                     border: Border.all(
-                                      color: badgeColor.withOpacity(isDark ? 0.4 : 0.3),
+                                      color: badgeColor.withOpacity(widget.isDark ? 0.4 : 0.3),
                                       width: 0.8,
                                     ),
                                   ),
@@ -213,31 +231,143 @@ class DailyRevisionBoard extends StatelessWidget {
                         Text(
                           'AI prerequisite bridging + mathematical spaced retention • 10-min warm-up',
                           style: RythemTypography.caption.copyWith(
-                            color: themeColors.textTertiary,
+                            color: widget.themeColors.textTertiary,
                             fontSize: 10,
                           ),
                         ),
+
+                        // Segmented control when shelf items exist
+                        if (hasAllShelf && widget.allShelfItems!.length > widget.revisionItems.length) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.all(2.5),
+                            decoration: BoxDecoration(
+                              color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000),
+                                width: 0.6,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _selectedTab = 0);
+                                    },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 160),
+                                      padding: const EdgeInsets.symmetric(vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: _selectedTab == 0
+                                            ? (widget.isDark ? const Color(0xFF6366F1).withOpacity(0.28) : Colors.white)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: _selectedTab == 0
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.08),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'DUE TODAY (${widget.revisionItems.length})',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: _selectedTab == 0 ? FontWeight.w800 : FontWeight.w600,
+                                          color: _selectedTab == 0
+                                              ? (widget.isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                              : widget.themeColors.textTertiary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _selectedTab = 1);
+                                    },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 160),
+                                      padding: const EdgeInsets.symmetric(vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: _selectedTab == 1
+                                            ? (widget.isDark ? const Color(0xFF6366F1).withOpacity(0.28) : Colors.white)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: _selectedTab == 1
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.08),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'ALL IN SHELF (${widget.allShelfItems!.length})',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: _selectedTab == 1 ? FontWeight.w800 : FontWeight.w600,
+                                          color: _selectedTab == 1
+                                              ? (widget.isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                              : widget.themeColors.textTertiary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
 
                   Divider(
                     height: 1,
-                    color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                    color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000),
                   ),
 
-                  // 2-3 Focus Revision Tiles (matching BeatTile todo styling with strikethrough)
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    itemCount: revisionItems.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 6),
-                    itemBuilder: (context, index) {
-                      final item = revisionItems[index];
-                      return _buildRevisionTile(context, item);
-                    },
-                  ),
+                  if (displayedItems.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: Text(
+                          'No topics in this view. Keep learning new concepts!',
+                          style: RythemTypography.caption.copyWith(
+                            color: widget.themeColors.textTertiary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    // Focus Revision Tiles (matching BeatTile todo styling with strikethrough)
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      itemCount: displayedItems.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final item = displayedItems[index];
+                        return _buildRevisionTile(context, item);
+                      },
+                    ),
                 ],
               ),
             ),
@@ -266,258 +396,311 @@ class DailyRevisionBoard extends StatelessWidget {
         break;
     }
 
+    // Schedule status calculation
+    String? scheduleLabel;
+    Color scheduleColor = const Color(0xFF6366F1);
+    if (item.scheduledReviewDate != null) {
+      final now = DateTime.now();
+      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+      if (item.scheduledReviewDate!.isBefore(todayEnd) || !item.scheduledReviewDate!.isAfter(todayEnd)) {
+        scheduleLabel = isCompleted ? 'REVISED' : 'DUE TODAY';
+        scheduleColor = isCompleted ? const Color(0xFF10B981) : Colors.amber;
+      } else {
+        final days = item.scheduledReviewDate!.difference(DateTime(now.year, now.month, now.day)).inDays;
+        scheduleLabel = 'IN ${days > 0 ? days : 1}D';
+        scheduleColor = const Color(0xFF818CF8);
+      }
+    } else if (item.intervalDays == null && widget.onUnshelf != null) {
+      scheduleLabel = 'SHELF';
+      scheduleColor = const Color(0xFF06B6D4);
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
         HapticFeedback.selectionClick();
-        onMarkRevised(item);
+        widget.onMarkRevised(item);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        const Color(0x20FFFFFF),
-                        const Color(0x0EFFFFFF),
-                      ]
-                    : [
-                        const Color(0x80FFFFFF),
-                        const Color(0x4DFFFFFF),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isCompleted
-                    ? (isDark ? const Color(0x3010B981) : const Color(0x4010B981))
-                    : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
-                width: isCompleted ? 1.0 : 0.8,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.14)
-                      : const Color(0xFF0E1420).withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: widget.isDark
+                ? [
+                    const Color(0x20FFFFFF),
+                    const Color(0x0EFFFFFF),
+                  ]
+                : [
+                    const Color(0x80FFFFFF),
+                    const Color(0x4DFFFFFF),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isCompleted
+                ? (widget.isDark ? const Color(0x3010B981) : const Color(0x4010B981))
+                : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000)),
+            width: isCompleted ? 1.0 : 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: widget.isDark
+                  ? Colors.black.withOpacity(0.14)
+                  : const Color(0xFF0E1420).withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Interactive Checkbox matching BeatTile exactly
-                Padding(
-                  key: Key('revision_check_button_${item.beatId}'),
-                  padding: const EdgeInsets.all(4),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: isCompleted
-                          ? themeColors.textPrimary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isCompleted
-                            ? themeColors.textPrimary
-                            : themeColors.textTertiary,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: AnimatedScale(
-                      scale: isCompleted ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutBack,
-                      child: Icon(
-                        Icons.check_rounded,
-                        size: 13,
-                        color: isDark ? Colors.black : Colors.white,
-                      ),
-                    ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Interactive Checkbox matching BeatTile exactly
+            Padding(
+              key: Key('revision_check_button_${item.beatId}'),
+              padding: const EdgeInsets.all(4),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isCompleted ? widget.themeColors.textPrimary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isCompleted ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                    width: 1.5,
                   ),
                 ),
-                const SizedBox(width: 8),
+                child: AnimatedScale(
+                  scale: isCompleted ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 13,
+                    color: widget.isDark ? Colors.black : Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
 
-                // Title, Track, and Contextual Reason
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            // Title, Track, and Contextual Reason
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          if (item.isFlaggedWeak) ...[
-                            Container(
-                              margin: const EdgeInsets.only(right: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.2),
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent.withOpacity(0.18),
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(
-                                  color: Colors.redAccent.withOpacity(0.4),
-                                  width: 0.7,
-                                ),
-                              ),
-                              child: Text(
-                                'WEAK TOPIC',
-                                style: RythemTypography.labelSmall.copyWith(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.redAccent,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ),
-                          ],
-                          Expanded(
-                            child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeOutCubic,
-                              style: RythemTypography.bodyMedium.copyWith(
-                                color: isCompleted
-                                    ? themeColors.textTertiary
-                                    : themeColors.textPrimary,
-                                decoration:
-                                    isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12.5,
-                              ),
-                              child: Text(
-                                item.title,
-                                style: TextStyle(
-                                  decoration: isCompleted ? TextDecoration.lineThrough : null,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withOpacity(isDark ? 0.22 : 0.14),
-                              borderRadius: BorderRadius.circular(5),
-                              border: Border.all(
-                                color: const Color(0xFF10B981).withOpacity(isDark ? 0.45 : 0.3),
-                                width: 0.7,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.bolt, size: 9.5, color: Color(0xFF10B981)),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '+${item.beatPoints.toStringAsFixed(1)} pts',
-                                  style: const TextStyle(
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 5,
-                        runSpacing: 2,
-                        children: [
-                          Text(
-                            item.roadmapTitle,
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textSecondary,
-                              fontSize: 9.5,
-                            ),
-                          ),
-                          Text(
-                            '•',
-                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: badgeColor.withOpacity(isDark ? 0.2 : 0.12),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: badgeColor.withOpacity(isDark ? 0.45 : 0.3),
-                                width: 0.6,
-                              ),
-                            ),
-                            child: Text(
-                              item.strengthLabel,
-                              style: TextStyle(
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w700,
-                                color: badgeColor,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '•',
-                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                          ),
-                          Text(
-                            item.suggestedReason,
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: isCompleted
-                                  ? themeColors.textTertiary
-                                  : (item.isFlaggedWeak ? Colors.amber : themeColors.textSecondary),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                      if (item.microRecallPrompt != null) ...[
-                        const SizedBox(height: 5),
+                      if (item.isFlaggedWeak) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.2),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.redAccent.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(5),
                             border: Border.all(
-                              color: isDark ? Colors.white10 : const Color(0x12000000),
+                              color: Colors.redAccent.withOpacity(0.4),
+                              width: 0.7,
+                            ),
+                          ),
+                          child: Text(
+                            'WEAK TOPIC',
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.redAccent,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (scheduleLabel != null) ...[
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.2),
+                          decoration: BoxDecoration(
+                            color: scheduleColor.withOpacity(widget.isDark ? 0.22 : 0.12),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(
+                              color: scheduleColor.withOpacity(0.45),
                               width: 0.6,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.psychology_outlined, size: 11.5, color: Color(0xFF10B981)),
-                              const SizedBox(width: 5),
-                              Expanded(
-                                child: Text(
-                                  item.microRecallPrompt!,
-                                  style: RythemTypography.caption.copyWith(
-                                    color: isCompleted ? themeColors.textTertiary : themeColors.textSecondary,
-                                    fontSize: 9.5,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          child: Text(
+                            scheduleLabel,
+                            style: TextStyle(
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w800,
+                              color: scheduleColor,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                      Expanded(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          style: RythemTypography.bodyMedium.copyWith(
+                            color: isCompleted ? widget.themeColors.textTertiary : widget.themeColors.textPrimary,
+                            decoration: isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12.5,
+                          ),
+                          child: Text(
+                            item.title,
+                            style: TextStyle(
+                              decoration: isCompleted ? TextDecoration.lineThrough : null,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(widget.isDark ? 0.22 : 0.14),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color: const Color(0xFF10B981).withOpacity(widget.isDark ? 0.45 : 0.3),
+                            width: 0.7,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.bolt, size: 9.5, color: Color(0xFF10B981)),
+                            const SizedBox(width: 2),
+                            Text(
+                              '+${item.beatPoints.toStringAsFixed(1)} pts',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF10B981),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (widget.onUnshelf != null) ...[
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            widget.onUnshelf!(item);
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.all(2),
+                            child: Icon(
+                              Icons.bookmark_remove_outlined,
+                              size: 14,
+                              color: widget.themeColors.textTertiary.withOpacity(0.7),
+                            ),
                           ),
                         ),
                       ],
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 5,
+                    runSpacing: 2,
+                    children: [
+                      Text(
+                        item.roadmapTitle,
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: widget.themeColors.textSecondary,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                      Text(
+                        '•',
+                        style: TextStyle(color: widget.themeColors.textTertiary, fontSize: 9),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withOpacity(widget.isDark ? 0.2 : 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: badgeColor.withOpacity(widget.isDark ? 0.45 : 0.3),
+                            width: 0.6,
+                          ),
+                        ),
+                        child: Text(
+                          item.strengthLabel,
+                          style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w700,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '•',
+                        style: TextStyle(color: widget.themeColors.textTertiary, fontSize: 9),
+                      ),
+                      Text(
+                        item.suggestedReason,
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: isCompleted
+                              ? widget.themeColors.textTertiary
+                              : (item.isFlaggedWeak ? Colors.amber : widget.themeColors.textSecondary),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  if (item.microRecallPrompt != null) ...[
+                    const SizedBox(height: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: widget.isDark ? Colors.white10 : const Color(0x12000000),
+                          width: 0.6,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.psychology_outlined, size: 11.5, color: Color(0xFF10B981)),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              item.microRecallPrompt!,
+                              style: RythemTypography.caption.copyWith(
+                                color: isCompleted ? widget.themeColors.textTertiary : widget.themeColors.textSecondary,
+                                fontSize: 9.5,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        );
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildEngineSyncingCard({
@@ -539,11 +722,11 @@ class DailyRevisionBoard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: isDark
+        color: widget.isDark
             ? const Color(0xFF0B1220).withOpacity(0.85)
             : Colors.white.withOpacity(0.92),
         border: Border.all(
-          color: isDark ? lightCyan.withOpacity(0.35) : cyan.withOpacity(0.35),
+          color: widget.isDark ? lightCyan.withOpacity(0.35) : cyan.withOpacity(0.35),
           width: 1.0,
         ),
         boxShadow: [
@@ -562,7 +745,7 @@ class DailyRevisionBoard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: cyan.withOpacity(isDark ? 0.22 : 0.12),
+                  color: cyan.withOpacity(widget.isDark ? 0.22 : 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -577,7 +760,7 @@ class DailyRevisionBoard extends StatelessWidget {
                 style: RythemTypography.labelSmall.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
-                  color: isDark ? lightCyan : const Color(0xFF0891B2),
+                  color: widget.isDark ? lightCyan : const Color(0xFF0891B2),
                   fontSize: 10.5,
                 ),
               ),
@@ -585,7 +768,7 @@ class DailyRevisionBoard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                 decoration: BoxDecoration(
-                  color: cyan.withOpacity(isDark ? 0.2 : 0.12),
+                  color: cyan.withOpacity(widget.isDark ? 0.2 : 0.12),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -603,7 +786,7 @@ class DailyRevisionBoard extends StatelessWidget {
           Text(
             'AI prerequisite graph & memory decay engine are synchronizing (${tierInfo.displayName} • $receivedStr / $totalStr). Topics will unlock automatically once active.',
             style: RythemTypography.caption.copyWith(
-              color: themeColors.textSecondary,
+              color: widget.themeColors.textSecondary,
               fontSize: 11,
               height: 1.35,
             ),
@@ -613,7 +796,7 @@ class DailyRevisionBoard extends StatelessWidget {
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: progressVal > 0.0 ? progressVal : null,
-              backgroundColor: isDark ? Colors.white10 : Colors.black12,
+              backgroundColor: widget.isDark ? Colors.white10 : Colors.black12,
               valueColor: const AlwaysStoppedAnimation<Color>(cyan),
               minHeight: 4,
             ),
@@ -631,7 +814,7 @@ class DailyRevisionBoard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: isDark
+              color: widget.isDark
                   ? Colors.black.withOpacity(0.28)
                   : const Color(0xFF0E1420).withOpacity(0.05),
               blurRadius: 16,
@@ -649,7 +832,7 @@ class DailyRevisionBoard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: isDark
+                  colors: widget.isDark
                       ? [
                           const Color(0x24FFFFFF),
                           const Color(0x12FFFFFF),
@@ -663,7 +846,7 @@ class DailyRevisionBoard extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                  color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000),
                   width: 0.9,
                 ),
               ),
@@ -680,7 +863,7 @@ class DailyRevisionBoard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0x28A855F7) : const Color(0x1EA855F7),
+                                color: widget.isDark ? const Color(0x28A855F7) : const Color(0x1EA855F7),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -696,7 +879,7 @@ class DailyRevisionBoard extends StatelessWidget {
                                 style: RythemTypography.labelSmall.copyWith(
                                   letterSpacing: 1.1,
                                   fontWeight: FontWeight.w700,
-                                  color: themeColors.textPrimary,
+                                  color: widget.themeColors.textPrimary,
                                   fontSize: 11,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -709,7 +892,7 @@ class DailyRevisionBoard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                          color: widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -718,7 +901,7 @@ class DailyRevisionBoard extends StatelessWidget {
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.8,
-                            color: themeColors.textSecondary,
+                            color: widget.themeColors.textSecondary,
                           ),
                         ),
                       ),
@@ -728,32 +911,32 @@ class DailyRevisionBoard extends StatelessWidget {
                   Text(
                     'Let the on-device AI scan your trackers, memory decay rates, and prerequisite synergy to suggest high-impact revision topics today.',
                     style: RythemTypography.bodySmall.copyWith(
-                      color: themeColors.textSecondary,
+                      color: widget.themeColors.textSecondary,
                       fontSize: 11.5,
                       height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 14),
                   InkWell(
-                    onTap: isScanning ? null : onRequestRecommendations,
+                    onTap: widget.isScanning ? null : widget.onRequestRecommendations,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                       decoration: BoxDecoration(
-                        color: isDark
+                        color: widget.isDark
                             ? const Color(0x33A855F7)
                             : const Color(0x1AA855F7),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFFA855F7).withOpacity(isDark ? 0.5 : 0.35),
+                          color: const Color(0xFFA855F7).withOpacity(widget.isDark ? 0.5 : 0.35),
                           width: 1.0,
                         ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          if (isScanning)
+                          if (widget.isScanning)
                             const SizedBox(
                               width: 14,
                               height: 14,
@@ -770,9 +953,9 @@ class DailyRevisionBoard extends StatelessWidget {
                             ),
                           const SizedBox(width: 8),
                           Text(
-                            isScanning ? 'AI Scanning Trackers...' : 'See What to Revise',
+                            widget.isScanning ? 'AI Scanning Trackers...' : 'See What to Revise',
                             style: RythemTypography.labelSmall.copyWith(
-                              color: isDark ? Colors.white : const Color(0xFF6B21A8),
+                              color: widget.isDark ? Colors.white : const Color(0xFF6B21A8),
                               fontWeight: FontWeight.w700,
                               fontSize: 11.5,
                             ),
@@ -790,3 +973,6 @@ class DailyRevisionBoard extends StatelessWidget {
     );
   }
 }
+
+/// Type alias for RevisionShelfCard to provide Clean Revision Shelf naming across Flow screen.
+typedef RevisionShelfCard = DailyRevisionBoard;

@@ -147,6 +147,8 @@ void main() {
           completed_at TEXT,
           match_confidence REAL,
           syllabus_topic_id TEXT,
+          total_parts INTEGER NOT NULL DEFAULT 1,
+          completed_parts INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );

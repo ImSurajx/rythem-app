@@ -3,8 +3,11 @@ import 'dart:async';
 enum DatabaseEventType {
   beatToggled,
   beatCreated,
+  beatUpdated,
   beatDeleted,
   chapterCreated,
+  chapterUpdated,
+  chapterDeleted,
   roadmapCreated,
   roadmapUpdated,
   roadmapDeleted,

@@ -337,6 +337,8 @@ void main() {
                 ${BeatColumns.isMentorExtra} INTEGER NOT NULL DEFAULT 0,
                 ${BeatColumns.matchConfidence} REAL,
                 ${BeatColumns.syllabusTopicId} TEXT,
+                ${BeatColumns.totalParts} INTEGER NOT NULL DEFAULT 1,
+                ${BeatColumns.completedParts} INTEGER NOT NULL DEFAULT 0,
                 ${BeatColumns.createdAt} TEXT NOT NULL,
                 ${BeatColumns.updatedAt} TEXT NOT NULL
               );
@@ -438,10 +440,21 @@ void main() {
       expect(budget.remainingEffort, 10.0);
       expect(budget.daysLeft, 5);
       expect(budget.todayEffortShare, 2.0);
-      expect(budget.todaysBeats.length, 2); // 2 beats * 1.0 = 2.0 effort
-      expect(budget.todaysBeats[0].id, 'b_0');
-      expect(budget.todaysBeats[1].id, 'b_1');
+      // Clean slate on launch: 0 tasks auto-spawned
+      expect(budget.todaysBeats, isEmpty);
       expect(budget.isRoadmapCompleted, false);
+
+      // User queues 2 lessons into today's focus
+      await pacingService.queueNextBeatIntoTodayFocus('rm_pacing_test', simulatedNow: now);
+      await pacingService.queueNextBeatIntoTodayFocus('rm_pacing_test', simulatedNow: now);
+
+      final budgetWithBeats = await pacingService.computePacingBudget(
+        'rm_pacing_test',
+        simulatedNow: now,
+      );
+      expect(budgetWithBeats.todaysBeats.length, 2);
+      expect(budgetWithBeats.todaysBeats[0].id, 'b_0');
+      expect(budgetWithBeats.todaysBeats[1].id, 'b_1');
 
       // Apply decision: extend target date by 5 days (now 10 days left)
       await pacingService.applyPacingDecision(
@@ -455,7 +468,6 @@ void main() {
       );
       expect(updatedBudget.daysLeft, 10);
       expect(updatedBudget.todayEffortShare, 1.0); // 10 / 10 = 1.0/day
-      expect(updatedBudget.todaysBeats.length, 1); // 1 beat * 1.0 = 1.0 effort
     });
   });
 }

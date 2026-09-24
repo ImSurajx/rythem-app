@@ -285,16 +285,20 @@ void main() {
     ];
     await beatRepo.createBeatsBatch(beats);
 
-    // 1. Initial Day 1 evaluation
+    // 1. Initial Day 1 evaluation: clean slate, then user queues next lesson
+    final initialDay1 = await pacingService.computePacingBudget(rm.id, simulatedNow: day1);
+    expect(initialDay1.todaysBeats, isEmpty);
+
+    await pacingService.queueNextBeatIntoTodayFocus(rm.id, simulatedNow: day1);
     final budgetDay1 = await pacingService.computePacingBudget(rm.id, simulatedNow: day1);
 
-    // Assert that Chapter 1 beats are selected first
+    // Assert that Chapter 1 beat b1 was queued first
     expect(budgetDay1.todaysBeats.isNotEmpty, true);
     expect(budgetDay1.todaysBeats[0].id, 'b1');
     expect(budgetDay1.todaysBeats[0].isCompleted, false);
 
     // 2. Complete b1 today (Day 1 at 10:00)
-    await beatRepo.toggleBeatCompletion('b1', isCompleted: true);
+    await beatRepo.toggleBeatCompletion('b1', isCompleted: true, completedAt: day1);
 
     // Recompute budget on same day (Day 1 at 10:30)
     final budgetDay1AfterCompletion = await pacingService.computePacingBudget(
@@ -303,17 +307,22 @@ void main() {
     );
 
     // Assert: b1 is still in todaysBeats with isCompleted == true (struck through)
-    // AND remaining tasks of the day are NOT invisible!
     final completedBeats = budgetDay1AfterCompletion.todaysBeats.where((b) => b.isCompleted).toList();
     expect(completedBeats.any((b) => b.id == 'b1'), true);
 
     // 3. Roll over to Day 2 (tomorrow at 09:00)
     final day2 = day1.add(const Duration(days: 1));
-    final budgetDay2 = await pacingService.computePacingBudget(rm.id, simulatedNow: day2);
+    final budgetDay2Initial = await pacingService.computePacingBudget(rm.id, simulatedNow: day2);
 
     // Assert: yesterday's completed beat b1 is RETIRED from today's mission
-    expect(budgetDay2.todaysBeats.any((b) => b.id == 'b1'), false);
-    // Tomorrow's mission starts at b2 (the next sequential beat)
+    expect(budgetDay2Initial.todaysBeats.any((b) => b.id == 'b1'), false);
+    expect(budgetDay2Initial.todaysBeats, isEmpty);
+
+    // User queues next lesson on Day 2: pulls b2 (the next sequential beat)
+    final pulledDay2 = await pacingService.queueNextBeatIntoTodayFocus(rm.id, simulatedNow: day2);
+    expect(pulledDay2?.id, 'b2');
+
+    final budgetDay2 = await pacingService.computePacingBudget(rm.id, simulatedNow: day2);
     expect(budgetDay2.todaysBeats.first.id, 'b2');
     expect(budgetDay2.todaysBeats.first.isCompleted, false);
 

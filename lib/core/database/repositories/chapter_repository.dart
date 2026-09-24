@@ -59,6 +59,33 @@ class ChapterRepository {
     return results.map(ChapterEntity.fromMap).toList();
   }
 
+  /// Computes the next sequential sortOrder for a new chapter in [roadmapId],
+  /// guaranteeing placement at the bottom of the subject chapter list.
+  Future<int> getNextSortOrder(String roadmapId) async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      'SELECT MAX(${ChapterColumns.sortOrder}) as max_sort FROM ${DatabaseTables.chapters} WHERE ${ChapterColumns.roadmapId} = ?',
+      [roadmapId],
+    );
+    final maxSort = result.first['max_sort'] as int?;
+    return (maxSort ?? -1) + 1;
+  }
+
+  Future<void> updateChapter(ChapterEntity chapter) async {
+    final db = await _db;
+    await db.update(
+      DatabaseTables.chapters,
+      chapter.toMap(),
+      where: '${ChapterColumns.id} = ?',
+      whereArgs: [chapter.id],
+    );
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.chapterUpdated,
+      entityId: chapter.id,
+      roadmapId: chapter.roadmapId,
+    ));
+  }
+
   Future<void> deleteChapter(String id) async {
     final db = await _db;
     await db.delete(
@@ -66,6 +93,10 @@ class ChapterRepository {
       where: '${ChapterColumns.id} = ?',
       whereArgs: [id],
     );
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.chapterDeleted,
+      entityId: id,
+    ));
   }
 
   Future<void> deleteChaptersByRoadmapId(String roadmapId) async {

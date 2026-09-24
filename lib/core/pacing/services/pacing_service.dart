@@ -47,10 +47,6 @@ class PacingService {
       throw Exception('Roadmap not found with ID "$roadmapId"');
     }
 
-    final chapters = await _chapterRepo.getChaptersByRoadmapId(roadmapId);
-    final chapterOrderMap = {for (final c in chapters) c.id: c.sortOrder};
-    final orderedChapterIds = chapters.map((c) => c.id).toList();
-
     final allBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
     final pendingBeats = allBeats.where((b) => !b.isCompleted).toList();
     final completedBeats = allBeats.where((b) => b.isCompleted).toList();
@@ -86,6 +82,12 @@ class PacingService {
         isDailyQuotaCompleted: false,
         isUpcoming: true,
         daysUntilStart: daysUntilStart,
+        paceStatus: targetDate != null ? PaceStatus.onTrack : PaceStatus.openPace,
+        projectedCompletionDate: targetDate,
+        daysAheadOrBehind: 0,
+        dailyEffortGuideline: 0.0,
+        guidelineMessage: 'Track starts in $daysUntilStart day${daysUntilStart == 1 ? '' : 's'}.',
+        targetDate: targetDate,
       );
     }
 
@@ -120,10 +122,10 @@ class PacingService {
       );
     }
 
-    // 4. Check beats completed today
+    final todayEnd = todayStart.add(const Duration(days: 1));
     final beatsCompletedToday = completedBeats.where((b) {
       if (b.completedAt == null) return false;
-      return b.completedAt!.isAfter(todayStart);
+      return !b.completedAt!.isBefore(todayStart) && b.completedAt!.isBefore(todayEnd);
     }).toList();
 
     // 5. Daily Mission Persistence & Strikethrough Stability
@@ -136,8 +138,8 @@ class PacingService {
         await _dailyMissionRepo.getMissionBeatsForDate(roadmapId, todayDateStr);
 
     if (todaysBeats.isNotEmpty) {
-      // Mission already established for today.
-      // If user completed any bonus beats today that are not in todaysBeats, append them so they show strikethrough.
+      // User has explicitly added beats to Today's Focus.
+      // If user completed any bonus beats today directly from the track, append them so they show strikethrough.
       final existingIds = todaysBeats.map((b) => b.id).toSet();
       final bonusCompleted =
           beatsCompletedToday.where((b) => !existingIds.contains(b.id)).toList();
@@ -155,27 +157,15 @@ class PacingService {
             await _dailyMissionRepo.getMissionBeatsForDate(roadmapId, todayDateStr);
       }
     } else {
-      // First calculation of the day: walk sequential pending queue to establish today's mission
-      final plannedBeats = PacingCalculator.walkQueueToFillBudget(
-        pendingBeats: pendingBeats,
-        targetBudget: todayEffortShare > 0 ? todayEffortShare : 1.0,
-        chapterOrderMap: chapterOrderMap,
-        orderedChapterIds: orderedChapterIds,
-      );
-
-      final missionIds = <String>[];
-      for (final b in beatsCompletedToday) {
-        if (!missionIds.contains(b.id)) missionIds.add(b.id);
-      }
-      for (final b in plannedBeats) {
-        if (!missionIds.contains(b.id)) missionIds.add(b.id);
-      }
-
-      if (missionIds.isNotEmpty) {
+      // User has not queued anything for today yet.
+      // If the user already completed beats today (e.g. directly from syllabus), display them with strikethrough.
+      // NEVER auto-walk the queue or force phantom tasks into today's mission.
+      if (beatsCompletedToday.isNotEmpty) {
+        final completedIds = beatsCompletedToday.map((b) => b.id).toList();
         await _dailyMissionRepo.setDailyMission(
           roadmapId: roadmapId,
           date: todayDateStr,
-          beatIds: missionIds,
+          beatIds: completedIds,
         );
         todaysBeats =
             await _dailyMissionRepo.getMissionBeatsForDate(roadmapId, todayDateStr);
@@ -207,6 +197,14 @@ class PacingService {
     final recentCompletedEfforts = pastRecords.map((r) => r.completedEffort).toList();
     final velocity = PacingCalculator.calculateVelocity(recentCompletedEfforts);
 
+    // Feature 4: Calculate Pace Health (GPS ETA style, no backlog debt)
+    final paceHealth = PacingCalculator.calculatePaceHealth(
+      remainingEffort: remainingEffort,
+      targetDate: targetDate,
+      pastDaysRecords: pastRecords,
+      now: now,
+    );
+
     return PacingBudget(
       roadmapId: roadmapId,
       remainingEffort: remainingEffort,
@@ -221,6 +219,12 @@ class PacingService {
       recentVelocity: velocity,
       shortfallDebt: trend.shortfallDebt,
       velocityDeficit: trend.velocityDeficit,
+      paceStatus: paceHealth.status,
+      projectedCompletionDate: paceHealth.projectedCompletionDate,
+      daysAheadOrBehind: paceHealth.daysAheadOrBehind,
+      dailyEffortGuideline: paceHealth.dailyEffortGuideline,
+      guidelineMessage: paceHealth.guidelineMessage,
+      targetDate: targetDate,
     );
   }
 
@@ -273,7 +277,57 @@ class PacingService {
       entityId: roadmapId,
       roadmapId: roadmapId,
     ));
+  }
 
+  /// Updates or clears target date for a roadmap (e.g. +7 days, custom date, or Open Pace mode).
+  Future<void> updateRoadmapTargetDate(String roadmapId, DateTime? newTargetDate) async {
+    await _roadmapRepo.updateRoadmapTargetDate(roadmapId, newTargetDate);
+    // Invalidate cached daily missions so recalculated budget reflects new target immediately
+    await _dailyMissionRepo.clearDailyMissions(roadmapId);
+    await _settingsRepo.removeSettingsStartingWith('daily_mission_beats_${roadmapId}_');
+
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.roadmapUpdated,
+      entityId: roadmapId,
+      roadmapId: roadmapId,
+    ));
+  }
+
+  /// Adds a specific beat to Today's Focus for [roadmapId].
+  Future<void> addBeatToTodayFocus(
+    String roadmapId,
+    String beatId, {
+    DateTime? simulatedNow,
+  }) async {
+    final now = simulatedNow ?? DateTime.now();
+    final todayDateStr =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    await _dailyMissionRepo.addBeatToTodayMission(
+      roadmapId: roadmapId,
+      date: todayDateStr,
+      beatId: beatId,
+    );
+  }
+
+  /// Removes a specific beat from Today's Focus for [roadmapId].
+  Future<void> removeBeatFromTodayFocus(
+    String roadmapId,
+    String beatId, {
+    DateTime? simulatedNow,
+  }) async {
+    final now = simulatedNow ?? DateTime.now();
+    final todayDateStr =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    await _dailyMissionRepo.removeBeatFromTodayMission(
+      roadmapId: roadmapId,
+      date: todayDateStr,
+      beatId: beatId,
+    );
+  }
+
+  /// 1-tap shortcut: pulls the next sequential pending lesson into Today's Focus.
+  Future<BeatEntity?> queueNextBeatIntoTodayFocus(String roadmapId, {DateTime? simulatedNow}) {
+    return pullNextBeatIntoMission(roadmapId, simulatedNow: simulatedNow);
   }
 
   /// Voluntarily pulls the next sequential beat from the track queue into today's mission
@@ -304,19 +358,11 @@ class PacingService {
 
     if (candidates.isNotEmpty) {
       final nextBeat = candidates.first;
-      final updatedIds = [
-        ...currentMissionBeats.map((b) => b.id),
-        nextBeat.id,
-      ];
-      await _dailyMissionRepo.setDailyMission(
+      await _dailyMissionRepo.addBeatToTodayMission(
         roadmapId: roadmapId,
         date: todayDateStr,
-        beatIds: updatedIds,
+        beatId: nextBeat.id,
       );
-      _eventBus.emit(DatabaseEvent(
-        type: DatabaseEventType.roadmapUpdated,
-        roadmapId: roadmapId,
-      ));
       return nextBeat;
     }
     return null;

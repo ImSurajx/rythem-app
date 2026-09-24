@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2-pre] - 2026-09-24
+
+### Added
+- **Feature 1: Core Decoupling & Pure User-Driven "Today's Focus"**:
+  - Decoupled Daily Missions from rigid calendar days and automated over-allocation.
+  - "Today's Focus" is purely user-driven: users select what they want to tackle today with dedicated Add/Remove sheet and custom reordering.
+  - Immediate optimistic status sync across tabs via `DatabaseEventBus`.
+- **Feature 2: "Complete in Parts" & Multi-Part Task Splitting**:
+  - Long beats or videos (e.g. 2–3 hour deep dives) can be split into smaller, manageable chunks (Part 1, Part 2, etc.) directly from Flow and Tracker.
+  - Sub-parts inherit the parent beat's chapter and roadmap context, maintaining consistent progress metrics.
+  - Clean split modal sheet with part name and duration configuration.
+- **Feature 3: Full Tracker Customization (Add Chapters & Topics)**:
+  - Users can customize and extend any roadmap curriculum with custom chapters and topics.
+  - Intuitive "Add Chapter" and "Add Topic" modal bottom sheets with validation, auto-sequencing, and duration inputs.
+  - Custom items persist in SQLite and are instantly reflected across Explorer accordions and Flow selectors.
+- **Feature 4: Intelligent Pace Coach & Non-Intrusive Warnings**:
+  - Non-intrusive Pace Coach card in the Flow screen providing subtle, supportive pacing guidance without toxic overdue banners.
+  - Mathematical pace analysis comparing target completion dates with remaining hours and current velocity.
+  - Dedicated interactive "Timeline Adjuster" modal bottom sheet allowing users to smoothly recalibrate target dates or daily effort quotas in one tap.
+- **Feature 5: Clean Revision Shelf (Spaced Retention)**:
+  - Spaced retention shelf with non-punitive, optional review queues.
+  - "Mark for Revision" action sheet with 1-tap presets (1 Day, 3 Days, 7 Days, or Custom).
+  - Ambient review badge counts and fluid dismissal animations.
+- **Feature 6: YouTube Timestamps & Community Comments Chapter Extraction**:
+  - Enriched YouTube ingestion supporting both native video chapters, description timestamps, and community pinned comment timestamps.
+  - Intelligent multi-layer regex parser that extracts valid timestamps (`MM:SS` or `HH:MM:SS`) and labels from video comments.
+  - Automatically deduplicates and merges extracted topics into cleanly structured roadmaps.
+- **Feature 7: In-App GitHub Releases Updater & Modal Sheet**:
+  - Ambient GitHub Releases update checker directly integrated into Settings tab (`SoftwareUpdateCard`).
+  - Strict Semantic Versioning (`SemVer`) comparator supporting build numbers and pre-release tags (`1.0.2-pre+3`).
+  - Liquid glass Update Modal Sheet with Markdown release notes, formatted date/size chips, and animated download progress.
+  - Streamed background APK downloads with live percentage, downloaded megabytes, and transfer speed (MB/s).
+  - Native Android `PackageInstaller` / FileProvider integration via MethodChannel `com.rythem.rythem_app/updater` for direct in-app APK installation.
+
+---
+
 ## [1.0.1] - 2026-09-19
 
 ### Added

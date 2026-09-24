@@ -21,7 +21,11 @@ import 'core/backup/services/backup_service.dart';
 import 'core/backup/services/auto_backup_manager.dart';
 import 'core/revision/models/revision_item.dart';
 import 'core/revision/services/revision_service.dart';
+import 'features/flow/widgets/mark_revision_sheet.dart';
 import 'core/navigation/smooth_page_route.dart';
+import 'core/updater/updater.dart';
+import 'features/settings/widgets/software_update_card.dart';
+import 'features/settings/widgets/update_modal_sheet.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -165,6 +169,12 @@ class _DesignSystemShowcaseScreenState
   LocalInferenceService get inferenceService => _localInferenceService;
   late final _revisionService = RevisionService(settingsRepo: _appSettingsRepo);
   List<RevisionItem> _revisionItems = [];
+  List<RevisionItem> _allShelfItems = [];
+
+  late final _githubReleaseService = GithubReleaseService();
+  late final _nativeInstallerService = NativeInstallerService();
+  UpdateReleaseInfo? _latestReleaseInfo;
+  bool _isCheckingForUpdates = false;
 
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
@@ -265,6 +275,35 @@ class _DesignSystemShowcaseScreenState
     return op;
   }
 
+  Future<void> _handleSplitBeat(BeatEntity beat, int totalParts) async {
+    await _beatRepo.updateBeatParts(beat.id, totalParts);
+    await _loadDatabaseState();
+    if (mounted) {
+      _showToast(
+        totalParts > 1
+            ? 'Split into $totalParts parts'
+            : 'Reset to single task',
+      );
+    }
+  }
+
+  Future<void> _handleIncrementBeatPart(BeatEntity beat) async {
+    final updated = await _beatRepo.incrementBeatPart(beat.id);
+    await _loadDatabaseState();
+    if (mounted && updated != null) {
+      if (updated.isCompleted) {
+        _showToast('All ${updated.totalParts} parts completed! 🏆');
+      } else {
+        _showToast('Part ${updated.completedParts} of ${updated.totalParts} complete! Streak recorded 🔥');
+      }
+    }
+  }
+
+  Future<void> _handleDecrementBeatPart(BeatEntity beat) async {
+    await _beatRepo.decrementBeatPart(beat.id);
+    await _loadDatabaseState();
+  }
+
   Future<void> _handleRequestRevisionRecommendations() async {
     if (_isScanningRevision) return;
     setState(() => _isScanningRevision = true);
@@ -324,6 +363,20 @@ class _DesignSystemShowcaseScreenState
     }
   }
 
+  Future<void> _handleUpdateTargetDate(RoadmapEntity roadmap, DateTime? newTargetDate) async {
+    await _pacingService.updateRoadmapTargetDate(roadmap.id, newTargetDate);
+    await _loadDatabaseState();
+    if (mounted) {
+      if (newTargetDate == null) {
+        _showToast('Switched "${roadmap.title}" to Open Pace ⚪');
+      } else {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        final formatted = '${months[newTargetDate.month - 1]} ${newTargetDate.day}, ${newTargetDate.year}';
+        _showToast('Target date updated to $formatted 🎯');
+      }
+    }
+  }
+
   Future<void> _handleMarkRevised(RevisionItem item) async {
     final wasCompleted = item.isCompletedToday;
     final newCompletedState = !wasCompleted;
@@ -333,6 +386,15 @@ class _DesignSystemShowcaseScreenState
     // 1. Instantly update in-memory state so strikethrough updates immediately without dropping items
     setState(() {
       _revisionItems = _revisionItems.map((r) {
+        if (r.beatId == item.beatId) {
+          return r.copyWith(
+            isCompleted: newCompletedState,
+            lastRevisedAt: newCompletedState ? now : null,
+          );
+        }
+        return r;
+      }).toList();
+      _allShelfItems = _allShelfItems.map((r) {
         if (r.beatId == item.beatId) {
           return r.copyWith(
             isCompleted: newCompletedState,
@@ -389,6 +451,91 @@ class _DesignSystemShowcaseScreenState
         accentColor: const Color(0xFF10B981),
       );
     }
+    final streak = await _beatLogRepo.getCurrentStreak();
+    if (mounted) {
+      setState(() => _currentStreak = streak);
+    }
+  }
+
+  Future<void> _refreshRevisionShelf() async {
+    final allShelf = await _revisionService.getRevisionShelfItems();
+    final budget = _budgetsByRoadmap[_roadmapId];
+    final finalBeats = _beatsByRoadmap[_roadmapId] ?? [];
+    final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
+        ? budget!.todaysBeats
+        : finalBeats.where((b) => !b.isCompleted).take(2).toList();
+
+    List<RevisionItem> recs;
+    if (_hasRequestedRevision) {
+      recs = await _revisionService.getDailyRevisionRecommendations(
+        roadmaps: _allRoadmaps,
+        beatsByRoadmap: _beatsByRoadmap,
+        upcomingFocusBeats: upcomingFocus,
+        todayEffortBudget: budget?.todayEffortShare,
+        inferenceService: _localInferenceService,
+      );
+    } else {
+      recs = allShelf.where((i) => i.isDueToday).toList();
+    }
+
+    if (mounted) {
+      setState(() {
+        _allShelfItems = allShelf;
+        _revisionItems = recs;
+      });
+    }
+  }
+
+  Future<void> _handleMarkForRevision(BeatEntity beat) async {
+    final roadmap = _allRoadmaps.where((r) => r.id == beat.roadmapId).firstOrNull;
+    final roadmapTitle = roadmap?.title ?? 'Active Tracker';
+    final existingItem = _allShelfItems.where((i) => i.beatId == beat.id).firstOrNull;
+
+    await MarkRevisionSheet.show(
+      context,
+      beat: beat,
+      roadmapTitle: roadmapTitle,
+      isInShelf: existingItem != null,
+      currentIntervalDays: existingItem?.intervalDays ?? 3,
+      currentNote: existingItem?.flagNote,
+      onSave: (intervalDays, note) async {
+        await _revisionService.addToRevisionShelf(
+          beat: beat,
+          roadmapTitle: roadmapTitle,
+          intervalDays: intervalDays,
+          note: note,
+        );
+        await _refreshRevisionShelf();
+        _showToast(
+          intervalDays != null
+              ? 'Added to Revision Shelf (due in $intervalDays days)'
+              : 'Saved to Revision Shelf (on demand)',
+          icon: Icons.bookmark_added_rounded,
+          accentColor: const Color(0xFF6366F1),
+        );
+      },
+      onRemove: existingItem != null
+          ? () async {
+              await _revisionService.removeFromRevisionShelf(beat.id);
+              await _refreshRevisionShelf();
+              _showToast(
+                'Removed from Revision Shelf',
+                icon: Icons.bookmark_remove_outlined,
+                accentColor: const Color(0xFFEF4444),
+              );
+            }
+          : null,
+    );
+  }
+
+  Future<void> _handleUnshelf(RevisionItem item) async {
+    await _revisionService.removeFromRevisionShelf(item.beatId);
+    await _refreshRevisionShelf();
+    _showToast(
+      'Removed "${item.title}" from Revision Shelf',
+      icon: Icons.bookmark_remove_outlined,
+      accentColor: const Color(0xFFEF4444),
+    );
   }
 
   @override
@@ -425,6 +572,7 @@ class _DesignSystemShowcaseScreenState
     WidgetsBinding.instance.removeObserver(this);
     _modelDownloadManager.downloadProgressNotifier.removeListener(_onModelDownloadUpdated);
     _eventSubscription?.cancel();
+    _githubReleaseService.close();
     super.dispose();
   }
 
@@ -562,6 +710,7 @@ class _DesignSystemShowcaseScreenState
     final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
         ? budget!.todaysBeats
         : finalBeats.where((b) => !b.isCompleted).take(2).toList();
+    final allShelfItems = await _revisionService.getRevisionShelfItems();
     List<RevisionItem> revisionItems = _revisionItems;
     if (_hasRequestedRevision) {
       revisionItems = await _revisionService.getDailyRevisionRecommendations(
@@ -571,6 +720,8 @@ class _DesignSystemShowcaseScreenState
         todayEffortBudget: budget?.todayEffortShare,
         inferenceService: _localInferenceService,
       );
+    } else if (allShelfItems.isNotEmpty) {
+      revisionItems = allShelfItems.where((i) => i.isDueToday).toList();
     }
 
     if (mounted) {
@@ -586,6 +737,7 @@ class _DesignSystemShowcaseScreenState
         _pacingBudget = budget;
         _weeklySchedule = weeklySchedule;
         _delayedBeatIds = delayedBeatIds;
+        _allShelfItems = allShelfItems;
         _revisionItems = revisionItems;
         _latestAutoBackup = latestBackup;
         _backupLocationDescription = backupLocation;
@@ -866,12 +1018,25 @@ class _DesignSystemShowcaseScreenState
       onBeatToggled: _setBeatCompletion,
       delayedBeatIds: _delayedBeatIds,
       onToggleDelay: _handleToggleBeatDelay,
+      onSplitBeat: _handleSplitBeat,
+      onIncrementBeatPart: _handleIncrementBeatPart,
+      onDecrementBeatPart: _handleDecrementBeatPart,
       revisionItems: _revisionItems,
+      allShelfItems: _allShelfItems,
       onMarkRevised: _handleMarkRevised,
+      onMarkForRevision: _handleMarkForRevision,
+      onUnshelf: _handleUnshelf,
+      onReschedule: (item) async {
+        final beat = await _beatRepo.getBeatById(item.beatId);
+        if (beat != null) {
+          await _handleMarkForRevision(beat);
+        }
+      },
       onRequestRevisionRecommendations: _handleRequestRevisionRecommendations,
       isScanningRevision: _isScanningRevision,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
+      onUpdateTargetDate: _handleUpdateTargetDate,
       onStartEarly: _handleStartRoadmapEarly,
       onStudyAhead: (roadmap) async {
         final pulled = await _pacingService.pullNextBeatIntoMission(roadmap.id);
@@ -882,6 +1047,13 @@ class _DesignSystemShowcaseScreenState
           } else {
             _showToast('All pending beats in this track are already in focus!');
           }
+        }
+      },
+      onRemoveFromFocus: (roadmap, beat) async {
+        await _pacingService.removeBeatFromTodayFocus(roadmap.id, beat.id);
+        await _loadDatabaseState();
+        if (mounted) {
+          _showToast('Removed "${beat.title}" from today\'s focus');
         }
       },
       onApplyPacingDecision: (roadmap, decision) async {
@@ -906,6 +1078,8 @@ class _DesignSystemShowcaseScreenState
     HapticFeedback.lightImpact();
     final chapters = _chaptersByRoadmap[roadmap.id] ?? [];
     final beats = _beatsByRoadmap[roadmap.id] ?? [];
+    final todayMissionBeats = _budgetsByRoadmap[roadmap.id]?.todaysBeats ?? [];
+    final todaysBeatIds = todayMissionBeats.map((b) => b.id).toSet();
 
     await Navigator.of(context).push(
       SmoothPageRoute(
@@ -913,15 +1087,40 @@ class _DesignSystemShowcaseScreenState
           roadmap: roadmap,
           chapters: chapters,
           beats: beats,
+          todaysBeatIds: todaysBeatIds,
+          revisionShelfBeatIds: _allShelfItems.map((i) => i.beatId).toSet(),
+          onMarkForRevision: _handleMarkForRevision,
           onBeatToggled: _setBeatCompletion,
+          onToggleFocusBeat: (beat) async {
+            final isInFocus = (_budgetsByRoadmap[roadmap.id]?.todaysBeats ?? [])
+                .any((b) => b.id == beat.id);
+            if (isInFocus) {
+              await _pacingService.removeBeatFromTodayFocus(roadmap.id, beat.id);
+              if (mounted) {
+                _showToast('Removed "${beat.title}" from today\'s focus');
+              }
+            } else {
+              await _pacingService.addBeatToTodayFocus(roadmap.id, beat.id);
+              if (mounted) {
+                _showToast('Added "${beat.title}" to today\'s focus');
+              }
+            }
+            await _loadDatabaseState();
+          },
           onArchiveRoadmap: _handleArchiveRoadmap,
           onRestoreRoadmap: _handleRestoreRoadmap,
           onDeleteRoadmap: _handleDeleteRoadmap,
           onAttachResource: _handleAttachResource,
           onAttachResourceToBeat: _handleAttachResourceToBeat,
+          onSplitBeat: _handleSplitBeat,
+          onIncrementBeatPart: _handleIncrementBeatPart,
+          onDecrementBeatPart: _handleDecrementBeatPart,
+          onUpdateTargetDate: _handleUpdateTargetDate,
+          pacingBudget: _budgetsByRoadmap[roadmap.id],
         ),
       ),
     );
+    await _loadDatabaseState();
     if (mounted) {
       await _requestDatabaseReload();
     }
@@ -1340,10 +1539,29 @@ class _DesignSystemShowcaseScreenState
           _buildDataBackupCard(themeColors, isDark),
           const SizedBox(height: 24),
 
+          // 5. Software Update
+          Text(
+            'SOFTWARE UPDATE',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SoftwareUpdateCard(
+            latestRelease: _latestReleaseInfo,
+            isChecking: _isCheckingForUpdates,
+            onCheckForUpdates: () => _handleCheckForUpdates(showToastIfUpToDate: true),
+            onOpenUpdateModal: _handleOpenUpdateModal,
+          ),
+          const SizedBox(height: 24),
+
           // Quiet Version Metadata
           Center(
             child: Text(
-              'Rythem • Local First • v1.0.1',
+              'Rythem • Local First • v${GithubReleaseService.currentAppVersion}',
               style: RythemTypography.labelSmall.copyWith(
                 color: themeColors.textTertiary.withOpacity(0.6),
                 fontSize: 10.5,
@@ -1804,6 +2022,48 @@ class _DesignSystemShowcaseScreenState
     await _appSettingsRepo.setSetting('study_intensity_schedule', updated.encode());
     await _loadDatabaseState();
     _showToast('${WeeklyStudySchedule.dayName(weekday)} set to ${next.label} (${next.targetBeats} beats)');
+  }
+
+  Future<void> _handleCheckForUpdates({bool showToastIfUpToDate = true}) async {
+    if (_isCheckingForUpdates) return;
+    setState(() => _isCheckingForUpdates = true);
+    HapticFeedback.lightImpact();
+
+    try {
+      final info = await _githubReleaseService.checkForUpdate();
+      if (!mounted) return;
+      setState(() {
+        _latestReleaseInfo = info;
+        _isCheckingForUpdates = false;
+      });
+
+      if (info.isUpdateAvailable) {
+        UpdateModalSheet.show(
+          context,
+          releaseInfo: info,
+          releaseService: _githubReleaseService,
+          installerService: _nativeInstallerService,
+        );
+      } else if (showToastIfUpToDate) {
+        _showToast("You're on the latest version of Rythem (${info.currentVersion.displayTag})");
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isCheckingForUpdates = false);
+      _showToast('Update check failed: $e');
+    }
+  }
+
+  void _handleOpenUpdateModal() {
+    final info = _latestReleaseInfo;
+    if (info != null) {
+      UpdateModalSheet.show(
+        context,
+        releaseInfo: info,
+        releaseService: _githubReleaseService,
+        installerService: _nativeInstallerService,
+      );
+    }
   }
 
   Future<void> _handleExportBackup() async {

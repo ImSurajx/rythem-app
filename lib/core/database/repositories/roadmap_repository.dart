@@ -62,12 +62,12 @@ class RoadmapRepository {
     ));
   }
 
-  Future<void> updateRoadmapTargetDate(String id, DateTime newTarget) async {
+  Future<void> updateRoadmapTargetDate(String id, DateTime? newTarget) async {
     final db = await _db;
     await db.update(
       DatabaseTables.roadmaps,
       {
-        RoadmapColumns.targetCompletionDate: newTarget.toIso8601String(),
+        RoadmapColumns.targetCompletionDate: newTarget?.toIso8601String(),
         RoadmapColumns.updatedAt: DateTime.now().toIso8601String(),
       },
       where: '${RoadmapColumns.id} = ?',
