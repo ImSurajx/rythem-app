@@ -72,7 +72,6 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
 
     final dueCount = widget.revisionItems.where((i) => !i.isCompletedToday).length;
     final isAllDone = widget.revisionItems.isNotEmpty && dueCount == 0;
-    final badgeColor = isAllDone ? const Color(0xFF10B981) : Colors.amber;
 
     return RepaintBoundary(
       child: Container(
@@ -133,13 +132,17 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                 Container(
                                   padding: const EdgeInsets.all(4.5),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(widget.isDark ? 0.2 : 0.12),
+                                    color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                                      width: 0.8,
+                                    ),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.lightbulb_outline_rounded,
                                     size: 14,
-                                    color: Colors.amber,
+                                    color: widget.themeColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -156,24 +159,24 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withOpacity(widget.isDark ? 0.2 : 0.12),
+                                    color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                      color: const Color(0xFF10B981).withOpacity(0.35),
+                                      color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
                                       width: 0.6,
                                     ),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.auto_awesome, size: 9, color: Color(0xFF10B981)),
-                                      SizedBox(width: 3),
+                                      Icon(Icons.auto_awesome, size: 9, color: widget.themeColors.textPrimary),
+                                      const SizedBox(width: 3),
                                       Text(
                                         'AI + MATHS',
                                         style: TextStyle(
                                           fontSize: 8,
                                           fontWeight: FontWeight.w800,
-                                          color: Color(0xFF10B981),
+                                          color: widget.themeColors.textPrimary,
                                           letterSpacing: 0.4,
                                         ),
                                       ),
@@ -207,10 +210,10 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                                   decoration: BoxDecoration(
-                                    color: badgeColor.withOpacity(widget.isDark ? 0.22 : 0.15),
+                                    color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                                     borderRadius: BorderRadius.circular(7),
                                     border: Border.all(
-                                      color: badgeColor.withOpacity(widget.isDark ? 0.4 : 0.3),
+                                      color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                                       width: 0.8,
                                     ),
                                   ),
@@ -219,7 +222,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                     style: TextStyle(
                                       fontSize: 9.5,
                                       fontWeight: FontWeight.w700,
-                                      color: badgeColor,
+                                      color: widget.themeColors.textPrimary,
                                     ),
                                   ),
                                 ),
@@ -263,7 +266,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                       padding: const EdgeInsets.symmetric(vertical: 5),
                                       decoration: BoxDecoration(
                                         color: _selectedTab == 0
-                                            ? (widget.isDark ? const Color(0xFF6366F1).withOpacity(0.28) : Colors.white)
+                                            ? (widget.isDark ? const Color(0x20FFFFFF) : Colors.white)
                                             : Colors.transparent,
                                         borderRadius: BorderRadius.circular(8),
                                         boxShadow: _selectedTab == 0
@@ -283,7 +286,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                           fontSize: 9.5,
                                           fontWeight: _selectedTab == 0 ? FontWeight.w800 : FontWeight.w600,
                                           color: _selectedTab == 0
-                                              ? (widget.isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                              ? widget.themeColors.textPrimary
                                               : widget.themeColors.textTertiary,
                                         ),
                                       ),
@@ -302,7 +305,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                       padding: const EdgeInsets.symmetric(vertical: 5),
                                       decoration: BoxDecoration(
                                         color: _selectedTab == 1
-                                            ? (widget.isDark ? const Color(0xFF6366F1).withOpacity(0.28) : Colors.white)
+                                            ? (widget.isDark ? const Color(0x20FFFFFF) : Colors.white)
                                             : Colors.transparent,
                                         borderRadius: BorderRadius.circular(8),
                                         boxShadow: _selectedTab == 1
@@ -322,7 +325,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                                           fontSize: 9.5,
                                           fontWeight: _selectedTab == 1 ? FontWeight.w800 : FontWeight.w600,
                                           color: _selectedTab == 1
-                                              ? (widget.isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                              ? widget.themeColors.textPrimary
                                               : widget.themeColors.textTertiary,
                                         ),
                                       ),
@@ -379,40 +382,20 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
 
   Widget _buildRevisionTile(BuildContext context, RevisionItem item) {
     final isCompleted = item.isCompletedToday;
-    final strength = item.strength;
-    Color badgeColor;
-    switch (strength) {
-      case TopicStrength.weak:
-        badgeColor = const Color(0xFFEF4444);
-        break;
-      case TopicStrength.strengthening:
-        badgeColor = Colors.amber;
-        break;
-      case TopicStrength.strong:
-        badgeColor = const Color(0xFF3B82F6);
-        break;
-      case TopicStrength.strongest:
-        badgeColor = const Color(0xFF10B981);
-        break;
-    }
 
     // Schedule status calculation
     String? scheduleLabel;
-    Color scheduleColor = const Color(0xFF6366F1);
     if (item.scheduledReviewDate != null) {
       final now = DateTime.now();
       final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
       if (item.scheduledReviewDate!.isBefore(todayEnd) || !item.scheduledReviewDate!.isAfter(todayEnd)) {
         scheduleLabel = isCompleted ? 'REVISED' : 'DUE TODAY';
-        scheduleColor = isCompleted ? const Color(0xFF10B981) : Colors.amber;
       } else {
         final days = item.scheduledReviewDate!.difference(DateTime(now.year, now.month, now.day)).inDays;
         scheduleLabel = 'IN ${days > 0 ? days : 1}D';
-        scheduleColor = const Color(0xFF818CF8);
       }
     } else if (item.intervalDays == null && widget.onUnshelf != null) {
       scheduleLabel = 'SHELF';
-      scheduleColor = const Color(0xFF06B6D4);
     }
 
     return GestureDetector(
@@ -439,10 +422,8 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
           ),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isCompleted
-                ? (widget.isDark ? const Color(0x3010B981) : const Color(0x4010B981))
-                : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000)),
-            width: isCompleted ? 1.0 : 0.8,
+            color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000),
+            width: 0.8,
           ),
           boxShadow: [
             BoxShadow(
@@ -500,10 +481,10 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                           margin: const EdgeInsets.only(right: 6),
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.2),
                           decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.18),
+                            color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                             borderRadius: BorderRadius.circular(5),
                             border: Border.all(
-                              color: Colors.redAccent.withOpacity(0.4),
+                              color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                               width: 0.7,
                             ),
                           ),
@@ -512,7 +493,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                             style: RythemTypography.labelSmall.copyWith(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
-                              color: Colors.redAccent,
+                              color: widget.themeColors.textSecondary,
                               letterSpacing: 0.3,
                             ),
                           ),
@@ -523,10 +504,10 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                           margin: const EdgeInsets.only(right: 6),
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.2),
                           decoration: BoxDecoration(
-                            color: scheduleColor.withOpacity(widget.isDark ? 0.22 : 0.12),
+                            color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                             borderRadius: BorderRadius.circular(5),
                             border: Border.all(
-                              color: scheduleColor.withOpacity(0.45),
+                              color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                               width: 0.6,
                             ),
                           ),
@@ -535,7 +516,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                             style: TextStyle(
                               fontSize: 7.5,
                               fontWeight: FontWeight.w800,
-                              color: scheduleColor,
+                              color: widget.themeColors.textSecondary,
                               letterSpacing: 0.3,
                             ),
                           ),
@@ -565,24 +546,24 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(widget.isDark ? 0.22 : 0.14),
+                          color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                           borderRadius: BorderRadius.circular(5),
                           border: Border.all(
-                            color: const Color(0xFF10B981).withOpacity(widget.isDark ? 0.45 : 0.3),
+                            color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                             width: 0.7,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.bolt, size: 9.5, color: Color(0xFF10B981)),
+                            Icon(Icons.bolt, size: 9.5, color: widget.themeColors.textPrimary),
                             const SizedBox(width: 2),
                             Text(
                               '+${item.beatPoints.toStringAsFixed(1)} pts',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 8.5,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF10B981),
+                                color: widget.themeColors.textPrimary,
                               ),
                             ),
                           ],
@@ -628,10 +609,10 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
-                          color: badgeColor.withOpacity(widget.isDark ? 0.2 : 0.12),
+                          color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: badgeColor.withOpacity(widget.isDark ? 0.45 : 0.3),
+                            color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                             width: 0.6,
                           ),
                         ),
@@ -640,7 +621,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                           style: TextStyle(
                             fontSize: 8.5,
                             fontWeight: FontWeight.w700,
-                            color: badgeColor,
+                            color: widget.themeColors.textSecondary,
                           ),
                         ),
                       ),
@@ -676,7 +657,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.psychology_outlined, size: 11.5, color: Color(0xFF10B981)),
+                          Icon(Icons.psychology_outlined, size: 11.5, color: widget.themeColors.textTertiary),
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
@@ -708,9 +689,6 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
     required DownloadProgress? progress,
     required ModelTier? tier,
   }) {
-    const cyan = Color(0xFF06B6D4);
-    const lightCyan = Color(0xFF38BDF8);
-
     final progressVal = progress?.progress ?? 0.0;
     final progressPct = progress != null ? progress.formattedProgress : '0%';
     final receivedStr = progress?.formattedReceived ?? '0 MB';
@@ -723,15 +701,15 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: widget.isDark
-            ? const Color(0xFF0B1220).withOpacity(0.85)
-            : Colors.white.withOpacity(0.92),
+            ? const Color(0xFF131724)
+            : Colors.white,
         border: Border.all(
-          color: widget.isDark ? lightCyan.withOpacity(0.35) : cyan.withOpacity(0.35),
+          color: widget.isDark ? widget.themeColors.glassBorder : const Color(0x18000000),
           width: 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: cyan.withOpacity(0.08),
+            color: widget.isDark ? Colors.black.withOpacity(0.25) : const Color(0xFF0E1420).withOpacity(0.04),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -745,13 +723,17 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: cyan.withOpacity(widget.isDark ? 0.22 : 0.12),
+                  color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                    width: 0.8,
+                  ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome_rounded,
                   size: 15,
-                  color: cyan,
+                  color: widget.themeColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 8),
@@ -760,7 +742,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                 style: RythemTypography.labelSmall.copyWith(
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
-                  color: widget.isDark ? lightCyan : const Color(0xFF0891B2),
+                  color: widget.themeColors.textPrimary,
                   fontSize: 10.5,
                 ),
               ),
@@ -768,15 +750,19 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                 decoration: BoxDecoration(
-                  color: cyan.withOpacity(widget.isDark ? 0.2 : 0.12),
+                  color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                   borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                    width: 0.6,
+                  ),
                 ),
                 child: Text(
                   progressPct,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
-                    color: cyan,
+                    color: widget.themeColors.textPrimary,
                   ),
                 ),
               ),
@@ -797,7 +783,7 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
             child: LinearProgressIndicator(
               value: progressVal > 0.0 ? progressVal : null,
               backgroundColor: widget.isDark ? Colors.white10 : Colors.black12,
-              valueColor: const AlwaysStoppedAnimation<Color>(cyan),
+              valueColor: AlwaysStoppedAnimation<Color>(widget.themeColors.textPrimary),
               minHeight: 4,
             ),
           ),
@@ -863,13 +849,17 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                             Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: widget.isDark ? const Color(0x28A855F7) : const Color(0x1EA855F7),
+                                color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                                 shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                                  width: 0.8,
+                                ),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.psychology_outlined,
                                 size: 15,
-                                color: Color(0xFFA855F7),
+                                color: widget.themeColors.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -925,11 +915,11 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                       decoration: BoxDecoration(
                         color: widget.isDark
-                            ? const Color(0x33A855F7)
-                            : const Color(0x1AA855F7),
+                            ? const Color(0x18FFFFFF)
+                            : const Color(0x0C000000),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFFA855F7).withOpacity(widget.isDark ? 0.5 : 0.35),
+                          color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                           width: 1.0,
                         ),
                       ),
@@ -937,25 +927,25 @@ class _DailyRevisionBoardState extends State<DailyRevisionBoard> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (widget.isScanning)
-                            const SizedBox(
+                            SizedBox(
                               width: 14,
                               height: 14,
                               child: CircularProgressIndicator(
                                 strokeWidth: 1.8,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA855F7)),
+                                valueColor: AlwaysStoppedAnimation<Color>(widget.themeColors.textPrimary),
                               ),
                             )
                           else
-                            const Icon(
+                            Icon(
                               Icons.auto_awesome_rounded,
                               size: 14,
-                              color: Color(0xFFA855F7),
+                              color: widget.themeColors.textPrimary,
                             ),
                           const SizedBox(width: 8),
                           Text(
                             widget.isScanning ? 'AI Scanning Trackers...' : 'See What to Revise',
                             style: RythemTypography.labelSmall.copyWith(
-                              color: widget.isDark ? Colors.white : const Color(0xFF6B21A8),
+                              color: widget.themeColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 11.5,
                             ),

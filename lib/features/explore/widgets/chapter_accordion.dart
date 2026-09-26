@@ -189,13 +189,17 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0x22F59E0B),
+                                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.1),
+                                    width: 0.6,
+                                  ),
                                 ),
                                 child: Text(
                                   '$gapsCount gaps',
-                                  style: const TextStyle(
-                                    color: Color(0xFFF59E0B),
+                                  style: TextStyle(
+                                    color: themeColors.textSecondary,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -393,7 +397,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
           title: milestone.title,
           subtitle: '$completed/${beats.length} complete • ${beats.length} video${beats.length == 1 ? '' : 's'}',
           icon: Icons.menu_book_rounded,
-          accentColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+          accentColor: themeColors.textPrimary,
           themeColors: themeColors,
           isDark: isDark,
           children: beats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
@@ -408,8 +412,8 @@ class _ChapterAccordionState extends State<ChapterAccordion>
         _TopicGroupSection(
           title: '⚠️ Uncovered Syllabus Gaps',
           subtitle: '$completed/${gapBeats.length} complete • ${gapBeats.length} gap${gapBeats.length == 1 ? '' : 's'}',
-          icon: Icons.warning_amber_rounded,
-          accentColor: const Color(0xFFF59E0B),
+          icon: Icons.link_off_rounded,
+          accentColor: themeColors.textSecondary,
           themeColors: themeColors,
           isDark: isDark,
           trailingAction: widget.onAttachResourceToChapter != null
@@ -418,22 +422,22 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withOpacity(isDark ? 0.2 : 0.12),
+                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: const Color(0xFFF59E0B).withOpacity(0.4),
+                        color: isDark ? Colors.white.withOpacity(0.18) : Colors.black.withOpacity(0.12),
                         width: 0.8,
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add_link_rounded, size: 12, color: Color(0xFFF59E0B)),
-                        SizedBox(width: 4),
+                        Icon(Icons.add_link_rounded, size: 12, color: themeColors.textPrimary),
+                        const SizedBox(width: 4),
                         Text(
                           'Fill Gap',
                           style: TextStyle(
-                            color: Color(0xFFF59E0B),
+                            color: themeColors.textPrimary,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -510,13 +514,13 @@ class _ChapterAccordionState extends State<ChapterAccordion>
             Icon(
               Icons.add_rounded,
               size: 16,
-              color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+              color: themeColors.textPrimary,
             ),
             const SizedBox(width: 6),
             Text(
               'Add Topic to Chapter',
               style: RythemTypography.bodySmall.copyWith(
-                color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                color: themeColors.textPrimary,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -708,630 +712,568 @@ class BeatTile extends StatelessWidget {
     final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
 
     return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [
-                      const Color(0x22FFFFFF),
-                      const Color(0x10FFFFFF),
-                    ]
-                  : [
-                      const Color(0x80FFFFFF),
-                      const Color(0x4DFFFFFF),
-                    ],
-            ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDelayed
-                  ? (isDark ? const Color(0x80FFB300) : const Color(0x60F57C00))
-                  : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
-              width: isDelayed ? 1.2 : 0.8,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.18)
-                    : const Color(0xFF0E1420).withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0x18FFFFFF),
+                  const Color(0x0CFFFFFF),
+                ]
+              : [
+                  const Color(0x60FFFFFF),
+                  const Color(0x35FFFFFF),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDelayed
+              ? (isDark ? const Color(0x38FFFFFF) : const Color(0x30000000))
+              : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
+          width: isDelayed ? 1.0 : 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.18)
+                : const Color(0xFF0E1420).withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-            // Interactive Checkbox / Multi-Part Progress Indicator
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                if (beat.isMultiPart && !beat.isCompleted && onIncrementPart != null) {
-                  onIncrementPart!();
-                } else {
-                  onToggle(!beat.isCompleted);
-                }
-              },
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: beat.isMultiPart && !beat.isCompleted
-                    ? AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: beat.completedParts > 0
-                              ? (isDark ? const Color(0x33818CF8) : const Color(0x204F46E5))
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
+              // 1. Interactive Checkbox / Multi-Part Progress Indicator (Monochrome Glass)
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  if (beat.isMultiPart && !beat.isCompleted && onIncrementPart != null) {
+                    onIncrementPart!();
+                  } else {
+                    onToggle(!beat.isCompleted);
+                  }
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: beat.isMultiPart && !beat.isCompleted
+                      ? AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
                             color: beat.completedParts > 0
-                                ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
-                                : themeColors.textTertiary,
-                            width: 1.5,
+                                ? (isDark ? const Color(0x1CFFFFFF) : const Color(0x0F000000))
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: beat.completedParts > 0
+                                  ? themeColors.textPrimary
+                                  : themeColors.textTertiary,
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '${beat.completedParts}',
-                          style: RythemTypography.labelSmall.copyWith(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: beat.completedParts > 0
-                                ? (isDark ? Colors.white : const Color(0xFF4F46E5))
-                                : themeColors.textTertiary,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${beat.completedParts}',
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                              color: beat.completedParts > 0
+                                  ? themeColors.textPrimary
+                                  : themeColors.textTertiary,
+                            ),
                           ),
-                        ),
-                      )
-                    : AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: beat.isCompleted
-                              ? themeColors.textPrimary
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
+                        )
+                      : AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
                             color: beat.isCompleted
                                 ? themeColors.textPrimary
-                                : themeColors.textTertiary,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: AnimatedScale(
-                          scale: beat.isCompleted ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutBack,
-                          child: Icon(
-                            Icons.check_rounded,
-                            size: 13,
-                            color: isDark ? Colors.black : Colors.white,
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // Beat Title & Badges (Tapping content opens resource)
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onOpenResource,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top Badges Row (if any exist, placed above title so title never squishes)
-                    () {
-                      final match = RegExp(r'_r(\d+)_').firstMatch(beat.id);
-                      final rNum = match != null ? int.tryParse(match.group(1)!) : null;
-                      final hasResourceBadge = rNum != null && rNum > 1;
-                      final hasAnyBadge = isDelayed || hasResourceBadge || beat.isMentorExtra;
-
-                      if (!hasAnyBadge) return const SizedBox.shrink();
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Wrap(
-                          spacing: 4,
-                          runSpacing: 2,
-                          children: [
-                            if (isDelayed)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0x33FFB300) : const Color(0x20F57C00),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: isDark ? const Color(0x80FFB300) : const Color(0x60F57C00),
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.more_time_rounded,
-                                      size: 9,
-                                      color: isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100),
-                                    ),
-                                    const SizedBox(width: 2.5),
-                                    Text(
-                                      'DELAYED • LATER',
-                                      style: RythemTypography.labelSmall.copyWith(
-                                        fontSize: 7.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100),
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            if (hasResourceBadge)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6366F1).withOpacity(isDark ? 0.22 : 0.12),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: const Color(0xFF6366F1).withOpacity(0.4),
-                                    width: 0.6,
-                                  ),
-                                ),
-                                child: Text(
-                                  'RESOURCE $rNum',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    fontSize: 7.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                            if (beat.isMentorExtra)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.white.withOpacity(0.12)
-                                      : Colors.black.withOpacity(0.07),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? themeColors.glassBorderHighlight
-                                        : Colors.black26,
-                                    width: 0.6,
-                                  ),
-                                ),
-                                child: Text(
-                                  'MENTOR EXTRA',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    fontSize: 7.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: themeColors.textPrimary,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    }(),
-
-                    // Full-width Beat Title
-                    Text(
-                      beat.title,
-                      style: RythemTypography.bodyMedium.copyWith(
-                        color: beat.isCompleted
-                            ? themeColors.textTertiary
-                            : themeColors.textPrimary,
-                        decoration:
-                            beat.isCompleted ? TextDecoration.lineThrough : null,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        height: 1.25,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    const SizedBox(height: 5),
-
-                    // Metadata Row: Video badge, Timestamp chip, Effort/Duration, Multipart
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 6,
-                      runSpacing: 3,
-                      children: [
-                        if (!hasResource)
-                          Text(
-                            'no resource linked',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textTertiary.withOpacity(0.75),
-                              fontSize: 9.5,
-                              fontStyle: FontStyle.italic,
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: beat.isCompleted
+                                  ? themeColors.textPrimary
+                                  : themeColors.textTertiary,
+                              width: 1.5,
                             ),
-                          )
-                        else
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
+                          ),
+                          child: AnimatedScale(
+                            scale: beat.isCompleted ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutBack,
+                            child: Icon(
+                              Icons.check_rounded,
+                              size: 13,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // 2. Beat Title & Badges (Tapping content opens resource)
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onOpenResource,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top Badges Row (Monochrome glass pills above title)
+                      () {
+                        final match = RegExp(r'_r(\d+)_').firstMatch(beat.id);
+                        final rNum = match != null ? int.tryParse(match.group(1)!) : null;
+                        final hasResourceBadge = rNum != null && rNum > 1;
+                        final hasAnyBadge = isDelayed || hasResourceBadge || beat.isMentorExtra;
+
+                        if (!hasAnyBadge) return const SizedBox.shrink();
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
                             children: [
-                              Icon(
-                                isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
-                                size: 11,
-                                color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                isYt ? 'video' : 'resource',
-                                style: RythemTypography.labelSmall.copyWith(
-                                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
+                              if (isDelayed)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.more_time_rounded,
+                                        size: 9,
+                                        color: themeColors.textSecondary,
+                                      ),
+                                      const SizedBox(width: 2.5),
+                                      Text(
+                                        'DELAYED • LATER',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 7.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: themeColors.textSecondary,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                              if (hasResourceBadge)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                                      width: 0.6,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'RESOURCE $rNum',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: themeColors.textSecondary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              if (beat.isMentorExtra)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                                      width: 0.6,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'MENTOR EXTRA',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: themeColors.textPrimary,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
+                        );
+                      }(),
 
-                        // Video Timestamp Chip (⏱️ 14:25)
-                        if (beat.timestampSeconds != null && beat.timestampSeconds! >= 0) ...[
-                          Text(
-                            '•',
-                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0x25F59E0B) : const Color(0x18D97706),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: isDark ? const Color(0x50F59E0B) : const Color(0x35D97706),
-                                width: 0.6,
+                      // Full-width Beat Title
+                      Text(
+                        beat.title,
+                        style: RythemTypography.bodyMedium.copyWith(
+                          color: beat.isCompleted
+                              ? themeColors.textTertiary
+                              : themeColors.textPrimary,
+                          decoration:
+                              beat.isCompleted ? TextDecoration.lineThrough : null,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          height: 1.25,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 5),
+
+                      // Metadata Row: Video badge, Timestamp chip, Effort/Duration, Multipart (Monochrome)
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 3,
+                        children: [
+                          if (!hasResource)
+                            Text(
+                              'no resource linked',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textTertiary.withOpacity(0.75),
+                                fontSize: 9.5,
+                                fontStyle: FontStyle.italic,
                               ),
-                            ),
-                            child: Row(
+                            )
+                          else
+                            Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  Icons.schedule_rounded,
-                                  size: 9.5,
-                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                  isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
+                                  size: 11,
+                                  color: themeColors.textTertiary,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  formatTimestampSeconds(beat.timestampSeconds!),
+                                  isYt ? 'video' : 'resource',
                                   style: RythemTypography.labelSmall.copyWith(
-                                    color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                    fontSize: 9,
+                                    color: themeColors.textTertiary,
+                                    fontSize: 9.5,
                                     fontWeight: FontWeight.w700,
-                                    fontFeatures: const [FontFeature.tabularFigures()],
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
 
-                        Text(
-                          '•',
-                          style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                        ),
-                        Text(
-                          formatDurationFromEffort(beat.effortWeight).isNotEmpty
-                              ? '${beat.effortWeight.toStringAsFixed(1)} effort • ${formatDurationFromEffort(beat.effortWeight)}'
-                              : '${beat.effortWeight.toStringAsFixed(1)} effort',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            fontSize: 9.5,
-                          ),
-                        ),
-                        if (beat.isMultiPart) ...[
+                          // Video Timestamp Chip (⏱️ 14:25) - Monochrome Glass
+                          if (beat.timestampSeconds != null && beat.timestampSeconds! >= 0) ...[
+                            Text(
+                              '•',
+                              style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                                  width: 0.6,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 9.5,
+                                    color: themeColors.textSecondary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    formatTimestampSeconds(beat.timestampSeconds!),
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: themeColors.textPrimary,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
                           Text(
                             '•',
                             style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                           ),
                           Text(
-                            'part ${beat.completedParts}/${beat.totalParts}',
+                            formatDurationFromEffort(beat.effortWeight).isNotEmpty
+                                ? '${beat.effortWeight.toStringAsFixed(1)} effort • ${formatDurationFromEffort(beat.effortWeight)}'
+                                : '${beat.effortWeight.toStringAsFixed(1)} effort',
                             style: RythemTypography.labelSmall.copyWith(
-                              color: beat.completedParts > 0
-                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
-                                  : themeColors.textTertiary,
-                              fontWeight: FontWeight.w700,
+                              color: themeColors.textTertiary,
                               fontSize: 9.5,
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-
-                    if (beat.isMultiPart) ...[
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: List.generate(beat.totalParts, (index) {
-                                final isDone = index < beat.completedParts;
-                                return Expanded(
-                                  child: Container(
-                                    height: 3,
-                                    margin: EdgeInsets.only(
-                                      right: index < beat.totalParts - 1 ? 2.5 : 0,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(1.5),
-                                      color: isDone
-                                          ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
-                                          : (isDark ? const Color(0x30FFFFFF) : const Color(0x20000000)),
-                                    ),
-                                  ),
-                                );
-                              }),
+                          if (beat.isMultiPart) ...[
+                            Text(
+                              '•',
+                              style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${(beat.partProgress * 100).toInt()}%',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: beat.completedParts > 0
-                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
-                                  : themeColors.textTertiary,
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w700,
+                            Text(
+                              'part ${beat.completedParts}/${beat.totalParts}',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: beat.completedParts > 0
+                                    ? themeColors.textPrimary
+                                    : themeColors.textTertiary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 9.5,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
+
+                      if (beat.isMultiPart) ...[
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: List.generate(beat.totalParts, (index) {
+                                  final isDone = index < beat.completedParts;
+                                  return Expanded(
+                                    child: Container(
+                                      height: 3,
+                                      margin: EdgeInsets.only(
+                                        right: index < beat.totalParts - 1 ? 2.5 : 0,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(1.5),
+                                        color: isDone
+                                            ? themeColors.textPrimary
+                                            : (isDark ? const Color(0x20FFFFFF) : const Color(0x14000000)),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${(beat.partProgress * 100).toInt()}%',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: beat.completedParts > 0
+                                    ? themeColors.textPrimary
+                                    : themeColors.textTertiary,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-            // Right Action Cluster: Direct actions + Consolidated Popup Menu
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 1. Direct Play / Open Button
-                if (hasResource)
-                  InkWell(
-                    onTap: onOpenResource,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
+              // 3. Right Action Cluster: Direct Play + Consolidated '...' Popup Menu (Strictly Monochrome)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Direct Play / Open Button
+                  if (hasResource)
+                    InkWell(
+                      onTap: onOpenResource,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Icon(
+                          isYt ? Icons.play_arrow_rounded : Icons.open_in_new_rounded,
+                          size: 15,
+                          color: themeColors.textPrimary,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(width: 4),
+
+                  // Consolidated '...' Popup Menu (All secondary tools moved here)
+                  PopupMenuButton<String>(
+                    icon: Container(
                       width: 28,
                       height: 28,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0x22818CF8) : const Color(0x184F46E5),
+                        color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isDark ? const Color(0x44818CF8) : const Color(0x304F46E5),
+                          color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                           width: 0.8,
                         ),
                       ),
                       child: Icon(
-                        isYt ? Icons.play_arrow_rounded : Icons.open_in_new_rounded,
-                        size: 15,
-                        color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                        Icons.more_vert_rounded,
+                        size: 16,
+                        color: themeColors.textSecondary,
                       ),
                     ),
-                  ),
-
-                // 2. Direct Resume Delayed Task Button
-                if (isDelayed && onToggleDelay != null) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(
-                      Icons.restore_rounded,
-                      size: 16,
-                      color: isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100),
-                    ),
-                    onPressed: onToggleDelay,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: 'Resume into Focus',
+                    tooltip: 'Options',
+                    onSelected: (val) {
+                      if (val == 'split') onSplit?.call();
+                      if (val == 'delay') onToggleDelay?.call();
+                      if (val == 'focus') {
+                        if (isInFocus && onRemoveFromFocus != null) {
+                          onRemoveFromFocus!();
+                        } else {
+                          onToggleFocus?.call();
+                        }
+                      }
+                      if (val == 'revision') onMarkForRevision?.call();
+                      if (val == 'attach') onAttachResource?.call();
+                      if (val == 'flag') onFlag?.call();
+                      if (val == 'edit') onEdit?.call();
+                      if (val == 'delete') onDelete?.call();
+                    },
+                    itemBuilder: (ctx) => [
+                      if (onSplit != null && !beat.isCompleted)
+                        PopupMenuItem(
+                          value: 'split',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.call_split_rounded, size: 16),
+                              const SizedBox(width: 8),
+                              Text(beat.isMultiPart
+                                  ? 'Edit Parts (${beat.completedParts}/${beat.totalParts})'
+                                  : 'Complete in Parts'),
+                            ],
+                          ),
+                        ),
+                      if (onToggleDelay != null && !beat.isCompleted)
+                        PopupMenuItem(
+                          value: 'delay',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isDelayed ? Icons.restore_rounded : Icons.more_time_rounded,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(isDelayed ? 'Resume into Focus' : 'Delay for Later'),
+                            ],
+                          ),
+                        ),
+                      if ((onToggleFocus != null || onRemoveFromFocus != null) && !beat.isCompleted)
+                        PopupMenuItem(
+                          value: 'focus',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isInFocus ? Icons.playlist_remove_rounded : Icons.playlist_add_rounded,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(isInFocus ? 'Remove from Today\'s Focus' : 'Add to Today\'s Focus'),
+                            ],
+                          ),
+                        ),
+                      if (beat.isCompleted && onMarkForRevision != null)
+                        PopupMenuItem(
+                          value: 'revision',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isInRevisionShelf ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(isInRevisionShelf ? 'Modify Revision Shelf' : 'Mark for Revision'),
+                            ],
+                          ),
+                        ),
+                      if (onAttachResource != null)
+                        PopupMenuItem(
+                          value: 'attach',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.link_rounded, size: 16),
+                              const SizedBox(width: 8),
+                              Text(beat.sourceUrl?.isNotEmpty == true ? 'Change Resource URL' : 'Attach Resource URL'),
+                            ],
+                          ),
+                        ),
+                      if (onFlag != null)
+                        const PopupMenuItem(
+                          value: 'flag',
+                          child: Row(
+                            children: [
+                              Icon(Icons.help_outline_rounded, size: 16),
+                              SizedBox(width: 8),
+                              Text('Ask Mentor to Explain'),
+                            ],
+                          ),
+                        ),
+                      if (onEdit != null)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 16),
+                              SizedBox(width: 8),
+                              Text('Edit Topic'),
+                            ],
+                          ),
+                        ),
+                      if (onDelete != null)
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, size: 16, color: themeColors.textSecondary),
+                              const SizedBox(width: 8),
+                              Text('Delete Topic', style: TextStyle(color: themeColors.textPrimary)),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ],
-
-                // 3. Direct Remove from Focus button (if displayed in Today's Focus)
-                if (onRemoveFromFocus != null) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 15,
-                      color: themeColors.textTertiary,
-                    ),
-                    onPressed: onRemoveFromFocus,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: 'Remove from Today\'s Focus',
-                  ),
-                ],
-
-                // 4. Direct Flag Confusion Button
-                if (onFlag != null) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(
-                      Icons.help_outline_rounded,
-                      size: 15,
-                      color: themeColors.textTertiary,
-                    ),
-                    onPressed: onFlag,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: 'Ask Mentor to Explain',
-                  ),
-                ],
-
-                // 5. Direct Revision Bookmark Button (when completed)
-                if (beat.isCompleted && onMarkForRevision != null) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: Icon(
-                      isInRevisionShelf ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
-                      size: 16,
-                      color: isInRevisionShelf
-                          ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF6366F1))
-                          : themeColors.textTertiary,
-                    ),
-                    onPressed: onMarkForRevision,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: isInRevisionShelf ? 'In Revision Shelf' : 'Mark for Revision',
-                  ),
-                ],
-
-                // 6. Consolidated '...' Popup Menu for secondary actions
-                const SizedBox(width: 4),
-                PopupMenuButton<String>(
-                  icon: Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.more_vert_rounded,
-                      size: 16,
-                      color: themeColors.textSecondary,
-                    ),
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                  tooltip: 'Options',
-                  onSelected: (val) {
-                    if (val == 'split') onSplit?.call();
-                    if (val == 'delay') onToggleDelay?.call();
-                    if (val == 'focus') onToggleFocus?.call();
-                    if (val == 'revision') onMarkForRevision?.call();
-                    if (val == 'attach') onAttachResource?.call();
-                    if (val == 'flag') onFlag?.call();
-                    if (val == 'edit') onEdit?.call();
-                    if (val == 'delete') onDelete?.call();
-                  },
-                  itemBuilder: (ctx) => [
-                    if (onSplit != null && !beat.isCompleted)
-                      PopupMenuItem(
-                        value: 'split',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.call_split_rounded, size: 16),
-                            const SizedBox(width: 8),
-                            Text(beat.isMultiPart
-                                ? 'Edit Parts (${beat.completedParts}/${beat.totalParts})'
-                                : 'Complete in Parts'),
-                          ],
-                        ),
-                      ),
-                    if (onToggleDelay != null && !beat.isCompleted)
-                      PopupMenuItem(
-                        value: 'delay',
-                        child: Row(
-                          children: [
-                            Icon(
-                              isDelayed ? Icons.restore_rounded : Icons.more_time_rounded,
-                              size: 16,
-                              color: isDelayed ? const Color(0xFFF59E0B) : null,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(isDelayed ? 'Resume into Focus' : 'Delay for Later'),
-                          ],
-                        ),
-                      ),
-                    if (onToggleFocus != null && !beat.isCompleted)
-                      PopupMenuItem(
-                        value: 'focus',
-                        child: Row(
-                          children: [
-                            Icon(
-                              isInFocus ? Icons.playlist_remove_rounded : Icons.playlist_add_rounded,
-                              size: 16,
-                              color: isInFocus ? const Color(0xFF818CF8) : null,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(isInFocus ? 'Remove from Today\'s Focus' : 'Add to Today\'s Focus'),
-                          ],
-                        ),
-                      ),
-                    if (beat.isCompleted && onMarkForRevision != null)
-                      PopupMenuItem(
-                        value: 'revision',
-                        child: Row(
-                          children: [
-                            Icon(
-                              isInRevisionShelf ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
-                              size: 16,
-                              color: isInRevisionShelf ? const Color(0xFF6366F1) : null,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(isInRevisionShelf ? 'Modify Revision Shelf' : 'Mark for Revision'),
-                          ],
-                        ),
-                      ),
-                    if (onAttachResource != null)
-                      PopupMenuItem(
-                        value: 'attach',
-                        child: Row(
-                          children: [
-                            const Icon(Icons.link_rounded, size: 16),
-                            const SizedBox(width: 8),
-                            Text(beat.sourceUrl?.isNotEmpty == true ? 'Change Resource URL' : 'Attach Resource URL'),
-                          ],
-                        ),
-                      ),
-                    if (onFlag != null)
-                      const PopupMenuItem(
-                        value: 'flag',
-                        child: Row(
-                          children: [
-                            Icon(Icons.help_outline_rounded, size: 16),
-                            SizedBox(width: 8),
-                            Text('Ask Mentor to Explain'),
-                          ],
-                        ),
-                      ),
-                    if (onEdit != null)
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 16),
-                            SizedBox(width: 8),
-                            Text('Edit Topic'),
-                          ],
-                        ),
-                      ),
-                    if (onDelete != null)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
-                            SizedBox(width: 8),
-                            Text('Delete Topic', style: TextStyle(color: Colors.redAccent)),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
 
         // Inline Confirmation Prompt for Ambiguous Syllabus Matches (docs/design.md §5 & user-flow.md Flow 4)
         if (showConfirmationPrompt) ...[

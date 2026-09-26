@@ -541,7 +541,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                         context,
                                         'Attached to ${targetCh?.title ?? "Subject"}!$gapMsg',
                                         icon: Icons.check_circle_outline_rounded,
-                                        accentColor: const Color(0xFF10B981),
                                       );
                                     }
                                   } catch (e) {
@@ -550,7 +549,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                         context,
                                         'Failed to attach resource: $e',
                                         icon: Icons.error_outline_rounded,
-                                        accentColor: Colors.redAccent,
                                       );
                                     }
                                   } finally {
@@ -590,14 +588,12 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
             context,
             result.message ?? 'Synced with YouTube successfully!',
             icon: Icons.check_circle_outline_rounded,
-            accentColor: const Color(0xFF10B981),
           );
         } else {
           showGlassToast(
             context,
             result.message ?? 'No YouTube resource found to sync',
             icon: Icons.info_outline_rounded,
-            accentColor: const Color(0xFFF59E0B),
           );
         }
       }
@@ -607,7 +603,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
           context,
           'Sync failed: $e',
           icon: Icons.error_outline_rounded,
-          accentColor: Colors.redAccent,
         );
       }
     } finally {
@@ -925,7 +920,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _handleSyncResource,
-                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                  color: themeColors.textPrimary,
+                  backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
@@ -1121,7 +1117,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                           ? Icons.all_inclusive_rounded
                                           : Icons.event_rounded,
                                       size: 16,
-                                      color: const Color(0xFF6366F1),
+                                      color: themeColors.textSecondary,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -1140,15 +1136,15 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                       Text(
                                         'Adjust',
                                         style: RythemTypography.labelSmall.copyWith(
-                                          color: const Color(0xFF6366F1),
+                                          color: themeColors.textSecondary,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       const SizedBox(width: 2),
-                                      const Icon(
+                                      Icon(
                                         Icons.chevron_right_rounded,
                                         size: 16,
-                                        color: Color(0xFF6366F1),
+                                        color: themeColors.textSecondary,
                                       ),
                                     ],
                                   ],
@@ -1395,13 +1391,13 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               Icon(
                                 Icons.create_new_folder_rounded,
                                 size: 18,
-                                color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                color: themeColors.textPrimary,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'Add Custom Chapter',
                                 style: RythemTypography.bodyMedium.copyWith(
-                                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                  color: themeColors.textPrimary,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13.5,
                                 ),

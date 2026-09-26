@@ -287,11 +287,13 @@ void main() {
       // Verify DELAYED • LATER badge is displayed on the delayed task
       expect(find.text('DELAYED • LATER'), findsOneWidget);
 
-      // Find and tap the restore/delay button on the beat
+      // Find and tap the options menu then restore/delay button on the beat
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
       final restoreButton = find.byIcon(Icons.restore_rounded);
       expect(restoreButton, findsOneWidget);
       await tester.tap(restoreButton);
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(delayedToggledBeat?.id, 'beat_delayed_sample');
     });

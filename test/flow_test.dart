@@ -124,7 +124,9 @@ void main() {
       expect(find.text('First Beat Title'), findsOneWidget);
       expect(find.text('Second Beat Title'), findsOneWidget);
 
-      // Tap checkbox to toggle
+      // Tap options menu and select Ask Mentor to Explain (flag)
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.help_outline_rounded).first);
       await tester.pumpAndSettle();
 

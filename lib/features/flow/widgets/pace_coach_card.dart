@@ -40,24 +40,26 @@ class PaceCoachCard extends StatelessWidget {
     final targetDate = roadmap.targetCompletionDate;
     final projectedDate = pacingBudget.projectedCompletionDate;
 
-    // Harmonious accent colors tailored for status
-    final Color statusAccentColor = isBehind
-        ? (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)) // Amber
-        : isOpenPace
-            ? (isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)) // Lavender
-            : (isDark ? const Color(0xFF10B981) : const Color(0xFF059669)); // Emerald
-
     final String statusLabel = isBehind
-        ? 'Behind Pace'
+        ? 'Pace Adjusted'
         : isOpenPace
             ? 'Open Pace'
             : 'On Track';
 
     final IconData statusIcon = isBehind
-        ? Icons.schedule_rounded
+        ? Icons.trending_up_rounded
         : isOpenPace
             ? Icons.all_inclusive_rounded
             : Icons.check_circle_outline_rounded;
+
+    // User-driven progress guideline message
+    final String userDrivenMessage = isOpenPace
+        ? 'Self-paced rhythm (~${pacingBudget.recentVelocity.toStringAsFixed(1)} lessons/active day).'
+        : isBehind
+            ? 'Your momentum is ${pacingBudget.recentVelocity.toStringAsFixed(1)} lessons/day. Tap Adjust Pace or +7 Days anytime to match your flow.'
+            : pacingBudget.guidelineMessage.isNotEmpty
+                ? pacingBudget.guidelineMessage
+                : 'Great momentum! Target is well within your current learning rhythm.';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -65,18 +67,14 @@ class PaceCoachCard extends StatelessWidget {
         color: isDark ? const Color(0xFF131724) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isBehind
-              ? statusAccentColor.withOpacity(0.35)
-              : isDark
-                  ? themeColors.glassBorder
-                  : const Color(0x18000000),
-          width: isBehind ? 1.5 : 1,
+          color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: isBehind
-                ? statusAccentColor.withOpacity(isDark ? 0.12 : 0.08)
-                : (isDark ? Colors.black.withOpacity(0.25) : const Color(0xFF0E1420).withOpacity(0.04)),
+            color: isDark
+                ? Colors.black.withOpacity(0.25)
+                : const Color(0xFF0E1420).withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -91,7 +89,7 @@ class PaceCoachCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header: Pace Coach title & Status Pill
+                // Header: Pace Coach title & Status Pill (Monochrome Glass)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -100,13 +98,17 @@ class PaceCoachCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: statusAccentColor.withOpacity(0.12),
+                            color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                              width: 0.8,
+                            ),
                           ),
                           child: Icon(
                             Icons.speed_rounded,
                             size: 16,
-                            color: statusAccentColor,
+                            color: themeColors.textPrimary,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -121,28 +123,28 @@ class PaceCoachCard extends StatelessWidget {
                       ],
                     ),
 
-                    // Status Pill
+                    // Status Pill (Monochrome Frosted Glass)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusAccentColor.withOpacity(0.12),
+                        color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: statusAccentColor.withOpacity(0.3),
+                          color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                           width: 1,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(statusIcon, size: 12, color: statusAccentColor),
+                          Icon(statusIcon, size: 12, color: themeColors.textPrimary),
                           const SizedBox(width: 4),
                           Text(
                             statusLabel,
                             style: RythemTypography.labelSmall.copyWith(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
-                              color: statusAccentColor,
+                              color: themeColors.textPrimary,
                             ),
                           ),
                         ],
@@ -153,7 +155,7 @@ class PaceCoachCard extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // ETA vs Target Information Grid
+                // ETA vs Target Information Grid (Monochrome)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
@@ -210,7 +212,7 @@ class PaceCoachCard extends StatelessWidget {
                               _formatDate(projectedDate),
                               style: RythemTypography.bodySmall.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: isBehind ? statusAccentColor : themeColors.textPrimary,
+                                color: themeColors.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -224,7 +226,7 @@ class PaceCoachCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Guideline Message (Informational, never forced)
+                // Guideline Message (User-driven progress, encouraging)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -236,7 +238,7 @@ class PaceCoachCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        pacingBudget.guidelineMessage,
+                        userDrivenMessage,
                         style: RythemTypography.bodySmall.copyWith(
                           fontSize: 12,
                           color: themeColors.textSecondary,
@@ -249,7 +251,7 @@ class PaceCoachCard extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // Action Buttons: 1-Tap "+7 Days" and "Adjust"
+                // Action Buttons: 1-Tap "+7 Days" and "Adjust" (Strictly Monochrome Glass)
                 Row(
                   children: [
                     // Quick +7 Days Button
@@ -291,7 +293,7 @@ class PaceCoachCard extends StatelessWidget {
 
                     const SizedBox(width: 10),
 
-                    // Adjust Timeline Button
+                    // Adjust Timeline Button (Monochrome Glass)
                     Expanded(
                       flex: 5,
                       child: ElevatedButton(
@@ -303,25 +305,27 @@ class PaceCoachCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                           elevation: 0,
                           backgroundColor: isDark
-                              ? const Color(0xFF6366F1).withOpacity(0.2)
-                              : const Color(0xFF4F46E5).withOpacity(0.12),
+                              ? const Color(0x18FFFFFF)
+                              : const Color(0x0C000000),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: const Color(0xFF6366F1).withOpacity(0.35),
+                              color: isDark
+                                  ? const Color(0x28FFFFFF)
+                                  : const Color(0x18000000),
                             ),
                           ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.edit_calendar_rounded, size: 14, color: Color(0xFF6366F1)),
+                            Icon(Icons.edit_calendar_rounded, size: 14, color: themeColors.textPrimary),
                             const SizedBox(width: 6),
                             Text(
                               'Adjust Pace',
                               style: RythemTypography.labelSmall.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white : const Color(0xFF4F46E5),
+                                color: themeColors.textPrimary,
                               ),
                             ),
                           ],

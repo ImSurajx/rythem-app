@@ -83,16 +83,16 @@ class _TimelineAdjusterSheetState extends State<TimelineAdjusterSheet> {
           data: Theme.of(context).copyWith(
             colorScheme: isDark
                 ? const ColorScheme.dark(
-                    primary: Color(0xFF6366F1),
-                    onPrimary: Colors.white,
-                    surface: Color(0xFF1E2230),
+                    primary: Colors.white,
+                    onPrimary: Colors.black,
+                    surface: Color(0xFF1E1E1E),
                     onSurface: Colors.white,
                   )
                 : const ColorScheme.light(
-                    primary: Color(0xFF4F46E5),
+                    primary: Colors.black,
                     onPrimary: Colors.white,
                     surface: Colors.white,
-                    onSurface: Color(0xFF0F172A),
+                    onSurface: Colors.black,
                   ),
           ),
           child: child!,
@@ -176,10 +176,14 @@ class _TimelineAdjusterSheetState extends State<TimelineAdjusterSheet> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withOpacity(0.12),
+                          color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                            width: 0.8,
+                          ),
                         ),
-                        child: const Icon(Icons.auto_graph_rounded, size: 18, color: Color(0xFF6366F1)),
+                        child: Icon(Icons.auto_graph_rounded, size: 18, color: themeColors.textPrimary),
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -252,9 +256,7 @@ class _TimelineAdjusterSheetState extends State<TimelineAdjusterSheet> {
                           _formatDate(projected),
                           style: RythemTypography.labelSmall.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: widget.pacingBudget.isBehindSchedule
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFF10B981),
+                            color: themeColors.textPrimary,
                           ),
                         ),
                       ],
@@ -335,7 +337,6 @@ class _TimelineAdjusterSheetState extends State<TimelineAdjusterSheet> {
                 title: 'Switch to Open Pace',
                 subtitle: 'Learn without any target deadline or ETA tracking',
                 icon: Icons.all_inclusive_rounded,
-                accentColor: const Color(0xFF8B5CF6),
                 isDark: isDark,
                 themeColors: themeColors,
                 onTap: _applyOpenPace,
@@ -359,7 +360,6 @@ class _TimelinePresetTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color? accentColor;
   final bool isDark;
   final RythemColorTokens themeColors;
   final VoidCallback onTap;
@@ -368,7 +368,6 @@ class _TimelinePresetTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
-    this.accentColor,
     required this.isDark,
     required this.themeColors,
     required this.onTap,
@@ -376,8 +375,6 @@ class _TimelinePresetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = accentColor ?? const Color(0xFF6366F1);
-
     return InkWell(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -398,10 +395,14 @@ class _TimelinePresetTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: activeColor.withOpacity(0.12),
+                color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                  width: 0.8,
+                ),
               ),
-              child: Icon(icon, size: 18, color: activeColor),
+              child: Icon(icon, size: 18, color: themeColors.textPrimary),
             ),
             const SizedBox(width: 12),
             Expanded(

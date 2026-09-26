@@ -259,11 +259,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final bookmarkButton = find.byTooltip('Mark for Revision');
+      // Open options popup menu
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+
+      final bookmarkButton = find.text('Mark for Revision');
       expect(bookmarkButton, findsOneWidget);
 
       await tester.tap(bookmarkButton);
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(bookmarkTapped, isTrue);
     });

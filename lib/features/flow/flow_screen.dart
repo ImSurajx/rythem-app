@@ -691,18 +691,10 @@ class _TrackTodoListCard extends StatelessWidget {
                             margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
-                              color: pacingBudget!.isBehindSchedule
-                                  ? (isDark ? const Color(0xFFF59E0B).withOpacity(0.2) : const Color(0xFFFEF3C7))
-                                  : pacingBudget!.isOpenPace
-                                      ? (isDark ? const Color(0xFFA78BFA).withOpacity(0.2) : const Color(0xFFEDE9FE))
-                                      : (isDark ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFFD1FAE5)),
+                              color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: pacingBudget!.isBehindSchedule
-                                    ? const Color(0xFFF59E0B).withOpacity(0.4)
-                                    : pacingBudget!.isOpenPace
-                                        ? const Color(0xFFA78BFA).withOpacity(0.4)
-                                        : const Color(0xFF10B981).withOpacity(0.4),
+                                color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                                 width: 0.8,
                               ),
                             ),
@@ -711,30 +703,22 @@ class _TrackTodoListCard extends StatelessWidget {
                               children: [
                                 Icon(
                                   pacingBudget!.isBehindSchedule
-                                      ? Icons.schedule_rounded
+                                      ? Icons.trending_up_rounded
                                       : pacingBudget!.isOpenPace
                                           ? Icons.all_inclusive_rounded
                                           : Icons.check_circle_outline_rounded,
                                   size: 10,
-                                  color: pacingBudget!.isBehindSchedule
-                                      ? const Color(0xFFF59E0B)
-                                      : pacingBudget!.isOpenPace
-                                          ? const Color(0xFFA78BFA)
-                                          : const Color(0xFF10B981),
+                                  color: themeColors.textPrimary,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
                                   pacingBudget!.isBehindSchedule
-                                      ? 'BEHIND PACE'
+                                      ? 'PACE ADAPTED'
                                       : pacingBudget!.isOpenPace
                                           ? 'OPEN PACE'
                                           : 'ON TRACK',
                                   style: TextStyle(
-                                    color: pacingBudget!.isBehindSchedule
-                                        ? const Color(0xFFF59E0B)
-                                        : pacingBudget!.isOpenPace
-                                            ? const Color(0xFFA78BFA)
-                                            : const Color(0xFF10B981),
+                                    color: themeColors.textPrimary,
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1010,10 +994,10 @@ class _TrackTodoListCard extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0x2210B981) : const Color(0x1810B981),
+                            color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: isDark ? const Color(0x5510B981) : const Color(0x4010B981),
+                              color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
                               width: 0.8,
                             ),
                           ),
@@ -1022,13 +1006,13 @@ class _TrackTodoListCard extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF10B981)),
+                                  Icon(Icons.check_circle_rounded, size: 16, color: themeColors.textPrimary),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Today\'s Goal Complete! 🎉',
                                       style: RythemTypography.titleMedium.copyWith(
-                                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                                        color: themeColors.textPrimary,
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -1241,27 +1225,29 @@ class _TrackTodoListCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        ),
+                        color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                          width: 0.8,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF10B981).withOpacity(0.3),
+                            color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFF0E1420).withOpacity(0.04),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
-                          SizedBox(width: 4),
+                          Icon(Icons.bolt_rounded, size: 14, color: themeColors.textPrimary),
+                          const SizedBox(width: 4),
                           Text(
                             'Start Today Early',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: themeColors.textPrimary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1349,7 +1335,7 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.08),
+                color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFF0E1420).withOpacity(0.04),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -1367,17 +1353,17 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
                     end: Alignment.bottomRight,
                     colors: isDark
                         ? [
-                            const Color(0x30F59E0B),
-                            const Color(0x18F59E0B),
+                            const Color(0x18FFFFFF),
+                            const Color(0x0EFFFFFF),
                           ]
                         : [
-                            const Color(0x20F59E0B),
-                            const Color(0x0CF59E0B),
+                            const Color(0x60FFFFFF),
+                            const Color(0x40FFFFFF),
                           ],
                   ),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? const Color(0x60F59E0B) : const Color(0x40F59E0B),
+                    color: isDark ? themeColors.glassBorder : const Color(0x18000000),
                     width: 0.9,
                   ),
                 ),
@@ -1387,9 +1373,9 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          Icons.schedule_outlined,
+                          Icons.speed_rounded,
                           size: 15,
-                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                          color: themeColors.textPrimary,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -1400,24 +1386,6 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
                             fontSize: 12.5,
                           ),
                         ),
-                        if (pacingBudget.shortfallDebt > 0) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(isDark ? 0.25 : 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${pacingBudget.shortfallDebt.toStringAsFixed(1)} pts',
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     Row(
@@ -1425,7 +1393,7 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
                         Text(
                           'Review plan',
                           style: RythemTypography.labelSmall.copyWith(
-                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                            color: themeColors.textPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
                           ),
@@ -1434,7 +1402,7 @@ class _SustainedLagRecalibrationBanner extends StatelessWidget {
                         Icon(
                           Icons.arrow_forward_rounded,
                           size: 13,
-                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                          color: themeColors.textPrimary,
                         ),
                       ],
                     ),
@@ -1474,7 +1442,6 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
   int _weekOffset = 0; // 0 = current week, -1 = last week, etc.
   Map<String, int> _weekActivity = {};
 
-  static const _emeraldAccent = Color(0xFF10B981);
   static const _weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   static const _monthAbbrs = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -1690,12 +1657,10 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
-                              color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
-                                  .withOpacity(widget.isDark ? 0.2 : 0.12),
+                              color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                               borderRadius: BorderRadius.circular(7),
                               border: Border.all(
-                                color: (widget.streakDays > 0 ? _emeraldAccent : widget.themeColors.textTertiary)
-                                    .withOpacity(widget.isDark ? 0.4 : 0.3),
+                                color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
                                 width: 0.8,
                               ),
                             ),
@@ -1713,9 +1678,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: widget.streakDays > 0
-                                        ? _emeraldAccent
-                                        : widget.themeColors.textTertiary,
+                                    color: widget.themeColors.textPrimary,
                                   ),
                                 ),
                               ],
@@ -1809,7 +1772,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: isCompleted
-                                          ? (widget.isDark ? _emeraldAccent.withOpacity(0.32) : Colors.teal.shade200)
+                                          ? (widget.isDark ? const Color(0x35FFFFFF) : const Color(0x20000000))
                                           : (isToday
                                               ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
                                               : (widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
@@ -1817,14 +1780,14 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                         color: isToday
                                             ? (widget.isDark ? Colors.white : Colors.black87)
                                             : (isCompleted
-                                                ? (widget.isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
+                                                ? widget.themeColors.textPrimary
                                                 : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))),
                                         width: isToday ? 1.5 : (isCompleted ? 1.2 : 0.6),
                                       ),
                                       boxShadow: isCompleted
                                           ? [
                                               BoxShadow(
-                                                color: _emeraldAccent.withOpacity(widget.isDark ? 0.25 : 0.15),
+                                                color: widget.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
                                                 blurRadius: 8,
                                                 spreadRadius: 1,
                                               ),
@@ -1836,7 +1799,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                         '${dayDate.day}',
                                         style: TextStyle(
                                           color: isCompleted
-                                              ? (widget.isDark ? Colors.white : Colors.teal.shade900)
+                                              ? widget.themeColors.textPrimary
                                               : (isToday
                                                   ? widget.themeColors.textPrimary
                                                   : (isPastOrToday ? widget.themeColors.textSecondary : widget.themeColors.textTertiary)),
@@ -1854,7 +1817,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                         constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                                         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                                         decoration: BoxDecoration(
-                                          color: widget.isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
+                                          color: widget.themeColors.textPrimary,
                                           borderRadius: BorderRadius.circular(10),
                                           border: Border.all(
                                             color: widget.isDark ? const Color(0xFF181818) : Colors.white,
@@ -1864,8 +1827,8 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                         child: Center(
                                           child: Text(
                                             '$completedOnDay',
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            style: TextStyle(
+                                              color: widget.isDark ? Colors.black : Colors.white,
                                               fontSize: 8,
                                               fontWeight: FontWeight.w800,
                                             ),
