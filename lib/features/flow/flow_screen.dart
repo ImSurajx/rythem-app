@@ -864,23 +864,32 @@ class _TrackTodoListCard extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 16),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0x12FFFFFF) : const Color(0x06000000),
+                        color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
                           width: 0.8,
                         ),
                       ),
                       child: Column(
                         children: [
-                          Icon(
-                            Icons.wb_sunny_outlined,
-                            size: 28,
-                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                              border: Border.all(color: themeColors.glassBorder, width: 0.8),
+                            ),
+                            child: Icon(
+                              Icons.done_all_rounded,
+                              size: 22,
+                              color: themeColors.textPrimary,
+                            ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             'Your slate is clean for today',
                             style: RythemTypography.titleMedium.copyWith(
@@ -898,35 +907,80 @@ class _TrackTodoListCard extends StatelessWidget {
                               fontSize: 11,
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (onStudyAhead != null && sortedAllBeats.any((b) => !b.isCompleted))
-                                ElevatedButton.icon(
-                                  onPressed: () => onStudyAhead!(roadmap),
-                                  icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                                  label: const Text('Queue Next Lesson'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: isDark ? const Color(0xFF4F46E5) : const Color(0xFF4338CA),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                GestureDetector(
+                                  onTap: () => onStudyAhead!(roadmap),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white : Colors.black,
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.12),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.play_arrow_rounded,
+                                          size: 16,
+                                          color: isDark ? Colors.black : Colors.white,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          'Queue Next Lesson',
+                                          style: RythemTypography.labelMedium.copyWith(
+                                            color: isDark ? Colors.black : Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               if (onOpenDetail != null) ...[
                                 const SizedBox(width: 8),
-                                OutlinedButton.icon(
-                                  onPressed: onOpenDetail,
-                                  icon: const Icon(Icons.menu_book_rounded, size: 15),
-                                  label: const Text('Browse Track'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: themeColors.textPrimary,
-                                    side: BorderSide(color: themeColors.glassBorder),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                GestureDetector(
+                                  onTap: onOpenDetail,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: themeColors.glassBorder,
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.menu_book_rounded,
+                                          size: 15,
+                                          color: themeColors.textPrimary,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          'Browse Track',
+                                          style: RythemTypography.labelMedium.copyWith(
+                                            color: themeColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1067,20 +1121,24 @@ class _TrackTodoListCard extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(14, 2, 14, 8),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: InkWell(
+                          child: GestureDetector(
                             onTap: () => onStudyAhead!(roadmap),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: themeColors.glassBorder, width: 0.6),
+                              ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add_rounded, size: 14, color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
+                                  Icon(Icons.add_rounded, size: 13, color: themeColors.textPrimary),
                                   const SizedBox(width: 4),
                                   Text(
                                     '+ Queue Next Lesson',
                                     style: RythemTypography.labelSmall.copyWith(
-                                      color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+                                      color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 11,
                                     ),
@@ -1141,10 +1199,10 @@ class _TrackTodoListCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0x1838BDF8) : const Color(0x100284C7),
+          color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? const Color(0x4038BDF8) : const Color(0x300284C7),
+            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
             width: 0.8,
           ),
         ),
@@ -1156,22 +1214,22 @@ class _TrackTodoListCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withOpacity(isDark ? 0.3 : 0.15),
+                    color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: const Color(0xFF38BDF8).withOpacity(isDark ? 0.5 : 0.3),
+                      color: themeColors.glassBorder,
                       width: 0.8,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 11, color: Color(0xFF38BDF8)),
+                      Icon(Icons.calendar_today_rounded, size: 11, color: themeColors.textPrimary),
                       const SizedBox(width: 4),
                       Text(
                         'KICKOFF $formattedDate'.toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF38BDF8),
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textPrimary,
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
@@ -1184,13 +1242,17 @@ class _TrackTodoListCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(isDark ? 0.2 : 0.12),
+                    color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: themeColors.glassBorder,
+                      width: 0.6,
+                    ),
                   ),
                   child: Text(
                     daysText,
-                    style: const TextStyle(
-                      color: Colors.amber,
+                    style: RythemTypography.labelSmall.copyWith(
+                      color: themeColors.textPrimary,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1223,17 +1285,13 @@ class _TrackTodoListCard extends StatelessWidget {
                   GestureDetector(
                     onTap: () => onStartEarly!(roadmap),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
+                        color: isDark ? Colors.white : Colors.black,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
-                          width: 0.8,
-                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFF0E1420).withOpacity(0.04),
+                            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.12),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -1242,12 +1300,16 @@ class _TrackTodoListCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.bolt_rounded, size: 14, color: themeColors.textPrimary),
+                          Icon(
+                            Icons.bolt_rounded,
+                            size: 14,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Start Today Early',
-                            style: TextStyle(
-                              color: themeColors.textPrimary,
+                            style: RythemTypography.labelMedium.copyWith(
+                              color: isDark ? Colors.black : Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1261,12 +1323,13 @@ class _TrackTodoListCard extends StatelessWidget {
                   GestureDetector(
                     onTap: onOpenDetail,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                        color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                          color: themeColors.glassBorder,
+                          width: 0.8,
                         ),
                       ),
                       child: Row(
@@ -1276,7 +1339,7 @@ class _TrackTodoListCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             'Peek Syllabus',
-                            style: TextStyle(
+                            style: RythemTypography.labelMedium.copyWith(
                               color: themeColors.textPrimary,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

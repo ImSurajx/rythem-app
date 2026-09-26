@@ -78,6 +78,13 @@ class RythemTypography {
     height: 1.35,
   );
 
+  static TextStyle labelMedium = GoogleFonts.poppins(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+    color: RythemColors.textPrimary,
+  );
+
   static TextStyle labelSmall = GoogleFonts.poppins(
     fontSize: 11,
     fontWeight: FontWeight.w500,
