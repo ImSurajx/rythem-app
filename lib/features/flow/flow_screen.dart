@@ -19,6 +19,7 @@ import 'session_detail_screen.dart';
 import 'split_task_sheet.dart';
 import 'widgets/backlog_decision_sheet.dart';
 import 'widgets/daily_revision_board.dart';
+import 'widgets/flow_rhythm_pill.dart';
 import 'widgets/pace_coach_card.dart';
 import 'widgets/timeline_adjuster_sheet.dart';
 import '../explore/widgets/chapter_accordion.dart';
@@ -114,6 +115,7 @@ class FlowScreen extends StatefulWidget {
 
 class _FlowScreenState extends State<FlowScreen> {
   String _selectedTrackFilter = 'all';
+  bool _isPaceDetailsExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -287,19 +289,23 @@ class _FlowScreenState extends State<FlowScreen> {
             isDark: isDark,
           ),
 
-          // Feature 4: Intelligent Pace Coach Card (GPS ETA, zero backlog debt)
+          // Feature 4: Expandable Rhythm Pill HUD (GPS ETA, zero backlog debt)
           if (widget.activeRoadmap != null &&
               widget.pacingBudget != null &&
               !widget.pacingBudget!.isUpcoming &&
               !widget.pacingBudget!.isRoadmapCompleted &&
               (widget.pacingBudget!.targetDate != null || widget.pacingBudget!.isBehindSchedule)) ...[
-            const SizedBox(height: 16),
-            PaceCoachCard(
+            const SizedBox(height: 12),
+            FlowRhythmPill(
               roadmap: widget.activeRoadmap!,
               pacingBudget: widget.pacingBudget!,
-              themeColors: themeColors,
-              isDark: isDark,
-              onOpenTimelineAdjuster: () {
+              isExpanded: _isPaceDetailsExpanded,
+              onToggleExpand: () {
+                setState(() {
+                  _isPaceDetailsExpanded = !_isPaceDetailsExpanded;
+                });
+              },
+              onAdjust: () {
                 TimelineAdjusterSheet.show(
                   context,
                   roadmap: widget.activeRoadmap!,
@@ -309,12 +315,33 @@ class _FlowScreenState extends State<FlowScreen> {
                   },
                 );
               },
-              onQuickExtendSevenDays: () {
-                final base = widget.activeRoadmap!.targetCompletionDate ?? DateTime.now();
-                final newTarget = base.add(const Duration(days: 7));
-                widget.onUpdateTargetDate?.call(widget.activeRoadmap!, newTarget);
-              },
+              themeColors: themeColors,
+              isDark: isDark,
             ),
+            if (_isPaceDetailsExpanded) ...[
+              const SizedBox(height: 8),
+              PaceCoachCard(
+                roadmap: widget.activeRoadmap!,
+                pacingBudget: widget.pacingBudget!,
+                themeColors: themeColors,
+                isDark: isDark,
+                onOpenTimelineAdjuster: () {
+                  TimelineAdjusterSheet.show(
+                    context,
+                    roadmap: widget.activeRoadmap!,
+                    pacingBudget: widget.pacingBudget!,
+                    onTargetDateSelected: (newDate) {
+                      widget.onUpdateTargetDate?.call(widget.activeRoadmap!, newDate);
+                    },
+                  );
+                },
+                onQuickExtendSevenDays: () {
+                  final base = widget.activeRoadmap!.targetCompletionDate ?? DateTime.now();
+                  final newTarget = base.add(const Duration(days: 7));
+                  widget.onUpdateTargetDate?.call(widget.activeRoadmap!, newTarget);
+                },
+              ),
+            ],
           ],
 
           // Sustained Lag Non-Punitive Recalibration Banner (retained for backward compatibility and AI diagnosis)

@@ -800,7 +800,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     final remainingCount = totalCount - completedCount;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
     final linkedCount = _currentBeats.where((b) => b.sourceUrl?.isNotEmpty == true).length;
-    final unlinkedCount = totalCount - linkedCount;
     final category = _currentRoadmap.description?.isNotEmpty == true
         ? _currentRoadmap.description!
         : 'CURRICULUM TRACK';
@@ -876,37 +875,122 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          GlassButton(
-                            label: 'Sync',
-                            icon: Icons.sync_rounded,
-                            height: 32,
-                            variant: GlassButtonVariant.secondary,
-                            isLoading: _isSyncing,
-                            onPressed: _isSyncing ? () {} : _handleSyncResource,
-                          ),
-                          const SizedBox(width: 6),
-                          GlassButton(
-                            label: 'Add',
-                            icon: Icons.link_rounded,
-                            height: 32,
-                            variant: GlassButtonVariant.secondary,
-                            onPressed: _showAttachResourceDialog,
-                          ),
-                          if (widget.onDeleteRoadmap != null) ...[
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: _confirmDeleteCurrentRoadmap,
-                              behavior: HitTestBehavior.opaque,
-                              child: Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: Icon(
-                                  Icons.delete_outline_rounded,
-                                  size: 17,
-                                  color: themeColors.textTertiary,
+                          Tooltip(
+                            message: 'Sync',
+                            child: GestureDetector(
+                              onTap: _isSyncing ? null : _handleSyncResource,
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
+                                  border: Border.all(
+                                    color: themeColors.glassBorder,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: _isSyncing
+                                      ? SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: themeColors.textPrimary,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.sync_rounded,
+                                          size: 17,
+                                          color: themeColors.textPrimary,
+                                        ),
                                 ),
                               ),
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: 'Add',
+                            child: GestureDetector(
+                              onTap: _showAttachResourceDialog,
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDark ? const Color(0x18FFFFFF) : const Color(0x0C000000),
+                                  border: Border.all(
+                                    color: themeColors.glassBorder,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.add_link_rounded,
+                                    size: 18,
+                                    color: themeColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              cardColor: isDark ? const Color(0xFF141416) : Colors.white,
+                            ),
+                            child: PopupMenuButton<String>(
+                              icon: Icon(
+                                Icons.more_horiz_rounded,
+                                size: 20,
+                                color: themeColors.textPrimary,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              elevation: 8,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(color: themeColors.glassBorder, width: 0.8),
+                              ),
+                              onSelected: (val) {
+                                if (val == 'chapter') {
+                                  _openAddChapterSheet();
+                                } else if (val == 'delete' && widget.onDeleteRoadmap != null) {
+                                  _confirmDeleteCurrentRoadmap();
+                                }
+                              },
+                              itemBuilder: (ctx) => [
+                                PopupMenuItem(
+                                  value: 'chapter',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.create_new_folder_outlined, size: 16, color: themeColors.textPrimary),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Add Custom Chapter',
+                                        style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (widget.onDeleteRoadmap != null)
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline_rounded, size: 16, color: themeColors.textSecondary),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Delete Tracker',
+                                          style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(width: 4),
                         ],
                       ),
@@ -1007,173 +1091,118 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Status Breakdown Chips (Requirement 2 & 10)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'REMAINING',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$remainingCount topics',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: themeColors.textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'RESOURCES',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: themeColors.textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Pace & Target Date Row (Feature 4)
-                          if (_currentRoadmap.targetCompletionDate != null || widget.pacingBudget != null) ...[
-                            const SizedBox(height: 10),
-                            InkWell(
-                              onTap: (widget.onUpdateTargetDate != null && widget.pacingBudget != null)
-                                  ? () {
-                                      TimelineAdjusterSheet.show(
-                                        context,
-                                        roadmap: _currentRoadmap,
-                                        pacingBudget: widget.pacingBudget!,
-                                        onTargetDateSelected: (newDate) async {
-                                          await widget.onUpdateTargetDate!(_currentRoadmap, newDate);
-                                          await _reloadFromDb();
-                                        },
-                                      );
-                                    }
-                                  : null,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _currentRoadmap.targetCompletionDate == null
-                                          ? Icons.all_inclusive_rounded
-                                          : Icons.event_rounded,
-                                      size: 16,
-                                      color: themeColors.textSecondary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        _currentRoadmap.targetCompletionDate == null
-                                            ? 'Target: Open Pace (No Deadline)'
-                                            : 'Target: ${_formatDate(_currentRoadmap.targetCompletionDate)}',
-                                        style: RythemTypography.bodySmall.copyWith(
-                                          color: themeColors.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    if (widget.onUpdateTargetDate != null && widget.pacingBudget != null) ...[
-                                      Text(
-                                        'Adjust',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          color: themeColors.textSecondary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        size: 16,
-                                        color: themeColors.textSecondary,
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                          // Consolidated Single-Row Metric Strip
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0x10FFFFFF) : const Color(0x06000000),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                width: 0.8,
                               ),
                             ),
-                          ],
-                          const SizedBox(height: 14),
-
-                          // Attach Resource Action Button (Primary Action)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GlassButton(
-                                  label: 'Attach Resource',
-                                  icon: Icons.link_rounded,
-                                  height: 48,
-                                  variant: GlassButtonVariant.primary,
-                                  onPressed: _showAttachResourceDialog,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Remaining Metric
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle_outline_rounded, size: 13, color: themeColors.textTertiary),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '$remainingCount left',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: themeColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                Container(
+                                  width: 1,
+                                  height: 14,
+                                  color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                                ),
+                                // Resources Metric
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.link_rounded, size: 14, color: themeColors.textTertiary),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '$linkedCount linked',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: themeColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 14,
+                                  color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                                ),
+                                // Target Date Metric
+                                GestureDetector(
+                                  onTap: (widget.onUpdateTargetDate != null && widget.pacingBudget != null)
+                                      ? () {
+                                          TimelineAdjusterSheet.show(
+                                            context,
+                                            roadmap: _currentRoadmap,
+                                            pacingBudget: widget.pacingBudget!,
+                                            onTargetDateSelected: (newDate) async {
+                                              await widget.onUpdateTargetDate!(_currentRoadmap, newDate);
+                                              await _reloadFromDb();
+                                            },
+                                          );
+                                        }
+                                      : null,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _currentRoadmap.targetCompletionDate == null
+                                            ? Icons.all_inclusive_rounded
+                                            : Icons.event_rounded,
+                                        size: 13,
+                                        color: themeColors.textTertiary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _currentRoadmap.targetCompletionDate == null
+                                            ? 'Open Pace'
+                                            : _formatDate(_currentRoadmap.targetCompletionDate),
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          color: themeColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11.5,
+                                        ),
+                                      ),
+                                      if (widget.onUpdateTargetDate != null && widget.pacingBudget != null) ...[
+                                        const SizedBox(width: 2),
+                                        Icon(
+                                          Icons.edit_outlined,
+                                          size: 11,
+                                          color: themeColors.textTertiary,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
-                    // "Up Next" Topic Highlight (Direct Resource Launch)
+                    // "Up Next" Streamlined Quick-Play Capsule
                     if (nextPendingBeat != null)
                       GestureDetector(
                         onTap: () {
@@ -1188,106 +1217,68 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           }
                         },
                         behavior: HitTestBehavior.opaque,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 14),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: isDark
-                                      ? [
-                                          const Color(0x22FFFFFF),
-                                          const Color(0x0EFFFFFF),
-                                        ]
-                                      : [
-                                          const Color(0x88FFFFFF),
-                                          const Color(0x4DFFFFFF),
-                                        ],
-                                ),
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x25000000),
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
-                                    ),
-                                    child: Icon(
-                                      nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                          ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
-                                              ? Icons.play_arrow_rounded
-                                              : Icons.language_rounded)
-                                          : Icons.play_arrow_rounded,
-                                      size: 18,
-                                      color: themeColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'UP NEXT',
-                                          style: RythemTypography.labelSmall.copyWith(
-                                            color: themeColors.textTertiary,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.8,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Current Focus: ${nextPendingBeat.title}',
-                                          style: RythemTypography.titleSmall.copyWith(
-                                            color: themeColors.textPrimary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  GlassButton(
-                                    label: nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                        ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
-                                            ? 'Watch'
-                                            : 'Learn')
-                                        : 'Start',
-                                    icon: nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                        ? Icons.open_in_new_rounded
-                                        : null,
-                                    height: 34,
-                                    variant: GlassButtonVariant.secondary,
-                                    onPressed: () {
-                                      if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
-                                        ResourceLauncher.openResource(
-                                          context,
-                                          url: nextPendingBeat.sourceUrl,
-                                          title: nextPendingBeat.title,
-                                        );
-                                      } else {
-                                        _openFocusSession(nextPendingBeat);
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: themeColors.glassBorder,
+                              width: 0.8,
                             ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: 16,
+                                  color: isDark ? Colors.black : Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'UP NEXT',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: themeColors.textTertiary,
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      'Current Focus: ${nextPendingBeat.title}',
+                                      style: RythemTypography.bodySmall.copyWith(
+                                        color: themeColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12.5,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: themeColors.textTertiary,
+                              ),
+                            ],
                           ),
                         ),
                       ),

@@ -258,7 +258,7 @@ void main() {
       expect(find.text('Distributed Systems Architecture'), findsWidgets);
       expect(find.text('ENGINEERING'), findsOneWidget);
       expect(find.text('1 of 3 beats completed'), findsOneWidget);
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.byTooltip('Add'), findsOneWidget);
 
       // Chapter 1 beats visible (first chapter expanded by default)
       expect(find.text('Consensus & Raft Protocol'), findsOneWidget);

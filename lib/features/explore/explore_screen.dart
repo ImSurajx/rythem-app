@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
@@ -208,57 +209,63 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 color: isDark ? themeColors.glassBorder : const Color(0x18000000),
               ),
             ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) => setState(() => _searchQuery = val.trim()),
-              textAlignVertical: TextAlignVertical.center,
-              style: TextStyle(
-                color: themeColors.textPrimary,
-                fontSize: 13.5,
-              ),
-              decoration: InputDecoration(
-                isCollapsed: true,
-                hintText: 'Search tracks by title or category...',
-                hintStyle: TextStyle(
-                  color: themeColors.textTertiary,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w400,
-                ),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(
-                    Icons.search_rounded,
-                    color: themeColors.textSecondary,
-                    size: 19,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  textAlignVertical: TextAlignVertical.center,
+                  style: RythemTypography.bodyMedium.copyWith(
+                    color: themeColors.textPrimary,
+                    fontSize: 13.5,
+                  ),
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    hintText: 'Search tracks by title or category...',
+                    hintStyle: RythemTypography.bodyMedium.copyWith(
+                      color: themeColors.textTertiary,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: themeColors.textSecondary,
+                        size: 19,
+                      ),
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 42,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Icon(
+                                Icons.clear,
+                                color: themeColors.textTertiary,
+                                size: 16,
+                              ),
+                            ),
+                          )
+                        : null,
+                    suffixIconConstraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 42,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 42,
-                  minHeight: 42,
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                        behavior: HitTestBehavior.opaque,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Icon(
-                            Icons.clear,
-                            color: themeColors.textTertiary,
-                            size: 16,
-                          ),
-                        ),
-                      )
-                    : null,
-                suffixIconConstraints: const BoxConstraints(
-                  minWidth: 42,
-                  minHeight: 42,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),

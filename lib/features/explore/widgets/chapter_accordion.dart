@@ -169,13 +169,15 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                         Row(
                           children: [
                             Text(
-                              '$completedCount of $totalCount beats',
+                              completedCount == totalCount && totalCount > 0
+                                  ? 'Completed'
+                                  : '$completedCount of $totalCount beats',
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                                 fontSize: 11,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Text(
                               '• ${(progressRatio * 100).toInt()}%',
                               style: RythemTypography.labelSmall.copyWith(
@@ -185,24 +187,12 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               ),
                             ),
                             if (gapsCount > 0) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: isDark ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.1),
-                                    width: 0.6,
-                                  ),
-                                ),
-                                child: Text(
-                                  '$gapsCount gaps',
-                                  style: TextStyle(
-                                    color: themeColors.textSecondary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '• $gapsCount unlinked',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textTertiary,
+                                  fontSize: 10.5,
                                 ),
                               ),
                             ],
