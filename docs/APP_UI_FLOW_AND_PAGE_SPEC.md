@@ -284,29 +284,27 @@ System configuration, offline AI models, backup storage, and intensity schedule.
 ### Information & Components on This Screen
 1. **Appearance Settings**:
    - Segmented toggle: `System`, `Dark`, `Light`.
-2. **Theme Style Selection**:
-   - Selector for curated aesthetic profiles: `Aurora`, `Cobalt`, `Solar`, `Studio`.
-3. **7-Day Study Intensity Schedule**:
+2. **7-Day Study Intensity Schedule**:
    - 7 independent sliders/inputs (one for each day Monday–Sunday).
    - Sets how many minutes the user intends to study on each specific day of the week.
-4. **Local On-Device AI Manager**:
+3. **Local On-Device AI Manager**:
    - Model options:
      - Compact Tier (0.5B parameters) - Fast keyword and syllabus extraction.
      - Balanced Tier (1.5B parameters) - Deep contextual gap analysis.
    - Status per model: `Not Installed`, `Downloading [Progress Bar + %]`, `Installed [Storage Size]`.
    - Actions: `Download`, `Pause`, `Cancel`, `Delete Model`.
-5. **Local Backup & Recovery**:
+4. **Local Backup & Recovery**:
    - "Export Backup" button (triggers file save dialog for SQLite/JSON bundle).
    - "Restore Backup" button (opens file picker to restore database).
    - Auto-Backup Frequency dropdown: `Daily`, `Weekly`, `On Track Complete`, `Disabled`.
    - Storage Directory picker: Custom location for local backups.
-6. **In-App Software Updater**:
+5. **In-App Software Updater**:
    - Displays current installed version string (e.g., `v1.0.2`).
    - "Check for Updates" button.
    - If update available: Displays release notes and "Install Update" button.
 
 ### How Interactions Work on This Screen
-- **Changing Appearance / Theme**: Instantly redraws the entire app without reloading or restarting.
+- **Changing Appearance**: Instantly updates app brightness mode without reloading or restarting.
 - **Adjusting Day Sliders**: Updates daily target minutes in database; GPS pacing engine immediately recalculates daily velocity across all active tracks.
 - **Tapping Download AI Model**: Starts background HTTP download stream; progress bar updates in real time; pause/cancel controls become active.
 - **Tapping Export Backup**: Exports full database snapshot to local file storage and displays confirmation toast.

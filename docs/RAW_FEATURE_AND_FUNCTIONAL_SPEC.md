@@ -91,7 +91,6 @@ Topics scheduled for quick active recall review.
 
 ### Entity 7: System Settings & Local Engine
 - **Appearance Preference**: System / Dark / Light.
-- **Theme Selection**: User's chosen aesthetic color profile.
 - **7-Day Study Intensity Schedule**: User-configured minutes/day allocation for Monday through Sunday (e.g., Mon=30m, Sat=120m).
 - **Local AI Model Status**: Compact Tier (0.5B) or Balanced Tier (1.5B) download state (Not Downloaded, Downloading [progress %], Ready, Error).
 - **Backup Configuration**: Backup file location, auto-backup frequency (Daily, Weekly, On Completion).
@@ -265,7 +264,6 @@ This is a complete list of every user action the UI must accommodate:
 
 ### Settings & Configuration
 - [ ] Switch between Light, Dark, and System appearance.
-- [ ] Select a Theme color profile.
 - [ ] Adjust daily study intensity sliders (Monday through Sunday).
 - [ ] Download on-device AI model.
 - [ ] Pause / Cancel AI model download.

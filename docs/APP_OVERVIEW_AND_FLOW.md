@@ -136,23 +136,17 @@ Located in the 4th tab of the main scaffold.
 #### UI Elements & Widgets:
 1. **Appearance Segmented Control**:
    - `System`, `Dark`, `Light` modes.
-2. **Liquid Glass Theme Palette Picker**:
-   - Interactive segmented control with dual-gradient circular indicators:
-     - **🌌 Aurora**: Electric Cyan, Cosmic Violet & Deep Indigo (Default).
-     - **⚡ Cobalt**: Ice Blue, Azure & Deep Cobalt.
-     - **🔥 Solar**: Solar Amber, Terracotta & Golden Glow.
-     - **🎬 Studio**: Minimalist Monochrome Black & White Glass.
-3. **7-Day Study Intensity & Daily Goals Schedule**:
+2. **7-Day Study Intensity & Daily Goals Schedule**:
    - Weekly sliders allowing users to allocate different study targets per day (e.g., 30 mins on busy weekdays, 120 mins on weekends).
-4. **On-Device Local AI Manager**:
+3. **On-Device Local AI Manager**:
    - **Compact Tier (0.5B parameters)**: Ultra-fast clause deconstruction and keyword stemming.
    - **Balanced Tier (1.5B parameters)**: Deep contextual semantic matching and curriculum gap analysis.
    - Download manager with real-time percentage progress bar, pause/resume, cancel, and offline storage.
-5. **Local Backup & Storage Manager**:
+4. **Local Backup & Storage Manager**:
    - One-tap "Create Instant Backup" (exports encrypted/clean SQLite + JSON bundle).
    - "Restore Backup" picker.
    - Configurable Auto-Backup scheduler (Daily, Weekly, or on track completion).
-6. **In-App Software Updater**:
+5. **In-App Software Updater**:
    - Queries GitHub releases for new versions, checks SemVer, and triggers native in-app package installer.
 
 ---
