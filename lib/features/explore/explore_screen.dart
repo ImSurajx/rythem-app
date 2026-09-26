@@ -341,10 +341,15 @@ class _RoadmapExploreCard extends StatelessWidget {
     final category = roadmap.description?.isNotEmpty == true
         ? roadmap.description!
         : 'CURRICULUM TRACK';
+    final trackAccent = TrackAccents.getAccent(roadmap.title);
+    final isStudio = themeColors.palette == ThemePalette.studio;
 
     return GlassCard(
       onTap: onTap,
       padding: const EdgeInsets.all(18),
+      borderColor: isStudio
+          ? null
+          : trackAccent.withOpacity(isDark ? 0.20 : 0.14),
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -354,15 +359,42 @@ class _RoadmapExploreCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    roadmap.title,
-                    style: RythemTypography.titleMedium.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(right: 8, top: 6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isStudio
+                              ? (isDark ? Colors.white : Colors.black)
+                              : trackAccent,
+                          boxShadow: isStudio
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: trackAccent.withOpacity(0.60),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          roadmap.title,
+                          style: RythemTypography.titleMedium.copyWith(
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -374,19 +406,29 @@ class _RoadmapExploreCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.05),
+                          color: isStudio
+                              ? (isDark
+                                  ? Colors.white.withOpacity(0.08)
+                                  : Colors.black.withOpacity(0.05))
+                              : trackAccent.withOpacity(isDark ? 0.15 : 0.10),
                           borderRadius: BorderRadius.circular(8),
+                          border: isStudio
+                              ? null
+                              : Border.all(
+                                  color: trackAccent.withOpacity(isDark ? 0.32 : 0.22),
+                                  width: 0.8,
+                                ),
                         ),
                         child: Text(
                           category.toUpperCase(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textSecondary,
+                            color: isStudio
+                                ? themeColors.textSecondary
+                                : (isDark ? trackAccent : trackAccent),
                             fontSize: 9,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -438,6 +480,7 @@ class _RoadmapExploreCard extends StatelessWidget {
             GlassProgressBar(
               progress: progressRatio,
               height: 5,
+              customColor: isStudio ? null : trackAccent,
             ),
           ],
         ),

@@ -42,6 +42,7 @@ class RythemApp extends StatefulWidget {
 
 class _RythemAppState extends State<RythemApp> {
   ThemeMode _themeMode = ThemeMode.system;
+  ThemePalette _themePalette = ThemePalette.aurora;
   final _settingsRepo = AppSettingsRepository();
   bool _isLoading = true;
   bool _hasCompletedOnboarding = false;
@@ -55,9 +56,28 @@ class _RythemAppState extends State<RythemApp> {
   Future<void> _checkOnboarding() async {
     try {
       final val = await _settingsRepo.getSetting('has_completed_onboarding');
+      final modeVal = await _settingsRepo.getSetting('theme_mode');
+      final paletteVal = await _settingsRepo.getSetting('theme_palette');
+
+      ThemeMode mode = ThemeMode.system;
+      if (modeVal == 'dark') mode = ThemeMode.dark;
+      if (modeVal == 'light') mode = ThemeMode.light;
+
+      ThemePalette palette = ThemePalette.aurora;
+      if (paletteVal != null) {
+        for (final p in ThemePalette.values) {
+          if (p.name == paletteVal) {
+            palette = p;
+            break;
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _hasCompletedOnboarding = (val == 'true');
+          _themeMode = mode;
+          _themePalette = palette;
           _isLoading = false;
         });
       }
@@ -75,6 +95,17 @@ class _RythemAppState extends State<RythemApp> {
     setState(() {
       _themeMode = mode;
     });
+    _settingsRepo.setSetting(
+      'theme_mode',
+      mode == ThemeMode.dark ? 'dark' : (mode == ThemeMode.light ? 'light' : 'system'),
+    );
+  }
+
+  void _setThemePalette(ThemePalette palette) {
+    setState(() {
+      _themePalette = palette;
+    });
+    _settingsRepo.setSetting('theme_palette', palette.name);
   }
 
   @override
@@ -102,16 +133,27 @@ class _RythemAppState extends State<RythemApp> {
       home = DesignSystemShowcaseScreen(
         themeMode: _themeMode,
         onThemeModeChanged: _setThemeMode,
+        themePalette: _themePalette,
+        onThemePaletteChanged: _setThemePalette,
       );
     }
 
-    return MaterialApp(
-      title: 'Rythem',
-      debugShowCheckedModeBanner: false,
-      theme: RythemTheme.lightTheme,
-      darkTheme: RythemTheme.darkTheme,
-      themeMode: _themeMode,
-      home: home,
+    final isDark = _themeMode == ThemeMode.dark ||
+        (_themeMode == ThemeMode.system &&
+            WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+                Brightness.dark);
+    final themeColors = RythemColors.forPalette(_themePalette, isDark: isDark);
+
+    return RythemThemeScope(
+      colors: themeColors,
+      child: MaterialApp(
+        title: 'Rythem',
+        debugShowCheckedModeBanner: false,
+        theme: RythemTheme.lightTheme,
+        darkTheme: RythemTheme.darkTheme,
+        themeMode: _themeMode,
+        home: home,
+      ),
     );
   }
 }
@@ -119,11 +161,15 @@ class _RythemAppState extends State<RythemApp> {
 class DesignSystemShowcaseScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final ThemePalette themePalette;
+  final ValueChanged<ThemePalette>? onThemePaletteChanged;
 
   const DesignSystemShowcaseScreen({
     super.key,
     required this.themeMode,
     required this.onThemeModeChanged,
+    this.themePalette = ThemePalette.aurora,
+    this.onThemePaletteChanged,
   });
 
   @override
@@ -935,10 +981,8 @@ class _DesignSystemShowcaseScreenState
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: themeColors.canvasGradient,
-        ),
+      body: AmbientAuroraCanvas(
+        palette: widget.themePalette,
         child: Stack(
           children: [
             // Persistent 4-Tab Smooth Cross-Fading Stack with zero lag & preserved scroll states
@@ -1378,6 +1422,20 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 8),
           _buildAppearanceSegmented(themeColors, isDark),
+          const SizedBox(height: 20),
+
+          // 2. Liquid Glass Theme (Aurora, Cobalt, Solar, Studio)
+          Text(
+            'LIQUID GLASS THEME',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildThemePaletteSelector(themeColors, isDark),
           const SizedBox(height: 24),
 
           // 2. 7-Day Study Intensity & Daily Goals (Monday - Sunday)
@@ -1674,6 +1732,93 @@ class _DesignSystemShowcaseScreenState
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildThemePaletteSelector(RythemThemeColors themeColors, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0x1FFFFFFF) : const Color(0x12000000),
+        ),
+      ),
+      child: Row(
+        children: ThemePalette.values.map((palette) {
+          final isSelected = widget.themePalette == palette;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                widget.onThemePaletteChanged?.call(palette);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? (isDark
+                          ? palette.previewColors.first.withOpacity(0.18)
+                          : palette.previewColors.first.withOpacity(0.12))
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isSelected
+                      ? Border.all(
+                          color: palette.previewColors.first.withOpacity(isDark ? 0.45 : 0.35),
+                          width: 1.0,
+                        )
+                      : null,
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: palette.previewColors.first.withOpacity(0.18),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: palette.previewColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: palette.previewColors.first.withOpacity(0.40),
+                            blurRadius: 6,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      palette.displayName,
+                      style: RythemTypography.labelSmall.copyWith(
+                        fontSize: 10,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

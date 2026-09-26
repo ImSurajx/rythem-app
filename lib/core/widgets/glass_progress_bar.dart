@@ -6,6 +6,8 @@ class GlassProgressBar extends StatelessWidget {
   final double height;
   final BorderRadius? borderRadius;
   final bool showGlow;
+  final Color? customColor;
+  final Gradient? customGradient;
 
   const GlassProgressBar({
     super.key,
@@ -13,6 +15,8 @@ class GlassProgressBar extends StatelessWidget {
     this.height = 8.0,
     this.borderRadius,
     this.showGlow = true,
+    this.customColor,
+    this.customGradient,
   });
 
   @override
@@ -21,6 +25,19 @@ class GlassProgressBar extends StatelessWidget {
     final effectiveRadius = borderRadius ?? BorderRadius.circular(height / 2);
     final themeColors = RythemColors.of(context);
     final isDark = themeColors.isDark;
+
+    final resolvedFillColor = customColor ??
+        (customGradient == null && themeColors.palette == ThemePalette.studio
+            ? themeColors.progressFill
+            : null);
+    final resolvedGradient = customGradient ??
+        (customColor == null && themeColors.palette != ThemePalette.studio
+            ? themeColors.accentGradient
+            : null);
+    final glowColor = customColor ??
+        (themeColors.palette != ThemePalette.studio
+            ? themeColors.accentPrimary
+            : (isDark ? Colors.white : Colors.black));
 
     return Container(
       height: height,
@@ -43,14 +60,13 @@ class GlassProgressBar extends StatelessWidget {
                 width: fillWidth,
                 height: height,
                 decoration: BoxDecoration(
-                  color: themeColors.progressFill,
+                  color: resolvedFillColor,
+                  gradient: resolvedGradient,
                   borderRadius: effectiveRadius,
                   boxShadow: showGlow && clampedProgress > 0
                       ? [
                           BoxShadow(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.35)
-                                : Colors.black.withOpacity(0.15),
+                            color: glowColor.withOpacity(isDark ? 0.35 : 0.18),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),

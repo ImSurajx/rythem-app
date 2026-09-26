@@ -9,3 +9,4 @@ export 'glass_toast.dart';
 export 'markdown_content_view.dart';
 export 'glass_date_picker_sheet.dart';
 export 'glass_action_sheet.dart';
+export 'ambient_aurora_canvas.dart';

@@ -13,6 +13,7 @@ import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/utils/resource_launcher.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
+import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
@@ -607,6 +608,14 @@ class _TrackTodoListCard extends StatelessWidget {
     final completedCount = allBeats.where((b) => b.isCompleted).length;
     final totalCount = allBeats.length;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
+    final trackAccent = TrackAccents.getAccent(roadmap.title);
+    final isStudio = themeColors.palette == ThemePalette.studio;
+
+    final pacingColor = pacingBudget?.isBehindSchedule == true
+        ? const Color(0xFFFF9500)
+        : (pacingBudget?.isOpenPace == true
+            ? const Color(0xFF00E5FF)
+            : const Color(0xFF00E676));
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -657,7 +666,9 @@ class _TrackTodoListCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
-                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                color: isStudio
+                    ? (isDark ? themeColors.glassBorder : const Color(0x18000000))
+                    : trackAccent.withOpacity(isDark ? 0.22 : 0.14),
                 width: 1.0,
               ),
             ),
@@ -679,6 +690,26 @@ class _TrackTodoListCard extends StatelessWidget {
                       Expanded(
                         child: Row(
                           children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isStudio
+                                    ? (isDark ? Colors.white : Colors.black)
+                                    : trackAccent,
+                                boxShadow: isStudio
+                                    ? null
+                                    : [
+                                        BoxShadow(
+                                          color: trackAccent.withOpacity(0.60),
+                                          blurRadius: 6,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                              ),
+                            ),
                             Expanded(
                               child: Text(
                                 roadmap.title,
@@ -718,10 +749,14 @@ class _TrackTodoListCard extends StatelessWidget {
                             margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                              color: isStudio
+                                  ? (isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000))
+                                  : pacingColor.withOpacity(isDark ? 0.16 : 0.10),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                                color: isStudio
+                                    ? (isDark ? const Color(0x28FFFFFF) : const Color(0x18000000))
+                                    : pacingColor.withOpacity(isDark ? 0.40 : 0.28),
                                 width: 0.8,
                               ),
                             ),
@@ -735,7 +770,9 @@ class _TrackTodoListCard extends StatelessWidget {
                                           ? Icons.all_inclusive_rounded
                                           : Icons.check_circle_outline_rounded,
                                   size: 10,
-                                  color: themeColors.textPrimary,
+                                  color: isStudio
+                                      ? themeColors.textPrimary
+                                      : (isDark ? pacingColor : pacingColor),
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
@@ -745,7 +782,9 @@ class _TrackTodoListCard extends StatelessWidget {
                                           ? 'OPEN PACE'
                                           : 'ON TRACK',
                                   style: TextStyle(
-                                    color: themeColors.textPrimary,
+                                    color: isStudio
+                                        ? themeColors.textPrimary
+                                        : (isDark ? pacingColor : pacingColor),
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -774,22 +813,14 @@ class _TrackTodoListCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: progressRatio,
-                          backgroundColor: isDark
-                              ? Colors.white.withOpacity(0.06)
-                              : Colors.black.withOpacity(0.04),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            themeColors.textPrimary.withOpacity(0.7),
-                          ),
-                          minHeight: 4,
-                        ),
+                      child: GlassProgressBar(
+                        progress: progressRatio,
+                        height: 4,
+                        customColor: isStudio ? null : trackAccent,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1779,10 +1810,14 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
-                              color: widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                              color: widget.streakDays > 0 && widget.themeColors.palette != ThemePalette.studio
+                                  ? const Color(0xFFFF9500).withOpacity(widget.isDark ? 0.16 : 0.12)
+                                  : (widget.isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000)),
                               borderRadius: BorderRadius.circular(7),
                               border: Border.all(
-                                color: widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000),
+                                color: widget.streakDays > 0 && widget.themeColors.palette != ThemePalette.studio
+                                    ? const Color(0xFFFF9500).withOpacity(widget.isDark ? 0.40 : 0.28)
+                                    : (widget.isDark ? const Color(0x28FFFFFF) : const Color(0x18000000)),
                                 width: 0.8,
                               ),
                             ),
@@ -1800,7 +1835,9 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: widget.themeColors.textPrimary,
+                                    color: widget.streakDays > 0 && widget.themeColors.palette != ThemePalette.studio
+                                        ? (widget.isDark ? const Color(0xFFFFB74D) : const Color(0xFFE65100))
+                                        : widget.themeColors.textPrimary,
                                   ),
                                 ),
                               ],
@@ -1894,7 +1931,9 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: isCompleted
-                                          ? (widget.isDark ? const Color(0x35FFFFFF) : const Color(0x20000000))
+                                          ? (widget.themeColors.palette != ThemePalette.studio
+                                              ? widget.themeColors.accentPrimary.withOpacity(widget.isDark ? 0.22 : 0.16)
+                                              : (widget.isDark ? const Color(0x35FFFFFF) : const Color(0x20000000)))
                                           : (isToday
                                               ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
                                               : (widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
@@ -1902,14 +1941,18 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                         color: isToday
                                             ? (widget.isDark ? Colors.white : Colors.black87)
                                             : (isCompleted
-                                                ? widget.themeColors.textPrimary
+                                                ? (widget.themeColors.palette != ThemePalette.studio
+                                                    ? widget.themeColors.accentPrimary
+                                                    : widget.themeColors.textPrimary)
                                                 : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))),
                                         width: isToday ? 1.5 : (isCompleted ? 1.2 : 0.6),
                                       ),
                                       boxShadow: isCompleted
                                           ? [
                                               BoxShadow(
-                                                color: widget.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                                                color: widget.themeColors.palette != ThemePalette.studio
+                                                    ? widget.themeColors.accentPrimary.withOpacity(widget.isDark ? 0.35 : 0.20)
+                                                    : (widget.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08)),
                                                 blurRadius: 8,
                                                 spreadRadius: 1,
                                               ),

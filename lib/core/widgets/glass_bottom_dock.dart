@@ -134,21 +134,31 @@ class _DockButton extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.08))
+              ? (themeColors.palette == ThemePalette.studio
+                  ? (isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.08))
+                  : (isDark
+                      ? themeColors.accentPrimary.withOpacity(0.16)
+                      : themeColors.accentPrimary.withOpacity(0.12)))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(26),
           border: isSelected
               ? Border.all(
-                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
+                  color: themeColors.palette == ThemePalette.studio
+                      ? (isDark ? themeColors.glassBorderHighlight : const Color(0x20000000))
+                      : (isDark
+                          ? themeColors.accentPrimary.withOpacity(0.38)
+                          : themeColors.accentPrimary.withOpacity(0.30)),
                   width: 1.0,
                 )
               : null,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 1),
+                    color: themeColors.palette == ThemePalette.studio
+                        ? (isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04))
+                        : themeColors.accentPrimary.withOpacity(isDark ? 0.22 : 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
