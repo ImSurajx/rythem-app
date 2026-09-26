@@ -941,10 +941,11 @@ class _DesignSystemShowcaseScreenState
         ),
         child: Stack(
           children: [
-            // Persistent 4-Tab Immediate Stack with zero lag & preserved scroll states
+            // Persistent 4-Tab Smooth Cross-Fading Stack with zero lag & preserved scroll states
             Positioned.fill(
-              child: IndexedStack(
+              child: FadeIndexedStack(
                 index: _currentTabIndex,
+                duration: const Duration(milliseconds: 200),
                 children: [
                   _buildFlowTab(),
                   _buildExploreTab(themeColors, isDark),
@@ -996,7 +997,10 @@ class _DesignSystemShowcaseScreenState
       bottomNavigationBar: GlassBottomDock(
         selectedIndex: _currentTabIndex,
         onItemSelected: (idx) {
-          setState(() => _currentTabIndex = idx);
+          if (_currentTabIndex != idx) {
+            HapticFeedback.selectionClick();
+            setState(() => _currentTabIndex = idx);
+          }
         },
       ),
     );
@@ -1123,7 +1127,6 @@ class _DesignSystemShowcaseScreenState
         ),
       ),
     );
-    await _loadDatabaseState();
     if (mounted) {
       await _requestDatabaseReload();
     }

@@ -938,20 +938,39 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           const SizedBox(width: 2),
                           Theme(
                             data: Theme.of(context).copyWith(
-                              cardColor: isDark ? const Color(0xFF141416) : Colors.white,
+                              cardColor: isDark ? const Color(0xF014161F) : const Color(0xF5F8F9FC),
                             ),
                             child: PopupMenuButton<String>(
-                              icon: Icon(
-                                Icons.more_horiz_rounded,
-                                size: 20,
-                                color: themeColors.textPrimary,
+                              icon: Container(
+                                width: 34,
+                                height: 34,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.more_horiz_rounded,
+                                  size: 18,
+                                  color: themeColors.textPrimary,
+                                ),
                               ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              elevation: 8,
+                              elevation: 14,
+                              shadowColor: Colors.black54,
+                              color: isDark ? const Color(0xF014161F) : const Color(0xF5F8F9FC),
+                              surfaceTintColor: Colors.transparent,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(color: themeColors.glassBorder, width: 0.8),
+                                side: BorderSide(
+                                  color: isDark ? const Color(0x30FFFFFF) : const Color(0x18000000),
+                                  width: 1,
+                                ),
                               ),
                               onSelected: (val) {
                                 if (val == 'chapter') {

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
+import 'package:rythem_app/core/widgets/glass_date_picker_sheet.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
 
 /// Modal to create a new curriculum track adhering to `docs/design.md` §4
@@ -256,24 +257,12 @@ class _NewTrackModalState extends State<NewTrackModal> {
   }
 
   Future<void> _pickStartDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await GlassDatePickerSheet.show(
+      context,
       initialDate: _startDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Colors.white,
-              onPrimary: Colors.black,
-              surface: Color(0xFF1E1E1E),
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      title: 'Select Start Date',
     );
     if (picked != null) {
       setState(() {
@@ -286,24 +275,12 @@ class _NewTrackModalState extends State<NewTrackModal> {
   }
 
   Future<void> _pickTargetDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await GlassDatePickerSheet.show(
+      context,
       initialDate: _targetDate.isBefore(_startDate) ? _startDate : _targetDate,
       firstDate: _startDate,
       lastDate: _startDate.add(const Duration(days: 365 * 3)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Colors.white,
-              onPrimary: Colors.black,
-              surface: Color(0xFF1E1E1E),
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      title: 'Select Target Deadline',
     );
     if (picked != null) {
       setState(() => _targetDate = picked);

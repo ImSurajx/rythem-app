@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// An [IndexedStack] wrapper that smoothly cross-fades between tabs
-/// while preserving state and scroll positions of all children.
+/// Ultra-smooth [IndexedStack] replacement that provides a buttery cross-fade
+/// and subtle slide transition between tabs while preserving 100% of state,
+/// controllers, and scroll positions across all children.
 class FadeIndexedStack extends StatefulWidget {
   final int index;
   final List<Widget> children;
@@ -50,9 +51,15 @@ class _FadeIndexedStackState extends State<FadeIndexedStack>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _controller.drive(CurveTween(curve: Curves.easeOutCubic)),
-      child: IndexedStack(
-        index: widget.index,
-        children: widget.children,
+      child: SlideTransition(
+        position: _controller.drive(
+          Tween<Offset>(begin: const Offset(0.0, 0.012), end: Offset.zero)
+              .chain(CurveTween(curve: Curves.easeOutCubic)),
+        ),
+        child: IndexedStack(
+          index: widget.index,
+          children: widget.children,
+        ),
       ),
     );
   }

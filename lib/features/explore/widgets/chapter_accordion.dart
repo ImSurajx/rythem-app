@@ -220,14 +220,34 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
                   if (widget.onEditChapter != null || widget.onDeleteChapter != null) ...[
                     PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert_rounded,
-                        size: 19,
-                        color: themeColors.textSecondary,
+                      icon: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.more_vert_rounded,
+                          size: 16,
+                          color: themeColors.textSecondary,
+                        ),
                       ),
                       tooltip: 'Chapter options',
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints: const BoxConstraints(),
+                      elevation: 14,
+                      shadowColor: Colors.black54,
+                      color: isDark ? const Color(0xF014161F) : const Color(0xF5F8F9FC),
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isDark ? const Color(0x30FFFFFF) : const Color(0x18000000),
+                          width: 1,
+                        ),
+                      ),
                       onSelected: (val) {
                         if (val == 'edit') widget.onEditChapter?.call(widget.chapter);
                         if (val == 'delete') widget.onDeleteChapter?.call(widget.chapter);
@@ -1140,8 +1160,19 @@ class BeatTile extends StatelessWidget {
                       ),
                     ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(),
                     tooltip: 'Options',
+                    elevation: 14,
+                    shadowColor: Colors.black54,
+                    color: isDark ? const Color(0xF014161F) : const Color(0xF5F8F9FC),
+                    surfaceTintColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: isDark ? const Color(0x30FFFFFF) : const Color(0x18000000),
+                        width: 1,
+                      ),
+                    ),
                     onSelected: (val) {
                       if (val == 'split') onSplit?.call();
                       if (val == 'delay') onToggleDelay?.call();

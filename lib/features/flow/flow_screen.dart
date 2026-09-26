@@ -939,53 +939,70 @@ class _TrackTodoListCard extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (onStudyAhead != null && sortedAllBeats.any((b) => !b.isCompleted))
-                                GestureDetector(
-                                  onTap: () => onStudyAhead!(roadmap),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? Colors.white : Colors.black,
-                                      borderRadius: BorderRadius.circular(10),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.12),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  onStudyAhead!(roadmap);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0x1FFFFFFF) : const Color(0x10000000),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0x35FFFFFF) : const Color(0x20000000),
+                                      width: 1,
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.play_arrow_rounded,
-                                          size: 16,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: isDark ? Colors.black.withOpacity(0.2) : const Color(0xFF0E1420).withOpacity(0.04),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.white : Colors.black87,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.playlist_add_rounded,
+                                          size: 13,
                                           color: isDark ? Colors.black : Colors.white,
                                         ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          'Queue Next Lesson',
-                                          style: RythemTypography.labelMedium.copyWith(
-                                            color: isDark ? Colors.black : Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                          ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Queue Next Lesson',
+                                        style: RythemTypography.labelMedium.copyWith(
+                                          color: themeColors.textPrimary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              ),
                               if (onOpenDetail != null) ...[
                                 const SizedBox(width: 8),
                                 GestureDetector(
-                                  onTap: onOpenDetail,
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    onOpenDetail!();
+                                  },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
-                                      borderRadius: BorderRadius.circular(10),
+                                      color: isDark ? const Color(0x0EFFFFFF) : const Color(0x06000000),
+                                      borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: themeColors.glassBorder,
+                                        color: isDark ? themeColors.glassBorder : const Color(0x14000000),
                                         width: 0.8,
                                       ),
                                     ),
@@ -993,15 +1010,15 @@ class _TrackTodoListCard extends StatelessWidget {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
-                                          Icons.menu_book_rounded,
-                                          size: 15,
-                                          color: themeColors.textPrimary,
+                                          Icons.auto_stories_outlined,
+                                          size: 14,
+                                          color: themeColors.textSecondary,
                                         ),
-                                        const SizedBox(width: 5),
+                                        const SizedBox(width: 6),
                                         Text(
                                           'Browse Track',
                                           style: RythemTypography.labelMedium.copyWith(
-                                            color: themeColors.textPrimary,
+                                            color: themeColors.textSecondary,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 12,
                                           ),
@@ -1033,11 +1050,12 @@ class _TrackTodoListCard extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final beat = flowBeats[index];
 
-                        return BeatTile(
-                          beat: beat,
-                          themeColors: themeColors,
-                          isDark: isDark,
-                          isDelayed: delayedBeatIds.contains(beat.id),
+                        return RepaintBoundary(
+                          child: BeatTile(
+                            beat: beat,
+                            themeColors: themeColors,
+                            isDark: isDark,
+                            isDelayed: delayedBeatIds.contains(beat.id),
                           onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
                           onToggle: (val) => onBeatToggled(beat, val),
                           onRemoveFromFocus: onRemoveFromFocus != null && !beat.isCompleted
@@ -1066,8 +1084,9 @@ class _TrackTodoListCard extends StatelessWidget {
                           },
                           isInRevisionShelf: revisionShelfBeatIds.contains(beat.id),
                           onMarkForRevision: onMarkForRevision != null ? () => onMarkForRevision!(beat) : null,
-                        );
-                      },
+                        ),
+                      );
+                    },
                     ),
                     if (allCompleted)
                       Padding(
@@ -1149,21 +1168,34 @@ class _TrackTodoListCard extends StatelessWidget {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: GestureDetector(
-                            onTap: () => onStudyAhead!(roadmap),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              onStudyAhead!(roadmap);
+                            },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                               decoration: BoxDecoration(
                                 color: isDark ? const Color(0x14FFFFFF) : const Color(0x0A000000),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: themeColors.glassBorder, width: 0.6),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isDark ? const Color(0x28FFFFFF) : const Color(0x14000000),
+                                  width: 0.8,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.add_rounded, size: 13, color: themeColors.textPrimary),
-                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.all(2.5),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0x20FFFFFF) : const Color(0x14000000),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.playlist_add_rounded, size: 12, color: themeColors.textPrimary),
+                                  ),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    '+ Queue Next Lesson',
+                                    'Queue Next Lesson',
                                     style: RythemTypography.labelSmall.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w600,

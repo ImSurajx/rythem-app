@@ -5,6 +5,7 @@ import '../../../../core/database/models/roadmap_entity.dart';
 import '../../../../core/pacing/models/pacing_budget.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../core/widgets/glass_date_picker_sheet.dart';
 
 /// Modal bottom sheet allowing guilt-free, flexible timeline recalibration.
 /// Users can extend by +7, +14, +30 days, pick a custom calendar date, or switch to Open Pace.
@@ -72,32 +73,12 @@ class _TimelineAdjusterSheetState extends State<TimelineAdjusterSheet> {
         ? _selectedDate!
         : now.add(const Duration(days: 14));
 
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await GlassDatePickerSheet.show(
+      context,
       initialDate: initial,
       firstDate: now.add(const Duration(days: 1)),
       lastDate: now.add(const Duration(days: 365 * 5)),
-      builder: (context, child) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: isDark
-                ? const ColorScheme.dark(
-                    primary: Colors.white,
-                    onPrimary: Colors.black,
-                    surface: Color(0xFF1E1E1E),
-                    onSurface: Colors.white,
-                  )
-                : const ColorScheme.light(
-                    primary: Colors.black,
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: Colors.black,
-                  ),
-          ),
-          child: child!,
-        );
-      },
+      title: 'Custom Completion Date',
     );
 
     if (picked != null) {
