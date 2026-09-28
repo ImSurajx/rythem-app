@@ -102,6 +102,7 @@ class BeatRepository {
   Future<BeatEntity?> toggleBeatCompletion(
     String beatId, {
     required bool isCompleted,
+    DateTime? completedAt,
   }) async {
     final db = await _db;
     BeatEntity? updatedBeat;
@@ -116,7 +117,7 @@ class BeatRepository {
       if (beatQuery.isEmpty) return;
 
       final current = BeatEntity.fromMap(beatQuery.first);
-      final now = DateTime.now();
+      final now = completedAt ?? DateTime.now();
       final todayDateStr = now.toIso8601String().substring(0, 10); // YYYY-MM-DD
 
       final updatedValues = {

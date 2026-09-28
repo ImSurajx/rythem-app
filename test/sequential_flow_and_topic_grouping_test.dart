@@ -294,7 +294,7 @@ void main() {
     expect(budgetDay1.todaysBeats[0].isCompleted, false);
 
     // 2. Complete b1 today (Day 1 at 10:00)
-    await beatRepo.toggleBeatCompletion('b1', isCompleted: true);
+    await beatRepo.toggleBeatCompletion('b1', isCompleted: true, completedAt: day1);
 
     // Recompute budget on same day (Day 1 at 10:30)
     final budgetDay1AfterCompletion = await pacingService.computePacingBudget(
@@ -320,7 +320,7 @@ void main() {
     // 4. Test Zero Surprise Bumps:
     // Complete all beats in Day 2 mission
     for (final b in budgetDay2.todaysBeats) {
-      await beatRepo.toggleBeatCompletion(b.id, isCompleted: true);
+      await beatRepo.toggleBeatCompletion(b.id, isCompleted: true, completedAt: day2);
     }
 
     final budgetDay2AfterAllCompleted = await pacingService.computePacingBudget(

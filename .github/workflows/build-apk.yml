@@ -6,6 +6,7 @@ on:
       - master
     tags:
       - 'v*'
+      - 'models-v*'
   workflow_dispatch:
 
 permissions:
@@ -94,11 +95,24 @@ jobs:
               --notes-file CHANGELOG.md
           fi
 
-          # Also ensure rythem.apk is mirrored on models-v1.0.0 for main releases only
-          if [[ "$TAG_NAME" == "v1.0.0" ]] && gh release view "models-v1.0.0" > /dev/null 2>&1; then
-            echo "Syncing rythem.apk to models-v1.0.0 release tag..."
-            gh release upload "models-v1.0.0" release_output/rythem.apk --clobber || true
+          # Also ensure models release exists and mirrors model manifest, weights, and APK
+          MODELS_TAG="models-v$APP_VERSION"
+          echo "Syncing assets to models release tag: $MODELS_TAG"
+          if ! gh release view "$MODELS_TAG" > /dev/null 2>&1; then
+            echo "Creating $MODELS_TAG release..."
+            gh release create "$MODELS_TAG" \
+              --title "Rythem On-Device AI Models ($MODELS_TAG)" \
+              --notes "On-device Small Language Models (Qwen 2.5 0.5B & 1.5B GGUF) for Rythem $TAG_NAME."
           fi
+
+          mkdir -p model_dist
+          cp .github/model_manifest.json model_dist/
+          if ! gh release view "$MODELS_TAG" | grep -q "qwen2.5-0.5b-instruct-q4_k_m.gguf"; then
+            echo "Fetching GGUF weights from base models-v1.0.0..."
+            gh release download "models-v1.0.0" -D model_dist -p "*.gguf" || true
+          fi
+          echo "Uploading assets to $MODELS_TAG..."
+          gh release upload "$MODELS_TAG" model_dist/* release_output/rythem.apk --clobber || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
