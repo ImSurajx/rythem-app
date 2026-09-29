@@ -210,6 +210,45 @@ void main() {
       expect(find.text('Complete current topic to unlock next'), findsNothing);
     });
 
+    testWidgets('completed topic in Today\'s Focus is read-only and cannot be unchecked', (tester) async {
+      final now = DateTime.now();
+      final beatsWithCompleted = [
+        testBeats[0].copyWith(isCompleted: true, completedAt: now),
+      ];
+      bool toggleInvoked = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: FlowScreen(
+              activeRoadmap: testRoadmap,
+              allRoadmaps: [testRoadmap],
+              chapters: testChapters,
+              allBeats: beatsWithCompleted,
+              pacingBudget: null,
+              streakDays: 4,
+              activeFocusBeatByRoadmap: const {},
+              onSwitchRoadmap: () {},
+              onBeatToggled: (beat, val) async {
+                toggleInvoked = true;
+              },
+            ),
+          ),
+        ),
+      );
+
+      // Verify the checkmark icon exists
+      expect(find.byIcon(Icons.check_rounded), findsWidgets);
+
+      // Tap on checkmark
+      await tester.tap(find.byIcon(Icons.check_rounded).first);
+      await tester.pumpAndSettle();
+
+      // Ensure toggle was NOT invoked (read-only)
+      expect(toggleInvoked, false);
+    });
+
     testWidgets('displays Track Complete celebratory card when 100% finished', (tester) async {
       final now = DateTime.now();
       final allFinished = testBeats.map((b) => b.copyWith(isCompleted: true, completedAt: now)).toList();

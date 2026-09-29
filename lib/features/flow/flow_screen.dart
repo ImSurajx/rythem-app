@@ -792,9 +792,10 @@ class _TrackTodoListCard extends StatelessWidget {
                                 beat: beat,
                                 themeColors: themeColors,
                                 isDark: isDark,
+                                isReadOnly: true,
                                 isDelayed: delayedBeatIds.contains(beat.id),
                                 onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
-                                onToggle: (val) => onBeatToggled(beat, val),
+                                onToggle: (_) {},
                                 onOpenResource: () => ResourceLauncher.openResource(
                                   context,
                                   url: beat.sourceUrl,

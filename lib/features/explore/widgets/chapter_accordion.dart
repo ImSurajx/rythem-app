@@ -514,6 +514,7 @@ class BeatTile extends StatelessWidget {
   final VoidCallback? onRejectMatch;
   final bool isDelayed;
   final VoidCallback? onToggleDelay;
+  final bool isReadOnly;
 
   const BeatTile({
     super.key,
@@ -528,6 +529,7 @@ class BeatTile extends StatelessWidget {
     this.onRejectMatch,
     this.isDelayed = false,
     this.onToggleDelay,
+    this.isReadOnly = false,
   });
 
   @override
@@ -578,18 +580,11 @@ class BeatTile extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-            // Interactive Checkbox
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                onToggle(!beat.isCompleted);
-              },
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
+            // Interactive Checkbox or Read-Only Celebratory Checkmark
+            if (isReadOnly)
+              Padding(
                 padding: const EdgeInsets.all(4),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
+                child: Container(
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
@@ -604,19 +599,52 @@ class BeatTile extends StatelessWidget {
                       width: 1.5,
                     ),
                   ),
-                  child: AnimatedScale(
-                    scale: beat.isCompleted ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: isDark ? Colors.black : Colors.white,
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 13,
+                    color: isDark ? Colors.black : Colors.white,
+                  ),
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onToggle(!beat.isCompleted);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: beat.isCompleted
+                          ? themeColors.textPrimary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: beat.isCompleted
+                            ? themeColors.textPrimary
+                            : themeColors.textTertiary,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: AnimatedScale(
+                      scale: beat.isCompleted ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutBack,
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: isDark ? Colors.black : Colors.white,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             const SizedBox(width: 8),
 
             // Beat Title & Badges (Tapping content opens resource)

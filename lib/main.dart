@@ -259,6 +259,30 @@ class _DesignSystemShowcaseScreenState
           });
         }
       }
+      if (isCompleted && mounted) {
+        showGlassToast(
+          context,
+          'Completed: "${beat.title}"! 🎉',
+          icon: Icons.check_circle_rounded,
+          accentColor: const Color(0xFF10B981),
+          actionLabel: 'Undo',
+          duration: const Duration(seconds: 4),
+          onAction: () async {
+            await _setBeatCompletion(beat, false);
+            if (!_activeFocusBeatByRoadmap.containsKey(beat.roadmapId)) {
+              final restored = Map<String, String>.from(_activeFocusBeatByRoadmap);
+              restored[beat.roadmapId] = beat.id;
+              await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(restored));
+              if (mounted) {
+                setState(() {
+                  _activeFocusBeatByRoadmap = restored;
+                });
+              }
+            }
+            _showToast('Reverted "${beat.title}" back to active focus');
+          },
+        );
+      }
       _pendingBeatToggles.remove(beat.id);
       _scheduleDebouncedReload(80);
     }).catchError((e) {
