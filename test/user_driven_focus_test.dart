@@ -143,7 +143,7 @@ void main() {
               allBeats: testBeats,
               pacingBudget: null,
               streakDays: 3,
-              activeFocusBeatByRoadmap: {'rm_test': 'b1'},
+              activeFocusBeatByRoadmap: const {'rm_test': 'b1'},
               onSwitchRoadmap: () {},
               onBeatToggled: (beat, val) async {},
               onReturnToTracker: (rm, b) {
