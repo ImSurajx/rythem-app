@@ -1241,7 +1241,7 @@ class _FlowStreakCalendar extends StatefulWidget {
 
 class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
   int _weekOffset = 0; // 0 = current week, -1 = last week, etc.
-  Map<String, int> _weekActivity = {};
+  Map<String, double> _weekActivity = {};
 
   static const _emeraldAccent = Color(0xFF10B981);
   static const _weekDaysLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -1307,12 +1307,12 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
     }
 
     // Fallback if beatLogRepo is not provided
-    final fallbackMap = <String, int>{};
+    final fallbackMap = <String, double>{};
     for (final b in widget.allBeats) {
       if (b.isCompleted && b.completedAt != null) {
         final dStr = _formatDate(b.completedAt!);
         if (dStr.compareTo(startStr) >= 0 && dStr.compareTo(endStr) <= 0) {
-          fallbackMap[dStr] = (fallbackMap[dStr] ?? 0) + 1;
+          fallbackMap[dStr] = (fallbackMap[dStr] ?? 0.0) + (b.effortWeight > 0 ? b.effortWeight : 1.0);
         }
       }
     }
@@ -1632,7 +1632,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                         ),
                                         child: Center(
                                           child: Text(
-                                            '$completedOnDay',
+                                            completedOnDay.toStringAsFixed(completedOnDay.truncateToDouble() == completedOnDay ? 0 : 1),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 8,

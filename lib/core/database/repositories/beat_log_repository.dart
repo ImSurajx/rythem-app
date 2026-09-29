@@ -6,8 +6,15 @@ import '../tables.dart';
 class DailyBeatCount {
   final String date;
   final int count;
+  final double? _effort;
 
-  const DailyBeatCount({required this.date, required this.count});
+  const DailyBeatCount({
+    required this.date,
+    required this.count,
+    double? effort,
+  }) : _effort = effort;
+
+  double get effort => _effort ?? count.toDouble();
 }
 
 class BeatLogRepository {
@@ -85,7 +92,7 @@ class BeatLogRepository {
     return (results.first['count'] as num?)?.toInt() ?? 0;
   }
 
-  /// Fetches daily counts for the last [daysCount] days (default 7 days for flow metrics).
+  /// Fetches daily counts and effort points for the last [daysCount] days (default 7 days for flow metrics).
   Future<List<DailyBeatCount>> getRecentActivity({int daysCount = 7}) async {
     final db = await _db;
     final now = DateTime.now();
@@ -96,18 +103,23 @@ class BeatLogRepository {
 
     final results = await db.rawQuery('''
       SELECT 
-        ${BeatLogColumns.completedDate} as date,
-        COUNT(*) as count
-      FROM ${DatabaseTables.beatLogs}
-      WHERE ${BeatLogColumns.completedDate} >= ?
-      GROUP BY ${BeatLogColumns.completedDate}
-      ORDER BY ${BeatLogColumns.completedDate} ASC
+        bl.${BeatLogColumns.completedDate} as date,
+        COUNT(bl.${BeatLogColumns.id}) as count,
+        COALESCE(SUM(CASE WHEN b.${BeatColumns.effortWeight} IS NOT NULL AND b.${BeatColumns.effortWeight} > 0 THEN b.${BeatColumns.effortWeight} ELSE 1.0 END), 0.0) as effort
+      FROM ${DatabaseTables.beatLogs} bl
+      LEFT JOIN ${DatabaseTables.beats} b ON bl.${BeatLogColumns.beatId} = b.${BeatColumns.id}
+      WHERE bl.${BeatLogColumns.completedDate} >= ?
+      GROUP BY bl.${BeatLogColumns.completedDate}
+      ORDER BY bl.${BeatLogColumns.completedDate} ASC
     ''', [startDate]);
 
-    final Map<String, int> countsByDate = {
-      for (final row in results)
-        row['date'] as String: (row['count'] as num).toInt(),
-    };
+    final Map<String, int> countsByDate = {};
+    final Map<String, double> effortsByDate = {};
+    for (final row in results) {
+      final d = row['date'] as String;
+      countsByDate[d] = (row['count'] as num).toInt();
+      effortsByDate[d] = (row['effort'] as num).toDouble();
+    }
 
     final List<DailyBeatCount> fullSequence = [];
     for (int i = daysCount - 1; i >= 0; i--) {
@@ -115,6 +127,7 @@ class BeatLogRepository {
       fullSequence.add(DailyBeatCount(
         date: d,
         count: countsByDate[d] ?? 0,
+        effort: effortsByDate[d] ?? 0.0,
       ));
     }
 
@@ -159,9 +172,9 @@ class BeatLogRepository {
     return streak;
   }
 
-  /// Fetches daily counts for an entire calendar month [year]-[month].
-  /// Returns a map of 'YYYY-MM-DD' -> beat count.
-  Future<Map<String, int>> getActivityForMonth(int year, int month) async {
+  /// Fetches daily effort points for an entire calendar month [year]-[month].
+  /// Returns a map of 'YYYY-MM-DD' -> effort points.
+  Future<Map<String, double>> getActivityForMonth(int year, int month) async {
     final db = await _db;
     final startStr = '$year-${month.toString().padLeft(2, '0')}-01';
     final nextMonth = month == 12 ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
@@ -169,56 +182,61 @@ class BeatLogRepository {
 
     final results = await db.rawQuery('''
       SELECT 
-        ${BeatLogColumns.completedDate} as date,
-        COUNT(*) as count
-      FROM ${DatabaseTables.beatLogs}
-      WHERE ${BeatLogColumns.completedDate} >= ? AND ${BeatLogColumns.completedDate} <= ?
-      GROUP BY ${BeatLogColumns.completedDate}
-      ORDER BY ${BeatLogColumns.completedDate} ASC
+        bl.${BeatLogColumns.completedDate} as date,
+        COALESCE(SUM(CASE WHEN b.${BeatColumns.effortWeight} IS NOT NULL AND b.${BeatColumns.effortWeight} > 0 THEN b.${BeatColumns.effortWeight} ELSE 1.0 END), 0.0) as effort
+      FROM ${DatabaseTables.beatLogs} bl
+      LEFT JOIN ${DatabaseTables.beats} b ON bl.${BeatLogColumns.beatId} = b.${BeatColumns.id}
+      WHERE bl.${BeatLogColumns.completedDate} >= ? AND bl.${BeatLogColumns.completedDate} <= ?
+      GROUP BY bl.${BeatLogColumns.completedDate}
+      ORDER BY bl.${BeatLogColumns.completedDate} ASC
     ''', [startStr, endStr]);
 
     return {
       for (final row in results)
-        row['date'] as String: (row['count'] as num).toInt(),
+        row['date'] as String: (row['effort'] as num).toDouble(),
     };
   }
 
-  /// Fetches daily completion counts between [startStr] and [endStr] (inclusive).
-  /// Returns a map of 'YYYY-MM-DD' -> beat count.
-  Future<Map<String, int>> getActivityForDateRange(String startStr, String endStr) async {
+  /// Fetches daily effort points between [startStr] and [endStr] (inclusive).
+  /// Returns a map of 'YYYY-MM-DD' -> effort points.
+  Future<Map<String, double>> getActivityForDateRange(String startStr, String endStr) async {
     final db = await _db;
     final results = await db.rawQuery('''
       SELECT 
-        ${BeatLogColumns.completedDate} as date,
-        COUNT(*) as count
-      FROM ${DatabaseTables.beatLogs}
-      WHERE ${BeatLogColumns.completedDate} >= ? AND ${BeatLogColumns.completedDate} <= ?
-      GROUP BY ${BeatLogColumns.completedDate}
-      ORDER BY ${BeatLogColumns.completedDate} ASC
+        bl.${BeatLogColumns.completedDate} as date,
+        COALESCE(SUM(CASE WHEN b.${BeatColumns.effortWeight} IS NOT NULL AND b.${BeatColumns.effortWeight} > 0 THEN b.${BeatColumns.effortWeight} ELSE 1.0 END), 0.0) as effort
+      FROM ${DatabaseTables.beatLogs} bl
+      LEFT JOIN ${DatabaseTables.beats} b ON bl.${BeatLogColumns.beatId} = b.${BeatColumns.id}
+      WHERE bl.${BeatLogColumns.completedDate} >= ? AND bl.${BeatLogColumns.completedDate} <= ?
+      GROUP BY bl.${BeatLogColumns.completedDate}
+      ORDER BY bl.${BeatLogColumns.completedDate} ASC
     ''', [startStr, endStr]);
 
     return {
       for (final row in results)
-        row['date'] as String: (row['count'] as num).toInt(),
+        row['date'] as String: (row['effort'] as num).toDouble(),
     };
   }
 
-  /// Fetches all daily completion aggregates across lifetime for growth curves.
+  /// Fetches all daily completion aggregates with effort points across lifetime for growth curves.
   Future<List<DailyBeatCount>> getAllDailyActivity() async {
     final db = await _db;
     final results = await db.rawQuery('''
       SELECT 
-        ${BeatLogColumns.completedDate} as date,
-        COUNT(*) as count
-      FROM ${DatabaseTables.beatLogs}
-      GROUP BY ${BeatLogColumns.completedDate}
-      ORDER BY ${BeatLogColumns.completedDate} ASC
+        bl.${BeatLogColumns.completedDate} as date,
+        COUNT(bl.${BeatLogColumns.id}) as count,
+        COALESCE(SUM(CASE WHEN b.${BeatColumns.effortWeight} IS NOT NULL AND b.${BeatColumns.effortWeight} > 0 THEN b.${BeatColumns.effortWeight} ELSE 1.0 END), 0.0) as effort
+      FROM ${DatabaseTables.beatLogs} bl
+      LEFT JOIN ${DatabaseTables.beats} b ON bl.${BeatLogColumns.beatId} = b.${BeatColumns.id}
+      GROUP BY bl.${BeatLogColumns.completedDate}
+      ORDER BY bl.${BeatLogColumns.completedDate} ASC
     ''');
 
     return results
         .map((r) => DailyBeatCount(
               date: r['date'] as String,
               count: (r['count'] as num).toInt(),
+              effort: (r['effort'] as num).toDouble(),
             ))
         .toList();
   }

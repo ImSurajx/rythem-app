@@ -36,7 +36,7 @@ class FullMonthStreakCalendar extends StatefulWidget {
 class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
   late DateTime _displayedMonth;
   late BeatLogRepository _repo;
-  Map<String, int> _monthlyActivity = {};
+  Map<String, double> _monthlyActivity = {};
   bool _isLoading = true;
   String? _selectedDateStr;
   StreamSubscription<DatabaseEvent>? _eventSub;
@@ -131,16 +131,16 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
     final totalCells = leadingEmptyDays + daysInMonth;
     final totalRows = (totalCells / 7).ceil();
 
-    int totalMonthBeats = 0;
+    double totalMonthEffort = 0.0;
     int activeDaysCount = 0;
-    for (final count in _monthlyActivity.values) {
-      if (count > 0) {
-        totalMonthBeats += count;
+    for (final effort in _monthlyActivity.values) {
+      if (effort > 0) {
+        totalMonthEffort += effort;
         activeDaysCount++;
       }
     }
 
-    final selectedCount = _selectedDateStr != null ? (_monthlyActivity[_selectedDateStr] ?? 0) : 0;
+    final selectedEffort = _selectedDateStr != null ? (_monthlyActivity[_selectedDateStr] ?? 0.0) : 0.0;
 
     return GlassCard(
       padding: const EdgeInsets.all(20),
@@ -251,7 +251,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '⚡ $totalMonthBeats pts earned • $activeDaysCount active days',
+                '⚡ ${totalMonthEffort.toStringAsFixed(totalMonthEffort.truncateToDouble() == totalMonthEffort ? 0 : 1)} pts earned • $activeDaysCount active days',
                 style: RythemTypography.caption.copyWith(
                   color: widget.themeColors.textTertiary,
                   fontSize: 11,
@@ -331,7 +331,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                       final dateStr = _formatDate(date);
                       final isToday = dateStr == todayStr;
                       final isSelected = dateStr == _selectedDateStr;
-                      final count = _monthlyActivity[dateStr] ?? 0;
+                      final effort = _monthlyActivity[dateStr] ?? 0.0;
 
                       return Expanded(
                         child: GestureDetector(
@@ -341,7 +341,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                           },
                           child: _buildDayTile(
                             dayNum: dayNum,
-                            count: count,
+                            effort: effort,
                             isToday: isToday,
                             isSelected: isSelected,
                           ),
@@ -369,9 +369,9 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
               child: Row(
                 children: [
                   Icon(
-                    selectedCount > 0 ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    selectedEffort > 0 ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                     size: 14,
-                    color: selectedCount > 0
+                    color: selectedEffort > 0
                         ? (widget.isDark ? _emeraldAccent : Colors.teal)
                         : widget.themeColors.textTertiary,
                   ),
@@ -385,14 +385,14 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   ),
                   const Spacer(),
                   Text(
-                    selectedCount > 0
-                        ? '⚡ $selectedCount effort pts logged'
+                    selectedEffort > 0
+                        ? '⚡ ${selectedEffort.toStringAsFixed(selectedEffort.truncateToDouble() == selectedEffort ? 0 : 1)} effort pts logged'
                         : 'No effort recorded',
                     style: RythemTypography.caption.copyWith(
-                      color: selectedCount > 0
+                      color: selectedEffort > 0
                           ? (widget.isDark ? Colors.white : Colors.black)
                           : widget.themeColors.textTertiary,
-                      fontWeight: selectedCount > 0 ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: selectedEffort > 0 ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
                 ],
@@ -406,27 +406,27 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
 
   Widget _buildDayTile({
     required int dayNum,
-    required int count,
+    required double effort,
     required bool isToday,
     required bool isSelected,
   }) {
-    // Determine heat intensity (GitHub style) based strictly on real logged beat count
+    // Determine heat intensity (GitHub style) based strictly on real logged effort points
     Color tileColor;
-    if (count >= 5) {
+    if (effort >= 5.0) {
       tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.85) : Colors.teal.shade700;
-    } else if (count >= 3) {
+    } else if (effort >= 3.0) {
       tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.55) : Colors.teal.shade500;
-    } else if (count >= 1) {
+    } else if (effort >= 1.0) {
       tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.28) : Colors.teal.shade200;
     } else {
       tileColor = widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03);
     }
 
-    final textColor = count >= 3
+    final textColor = effort >= 3.0
         ? (widget.isDark ? Colors.black : Colors.white)
         : (isToday
             ? widget.themeColors.textPrimary
-            : (count > 0 ? widget.themeColors.textPrimary : widget.themeColors.textSecondary));
+            : (effort > 0 ? widget.themeColors.textPrimary : widget.themeColors.textSecondary));
 
     return Container(
       height: 38,
@@ -437,14 +437,14 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
         border: Border.all(
           color: isSelected
               ? (widget.isDark ? Colors.white70 : Colors.black87)
-              : (isToday && count > 0
+              : (isToday && effort > 0
                   ? (widget.isDark ? Colors.white : Colors.black)
                   : (isToday
                       ? (widget.isDark ? Colors.white24 : Colors.black26)
                       : (widget.isDark ? Colors.white10 : Colors.black.withOpacity(0.06)))),
-          width: isSelected ? 1.4 : (isToday && count > 0 ? 1.5 : 0.8),
+          width: isSelected ? 1.4 : (isToday && effort > 0 ? 1.5 : 0.8),
         ),
-        boxShadow: isToday && count > 0
+        boxShadow: isToday && effort > 0
             ? [
                 BoxShadow(
                   color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.25),
@@ -452,7 +452,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   offset: const Offset(0, 2),
                 ),
               ]
-            : (count >= 3
+            : (effort >= 3.0
                 ? [
                     BoxShadow(
                       color: _emeraldAccent.withOpacity(widget.isDark ? 0.2 : 0.1),
@@ -469,14 +469,14 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
               '$dayNum',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: isToday ? FontWeight.w800 : (count > 0 ? FontWeight.w700 : FontWeight.w500),
+                fontWeight: isToday ? FontWeight.w800 : (effort > 0 ? FontWeight.w700 : FontWeight.w500),
                 color: textColor,
               ),
             ),
           ),
 
-          // Top right beat count badge - only show when beats are actually recorded
-          if (count > 0)
+          // Top right effort badge - only show when effort was actually earned
+          if (effort > 0)
             Positioned(
               top: 2,
               right: 2.5,
@@ -505,8 +505,8 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   width: 3,
                   height: 3,
                   decoration: BoxDecoration(
-                    color: count > 0
-                        ? (count >= 3 ? Colors.white : _emeraldAccent)
+                    color: effort > 0
+                        ? (effort >= 3.0 ? Colors.white : _emeraldAccent)
                         : (widget.isDark ? Colors.white70 : Colors.black87),
                     shape: BoxShape.circle,
                   ),

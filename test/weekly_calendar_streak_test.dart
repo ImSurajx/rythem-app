@@ -8,12 +8,12 @@ import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/flow/flow_screen.dart';
 
 class FakeBeatLogRepository extends BeatLogRepository {
-  final Map<String, int> fakeActivity;
+  final Map<String, double> fakeActivity;
 
   FakeBeatLogRepository({this.fakeActivity = const {}});
 
   @override
-  Future<Map<String, int>> getActivityForDateRange(String startStr, String endStr) async {
+  Future<Map<String, double>> getActivityForDateRange(String startStr, String endStr) async {
     return fakeActivity;
   }
 }
@@ -27,90 +27,19 @@ void main() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
 
-    late Database db;
     late BeatLogRepository beatLogRepo;
 
     setUp(() async {
-      db = await databaseFactoryFfi.openDatabase(
-        inMemoryDatabasePath,
-        options: OpenDatabaseOptions(
-          version: 2,
-          onConfigure: (db) async {
-            await db.execute('PRAGMA foreign_keys = ON;');
-          },
-          onCreate: (db, version) async {
-            final batch = db.batch();
-            batch.execute('''
-              CREATE TABLE ${DatabaseTables.roadmaps} (
-                ${RoadmapColumns.id} TEXT PRIMARY KEY,
-                ${RoadmapColumns.title} TEXT NOT NULL,
-                ${RoadmapColumns.description} TEXT,
-                ${RoadmapColumns.startDate} TEXT,
-                ${RoadmapColumns.targetCompletionDate} TEXT,
-                ${RoadmapColumns.status} TEXT NOT NULL DEFAULT 'active',
-                ${RoadmapColumns.isPrimary} INTEGER NOT NULL DEFAULT 0,
-                ${RoadmapColumns.createdAt} TEXT NOT NULL,
-                ${RoadmapColumns.updatedAt} TEXT NOT NULL
-              );
-            ''');
-            batch.execute('''
-              CREATE TABLE ${DatabaseTables.chapters} (
-                ${ChapterColumns.id} TEXT PRIMARY KEY,
-                ${ChapterColumns.roadmapId} TEXT NOT NULL,
-                ${ChapterColumns.title} TEXT NOT NULL,
-                ${ChapterColumns.sortOrder} INTEGER NOT NULL DEFAULT 0,
-                ${ChapterColumns.createdAt} TEXT NOT NULL,
-                ${ChapterColumns.updatedAt} TEXT NOT NULL,
-                FOREIGN KEY (${ChapterColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-              );
-            ''');
-            batch.execute('''
-              CREATE TABLE ${DatabaseTables.beats} (
-                ${BeatColumns.id} TEXT PRIMARY KEY,
-                ${BeatColumns.chapterId} TEXT NOT NULL,
-                ${BeatColumns.roadmapId} TEXT NOT NULL,
-                ${BeatColumns.title} TEXT NOT NULL,
-                ${BeatColumns.sourceUrl} TEXT,
-                ${BeatColumns.timestampSeconds} INTEGER,
-                ${BeatColumns.effortWeight} REAL NOT NULL DEFAULT 1.0,
-                ${BeatColumns.sortOrder} INTEGER NOT NULL DEFAULT 0,
-                ${BeatColumns.isCompleted} INTEGER NOT NULL DEFAULT 0,
-                ${BeatColumns.completedAt} TEXT,
-                ${BeatColumns.isMentorExtra} INTEGER NOT NULL DEFAULT 0,
-                ${BeatColumns.matchConfidence} REAL,
-                ${BeatColumns.syllabusTopicId} TEXT,
-                ${BeatColumns.createdAt} TEXT NOT NULL,
-                ${BeatColumns.updatedAt} TEXT NOT NULL,
-                FOREIGN KEY (${BeatColumns.chapterId}) REFERENCES ${DatabaseTables.chapters} (${ChapterColumns.id}) ON DELETE CASCADE,
-                FOREIGN KEY (${BeatColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-              );
-            ''');
-            batch.execute('''
-              CREATE TABLE ${DatabaseTables.beatLogs} (
-                ${BeatLogColumns.id} TEXT PRIMARY KEY,
-                ${BeatLogColumns.beatId} TEXT NOT NULL,
-                ${BeatLogColumns.roadmapId} TEXT NOT NULL,
-                ${BeatLogColumns.completedDate} TEXT NOT NULL,
-                ${BeatLogColumns.createdAt} TEXT NOT NULL,
-                FOREIGN KEY (${BeatLogColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
-                FOREIGN KEY (${BeatLogColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-              );
-            ''');
-            await batch.commit();
-          },
-        ),
-      );
-
-      DatabaseService.instance.setDatabaseForTesting(db);
+      await DatabaseService.instance.initInMemoryForTesting();
       beatLogRepo = BeatLogRepository();
     });
 
     tearDown(() async {
-      DatabaseService.instance.setDatabaseForTesting(null);
-      await db.close();
+      await DatabaseService.instance.close();
     });
 
     test('getActivityForDateRange returns correct counts per day', () async {
+      final db = await DatabaseService.instance.database;
       // Seed roadmap and beat
       await db.insert(DatabaseTables.roadmaps, {
         RoadmapColumns.id: 'rm_test',

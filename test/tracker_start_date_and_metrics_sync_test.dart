@@ -11,7 +11,7 @@ import 'package:rythem_app/features/metrics/widgets/full_month_streak_calendar.d
 import 'package:rythem_app/features/metrics/widgets/performance_graphs_card.dart';
 
 class FakeBeatLogRepository extends BeatLogRepository {
-  Map<String, int> fakeMonthActivity;
+  Map<String, double> fakeMonthActivity;
   List<DailyBeatCount> fakeRecentActivity;
   int fakeStreak;
   int fakeTotal;
@@ -24,7 +24,7 @@ class FakeBeatLogRepository extends BeatLogRepository {
   });
 
   @override
-  Future<Map<String, int>> getActivityForMonth(int year, int month) async {
+  Future<Map<String, double>> getActivityForMonth(int year, int month) async {
     return fakeMonthActivity;
   }
 
@@ -39,7 +39,7 @@ class FakeBeatLogRepository extends BeatLogRepository {
   }
 
   @override
-  Future<Map<String, int>> getActivityForDateRange(String startStr, String endStr) async {
+  Future<Map<String, double>> getActivityForDateRange(String startStr, String endStr) async {
     return fakeMonthActivity;
   }
 

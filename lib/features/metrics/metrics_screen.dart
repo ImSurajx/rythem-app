@@ -61,9 +61,9 @@ class MetricsScreen extends StatelessWidget {
       }
     }
 
-    // Velocity from recent activity
+    // Velocity from recent activity (daily effort points)
     final double recentVelocity = recentActivity.isNotEmpty
-        ? recentActivity.map((e) => e.count).reduce((a, b) => a + b) / 7.0
+        ? recentActivity.map((e) => e.effort).reduce((a, b) => a + b) / 7.0
         : 0.0;
 
     final topPadding = MediaQuery.of(context).padding.top;

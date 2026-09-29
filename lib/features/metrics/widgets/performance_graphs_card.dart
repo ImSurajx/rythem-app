@@ -40,7 +40,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
   GraphMode _mode = GraphMode.sevenDays;
   late BeatLogRepository _repo;
   List<DailyBeatCount> _allLifetimeLogs = [];
-  Map<String, int> _monthDailyLogs = {};
+  Map<String, double> _monthDailyLogs = {};
   bool _isLoading = true;
   int? _scrubbedIndex;
   StreamSubscription<DatabaseEvent>? _eventSub;
@@ -270,25 +270,27 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
             return DailyBeatCount(
               date: '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
               count: 0,
+              effort: 0.0,
             );
           });
 
-    int maxCount = 4;
+    double maxEffort = 4.0;
     for (final day in activity) {
-      if (day.count > maxCount) maxCount = day.count;
+      if (day.effort > maxEffort) maxEffort = day.effort;
     }
 
-    final total7Days = activity.fold(0, (sum, d) => sum + d.count);
-    final active7Days = activity.where((d) => d.count > 0).length;
+    final total7Days = activity.fold<double>(0.0, (sum, d) => sum + d.effort);
+    final active7Days = activity.where((d) => d.effort > 0).length;
     final avg7Days = (total7Days / 7.0).toStringAsFixed(1);
+    final total7DaysStr = total7Days.toStringAsFixed(total7Days.truncateToDouble() == total7Days ? 0 : 1);
 
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildMiniMetric('7D EFFORT', '$total7Days ⚡', widget.themeColors),
-            _buildMiniMetric('AVG PACE', '$avg7Days /d', widget.themeColors),
+            _buildMiniMetric('7D EFFORT', '$total7DaysStr ⚡', widget.themeColors),
+            _buildMiniMetric('AVG PACE', '$avg7Days ⚡/d', widget.themeColors),
             _buildMiniMetric('ACTIVE DAYS', '$active7Days / 7d', widget.themeColors),
           ],
         ),
@@ -300,8 +302,8 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
             children: List.generate(activity.length, (idx) {
               final day = activity[idx];
               final isToday = idx == activity.length - 1;
-              final ratio = (day.count / maxCount).clamp(0.0, 1.0);
-              final barHeight = (ratio * 68).clamp(day.count > 0 ? 12.0 : 5.0, 68.0);
+              final ratio = (day.effort / maxEffort).clamp(0.0, 1.0);
+              final barHeight = (ratio * 68).clamp(day.effort > 0 ? 12.0 : 5.0, 68.0);
 
               DateTime? parsed;
               try {
@@ -378,28 +380,28 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
   Widget _buildMonthlyStockMarketLineView() {
     final now = DateTime.now();
     final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
-    final List<({String date, int count})> monthlyPoints = [];
+    final List<({String date, double effort})> monthlyPoints = [];
 
-    int peakVelocity = 0;
-    int totalBeats = 0;
+    double peakVelocity = 0.0;
+    double totalMonthEffort = 0.0;
     int activeDays = 0;
 
     for (int day = 1; day <= daysInCurrentMonth; day++) {
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-      int count = _monthDailyLogs[dateStr] ?? 0;
+      double effort = _monthDailyLogs[dateStr] ?? 0.0;
 
-      // Provide reasonable mock points for current month if empty
-      if (count == 0 && widget.recentActivity.isNotEmpty) {
+      // Provide reasonable points for current month if empty
+      if (effort == 0.0 && widget.recentActivity.isNotEmpty) {
         for (final rec in widget.recentActivity) {
-          if (rec.date == dateStr) count = rec.count;
+          if (rec.date == dateStr) effort = rec.effort;
         }
       }
 
-      if (count > peakVelocity) peakVelocity = count;
-      totalBeats += count;
-      if (count > 0) activeDays++;
+      if (effort > peakVelocity) peakVelocity = effort;
+      totalMonthEffort += effort;
+      if (effort > 0) activeDays++;
 
-      monthlyPoints.add((date: dateStr, count: count));
+      monthlyPoints.add((date: dateStr, effort: effort));
     }
 
     final selectedIndex = _scrubbedIndex != null && _scrubbedIndex! < monthlyPoints.length
@@ -407,14 +409,17 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         : (now.day - 1).clamp(0, monthlyPoints.length - 1);
     final selectedDay = monthlyPoints[selectedIndex];
 
+    final totalMonthStr = totalMonthEffort.toStringAsFixed(totalMonthEffort.truncateToDouble() == totalMonthEffort ? 0 : 1);
+    final peakVelocityStr = peakVelocity.toStringAsFixed(peakVelocity.truncateToDouble() == peakVelocity ? 0 : 1);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildMiniMetric('MONTHLY EFFORT', '$totalBeats ⚡', widget.themeColors),
-            _buildMiniMetric('PEAK VELOCITY', '$peakVelocity /d', widget.themeColors),
+            _buildMiniMetric('MONTHLY EFFORT', '$totalMonthStr ⚡', widget.themeColors),
+            _buildMiniMetric('PEAK VELOCITY', '$peakVelocityStr ⚡/d', widget.themeColors),
             _buildMiniMetric('ACTIVE DAYS', '$activeDays / ${now.day}d', widget.themeColors),
           ],
         ),
@@ -438,8 +443,8 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
             width: double.infinity,
             child: CustomPaint(
               painter: _StockMarketLineChartPainter(
-                points: monthlyPoints.map((p) => p.count.toDouble()).toList(),
-                maxVal: math.max(1, peakVelocity).toDouble(),
+                points: monthlyPoints.map((p) => p.effort).toList(),
+                maxVal: math.max(1.0, peakVelocity),
                 selectedIndex: selectedIndex,
                 isDark: widget.isDark,
                 lineColor: widget.isDark ? const Color(0xFF10B981) : const Color(0xFF059669),
@@ -477,12 +482,12 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                     height: 6,
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      color: selectedDay.count > 0 ? const Color(0xFF10B981) : widget.themeColors.textTertiary,
+                      color: selectedDay.effort > 0 ? const Color(0xFF10B981) : widget.themeColors.textTertiary,
                       shape: BoxShape.circle,
                     ),
                   ),
                   Text(
-                    '⚡ ${selectedDay.count} pts earned',
+                    '⚡ ${selectedDay.effort.toStringAsFixed(selectedDay.effort.truncateToDouble() == selectedDay.effort ? 0 : 1)} pts earned',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -501,26 +506,30 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
   // --- 3. Lifetime Beats View (Cumulative Progression Curve) ---
   Widget _buildLifetimeBeatsView() {
     final rawLogs = _allLifetimeLogs.isNotEmpty ? _allLifetimeLogs : widget.recentActivity;
-    List<({String date, int cumulative})> cumulativePoints = [];
-    int runningTotal = 0;
+    List<({String date, double cumulative})> cumulativePoints = [];
+    double runningTotal = 0.0;
 
     for (final day in rawLogs) {
-      runningTotal += day.count;
+      runningTotal += day.effort;
       cumulativePoints.add((date: day.date, cumulative: runningTotal));
     }
 
     if (cumulativePoints.isEmpty) {
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      cumulativePoints = [(date: dateStr, cumulative: 0)];
+      cumulativePoints = [(date: dateStr, cumulative: 0.0)];
     }
 
-    final maxCumulative = math.max(1, cumulativePoints.last.cumulative);
+    final maxCumulative = math.max(1.0, cumulativePoints.last.cumulative);
 
     final selectedIndex = _scrubbedIndex != null && _scrubbedIndex! < cumulativePoints.length
         ? _scrubbedIndex!
         : cumulativePoints.length - 1;
     final selectedPoint = cumulativePoints[selectedIndex];
+
+    final lifetimeEffort = cumulativePoints.last.cumulative;
+    final lifetimeStr = lifetimeEffort.toStringAsFixed(lifetimeEffort.truncateToDouble() == lifetimeEffort ? 0 : 1);
+    final milestoneCount = (lifetimeEffort / 10).floor();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -528,9 +537,9 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildMiniMetric('LIFETIME EFFORT', '${cumulativePoints.last.cumulative} ⚡', widget.themeColors),
+            _buildMiniMetric('LIFETIME EFFORT', '$lifetimeStr ⚡', widget.themeColors),
             _buildMiniMetric('ACTIVE JOURNEY', '${cumulativePoints.length}d', widget.themeColors),
-            _buildMiniMetric('MILESTONES', '${(cumulativePoints.last.cumulative / 10).floor()} achieved 🎯', widget.themeColors),
+            _buildMiniMetric('MILESTONES', '$milestoneCount achieved 🎯', widget.themeColors),
           ],
         ),
         const SizedBox(height: 18),
@@ -595,7 +604,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                 ],
               ),
               Text(
-                '⚡ ${selectedPoint.cumulative} lifetime pts',
+                '⚡ ${selectedPoint.cumulative.toStringAsFixed(selectedPoint.cumulative.truncateToDouble() == selectedPoint.cumulative ? 0 : 1)} lifetime pts',
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,

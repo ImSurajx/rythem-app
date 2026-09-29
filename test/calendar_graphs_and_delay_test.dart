@@ -193,7 +193,7 @@ void main() {
 
       // Should show honest zero values for empty state
       expect(find.text('0 ⚡'), findsOneWidget);
-      expect(find.text('0.0 /d'), findsOneWidget);
+      expect(find.text('0.0 ⚡/d'), findsOneWidget);
       expect(find.text('0 / 7d'), findsOneWidget);
     });
   });
