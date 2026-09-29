@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
@@ -166,10 +167,10 @@ class _NewTrackModalState extends State<NewTrackModal> {
           content: TextField(
             controller: catController,
             autofocus: true,
-            style: TextStyle(color: themeColors.textPrimary, fontSize: 13.5),
+            style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary, fontSize: 13.5),
             decoration: InputDecoration(
               hintText: 'e.g. Deep Learning, Mobile, Finance',
-              hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+              hintStyle: RythemTypography.bodySmall.copyWith(color: themeColors.textTertiary, fontSize: 12),
               filled: true,
               fillColor: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
               border: OutlineInputBorder(
@@ -181,7 +182,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel', style: TextStyle(color: themeColors.textSecondary)),
+              child: Text('Cancel', style: RythemTypography.button.copyWith(color: themeColors.textSecondary)),
             ),
             TextButton(
               onPressed: () {
@@ -198,7 +199,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
               },
               child: Text(
                 'Add',
-                style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.w700),
+                style: RythemTypography.button.copyWith(color: themeColors.textPrimary, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -374,10 +375,10 @@ class _NewTrackModalState extends State<NewTrackModal> {
               TextField(
                 controller: _titleController,
                 autofocus: true,
-                style: TextStyle(color: themeColors.textPrimary, fontSize: 14),
+                style: RythemTypography.bodyLarge.copyWith(color: themeColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'e.g. Distributed Systems Masterclass',
-                  hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 13),
+                  hintStyle: RythemTypography.bodyMedium.copyWith(color: themeColors.textTertiary, fontSize: 13),
                   filled: true,
                   fillColor: isDark
                       ? Colors.white.withOpacity(0.06)
@@ -603,10 +604,10 @@ class _NewTrackModalState extends State<NewTrackModal> {
               const SizedBox(height: 6),
               TextField(
                 controller: _resourceController,
-                style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'https://youtube.com/playlist?list=...',
-                  hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+                  hintStyle: RythemTypography.bodySmall.copyWith(color: themeColors.textTertiary, fontSize: 12),
                   filled: true,
                   fillColor: isDark
                       ? Colors.white.withOpacity(0.06)
@@ -713,7 +714,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
                                 child: Text(
                                   'Import File',
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: RythemTypography.labelSmall.copyWith(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
                                     color: themeColors.textPrimary,
@@ -746,7 +747,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
                                 child: Text(
                                   'Paste Text',
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
+                                  style: RythemTypography.labelSmall.copyWith(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
                                     color: themeColors.textPrimary,
@@ -765,10 +766,10 @@ class _NewTrackModalState extends State<NewTrackModal> {
                   controller: _syllabusController,
                   maxLines: 6,
                   minLines: 3,
-                  style: TextStyle(color: themeColors.textPrimary, fontSize: 12.5),
+                  style: RythemTypography.bodySmall.copyWith(color: themeColors.textPrimary, fontSize: 12.5),
                   decoration: InputDecoration(
                     hintText: 'e.g.\nModule 1: Foundations\n- Arrays and Strings\n- Two Sum\n- Sliding Window\nModule 2: Search\n- Binary Search',
-                    hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 11),
+                    hintStyle: RythemTypography.bodySmall.copyWith(color: themeColors.textTertiary, fontSize: 11),
                     filled: true,
                     fillColor: isDark
                         ? Colors.white.withOpacity(0.05)

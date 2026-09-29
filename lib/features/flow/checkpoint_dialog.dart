@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
@@ -210,7 +211,7 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
                               child: TextField(
                                 controller: _percentController,
                                 keyboardType: TextInputType.number,
-                                style: TextStyle(
+                                style: RythemTypography.bodyLarge.copyWith(
                                   color: themeColors.textPrimary,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
@@ -326,13 +327,13 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
                         child: TextField(
                           controller: _notesController,
                           maxLines: 3,
-                          style: TextStyle(
+                          style: RythemTypography.bodyMedium.copyWith(
                             color: themeColors.textPrimary,
                             fontSize: 12.5,
                           ),
                           decoration: InputDecoration(
                             hintText: 'e.g. Watched 20 mins, completed 2 code exercises, understood core concept...',
-                            hintStyle: TextStyle(
+                            hintStyle: RythemTypography.bodySmall.copyWith(
                               color: themeColors.textTertiary.withOpacity(0.7),
                               fontSize: 12,
                             ),

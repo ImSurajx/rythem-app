@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:rythem_app/core/database/database_event_bus.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
@@ -1557,94 +1558,89 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                         final isCompleted = completedOnDay > 0;
 
                         return Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _weekDaysLabels[i],
-                                style: RythemTypography.labelSmall.copyWith(
-                                  color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
-                                  fontSize: 10,
-                                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _weekDaysLabels[i],
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                                    fontSize: 10,
+                                    fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isCompleted
-                                          ? (widget.isDark ? _emeraldAccent.withOpacity(0.32) : Colors.teal.shade200)
-                                          : (isToday
-                                              ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
-                                              : (widget.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03))),
-                                      border: Border.all(
-                                        color: isToday
-                                            ? (widget.isDark ? Colors.white : Colors.black87)
-                                            : (isCompleted
-                                                ? (widget.isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
-                                                : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))),
-                                        width: isToday ? 1.5 : (isCompleted ? 1.2 : 0.6),
-                                      ),
-                                      boxShadow: isCompleted
-                                          ? [
-                                              BoxShadow(
-                                                color: _emeraldAccent.withOpacity(widget.isDark ? 0.25 : 0.15),
-                                                blurRadius: 8,
-                                                spreadRadius: 1,
-                                              ),
-                                            ]
-                                          : null,
+                                const SizedBox(height: 5),
+                                Container(
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: isCompleted
+                                        ? (widget.isDark ? _emeraldAccent.withOpacity(0.22) : Colors.teal.shade50)
+                                        : (isToday
+                                            ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
+                                            : (widget.isDark ? Colors.white.withOpacity(0.035) : Colors.black.withOpacity(0.025))),
+                                    border: Border.all(
+                                      color: isToday
+                                          ? (widget.isDark ? Colors.white : Colors.black87)
+                                          : (isCompleted
+                                              ? (widget.isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
+                                              : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))),
+                                      width: isToday ? 1.4 : (isCompleted ? 1.0 : 0.6),
                                     ),
-                                    child: Center(
-                                      child: Text(
+                                    boxShadow: isCompleted
+                                        ? [
+                                            BoxShadow(
+                                              color: _emeraldAccent.withOpacity(widget.isDark ? 0.22 : 0.12),
+                                              blurRadius: 6,
+                                              spreadRadius: 0.5,
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
                                         '${dayDate.day}',
-                                        style: TextStyle(
+                                        style: RythemTypography.bodySmall.copyWith(
                                           color: isCompleted
                                               ? (widget.isDark ? Colors.white : Colors.teal.shade900)
                                               : (isToday
                                                   ? widget.themeColors.textPrimary
                                                   : (isPastOrToday ? widget.themeColors.textSecondary : widget.themeColors.textTertiary)),
-                                          fontSize: 11,
+                                          fontSize: 11.5,
                                           fontWeight: isCompleted || isToday ? FontWeight.w700 : FontWeight.w500,
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  if (completedOnDay > 0)
-                                    Positioned(
-                                      top: -2,
-                                      right: -2,
-                                      child: Container(
-                                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                                        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: widget.isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: widget.isDark ? const Color(0xFF181818) : Colors.white,
-                                            width: 1.0,
+                                      if (completedOnDay > 0)
+                                        Container(
+                                          constraints: const BoxConstraints(minWidth: 16),
+                                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: widget.isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
+                                            borderRadius: BorderRadius.circular(6),
                                           ),
-                                        ),
-                                        child: Center(
                                           child: Text(
                                             completedOnDay.toStringAsFixed(completedOnDay.truncateToDouble() == completedOnDay ? 0 : 1),
-                                            style: const TextStyle(
+                                            style: RythemTypography.labelSmall.copyWith(
                                               color: Colors.white,
-                                              fontSize: 8,
-                                              fontWeight: FontWeight.w800,
+                                              fontSize: 8.5,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.1,
                                             ),
+                                            textAlign: TextAlign.center,
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
+                                        )
+                                      else
+                                        const SizedBox(height: 12),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       }),

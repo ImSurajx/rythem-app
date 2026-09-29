@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:rythem_app/core/database/database_event_bus.dart';
 import 'package:rythem_app/core/database/repositories/roadmap_repository.dart';
 import 'package:rythem_app/core/database/repositories/chapter_repository.dart';
@@ -268,6 +269,18 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Top drag handle / pill slider
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.20) : Colors.black.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -318,15 +331,22 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           child: DropdownButton<String>(
                             value: selectedChapterId,
                             isExpanded: true,
+                            menuMaxHeight: 300,
+                            borderRadius: BorderRadius.circular(16),
                             dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                            style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                            icon: Icon(Icons.arrow_drop_down_rounded, color: themeColors.textSecondary),
+                            style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                            icon: Icon(Icons.keyboard_arrow_down_rounded, color: themeColors.textSecondary, size: 20),
                             items: _currentChapters.map((ch) {
                               return DropdownMenuItem<String>(
                                 value: ch.id,
                                 child: Text(
                                   ch.title,
                                   overflow: TextOverflow.ellipsis,
+                                  style: RythemTypography.bodyMedium.copyWith(
+                                    color: themeColors.textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               );
                             }).toList(),
@@ -352,10 +372,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: controller,
-                      style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                      style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'https://youtube.com/playlist?list=... or video URL',
-                        hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+                        hintStyle: RythemTypography.bodySmall.copyWith(color: themeColors.textTertiary, fontSize: 12),
                         filled: true,
                         fillColor: isDark
                             ? Colors.white.withOpacity(0.06)
@@ -518,10 +538,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: controller,
-                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                  style: RythemTypography.bodyMedium.copyWith(color: themeColors.textPrimary, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'https://youtube.com/watch?v=...&t=120s or resource link',
-                    hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
+                    hintStyle: RythemTypography.bodySmall.copyWith(color: themeColors.textTertiary, fontSize: 12),
                     filled: true,
                     fillColor: isDark
                         ? Colors.white.withOpacity(0.06)
@@ -580,27 +600,29 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
 
   Future<void> _confirmDeleteCurrentRoadmap() async {
     HapticFeedback.mediumImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeColors = isDark ? RythemColors.dark : RythemColors.light;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
+        backgroundColor: isDark
             ? const Color(0xFF1E1E1E)
             : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Tracker', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text('Delete Tracker', style: RythemTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, fontSize: 16)),
         content: Text(
           'Are you sure you want to delete "${_currentRoadmap.title}"? All chapters, beats, and progress will be permanently removed.',
-          style: const TextStyle(fontSize: 13),
+          style: RythemTypography.bodyMedium.copyWith(fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: RythemTypography.button.copyWith(color: themeColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text('Delete', style: RythemTypography.button.copyWith(color: Colors.redAccent, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
