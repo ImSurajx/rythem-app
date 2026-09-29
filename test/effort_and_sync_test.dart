@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:rythem_app/core/ai/models/model_tier.dart';
-import 'package:rythem_app/core/ai/services/model_download_manager.dart';
+
 import 'package:rythem_app/core/database/database_service.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
@@ -408,7 +407,7 @@ void main() {
       final dbService = DatabaseService.instance;
       final mockYt = _MockYoutubeClient();
 
-      mockYt.playlistResponses['https://www.youtube.com/playlist?list=PL_TEST_SYNC'] = ExtractedResource(
+      mockYt.playlistResponses['https://www.youtube.com/playlist?list=PL_TEST_SYNC'] = const ExtractedResource(
         title: 'Fast Sync Playlist',
         sourceUrl: 'https://www.youtube.com/playlist?list=PL_TEST_SYNC',
         resourceType: ExtractedResourceType.playlist,
