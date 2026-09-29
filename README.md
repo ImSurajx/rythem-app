@@ -3,8 +3,7 @@
 # 🎵 Rythem
 ### The Local-First Learning Operating System & Milestone Pacing Tracker
 
-[![Project Status: Archived](https://img.shields.io/badge/Status-Archived-red.svg)](https://github.com/ImSurajx/rythem-app)
-[![Release](https://img.shields.io/github/v/release/ImSurajx/rythem-app?color=10B981&label=Release&logo=github)](https://github.com/ImSurajx/rythem-app/releases/tag/v1.0.1)
+[![Release](https://img.shields.io/github/v/release/ImSurajx/rythem-app?color=10B981&label=Release&logo=github)](https://github.com/ImSurajx/rythem-app/releases/latest)
 [![AI Models](https://img.shields.io/badge/AI%20Models-v1.0.1-blueviolet.svg)](https://github.com/ImSurajx/rythem-app/releases/tag/models-v1.0.1)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
@@ -18,13 +17,10 @@
 [App Walkthrough](#-how-to-operate-the-app) •
 [Format Syllabus with GPT](#-how-to-format--import-any-syllabus-using-gpt) •
 [Screenshots](#-visual-showcase--screenshots) •
-[Architecture](#-technical-architecture)
+[Architecture](#-technical-architecture) •
+[Contributing](#-contributing)
 
 </div>
-
-> [!WARNING]
-> ### 📦 Project Archived
-> **Rythem** is officially archived and in read-only maintenance mode. Development has concluded, and this repository is preserved for reference. The final stable release is [v1.0.1](https://github.com/ImSurajx/rythem-app/releases/tag/v1.0.1), and companion on-device AI weights are available in [models-v1.0.1](https://github.com/ImSurajx/rythem-app/releases/tag/models-v1.0.1).
 
 ---
 
