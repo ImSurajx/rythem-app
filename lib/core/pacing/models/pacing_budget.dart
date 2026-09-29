@@ -1,11 +1,4 @@
-import '../../database/database.dart';
-
-/// Represents the calculated daily pacing budget derived strictly from math.
-/// 
-/// Enforces:
-/// - Zero clock-time counting (efforts, not minutes/seconds).
-/// - Today's beats are selected from the front of the pending queue in mentor order.
-/// - Backlog dilution is calculated fresh daily without punishment or compounding.
+/// Represents the calculated pacing status and effort metrics for a roadmap.
 class PacingBudget {
   /// The roadmap identifier this budget was computed for.
   final String roadmapId;
@@ -19,33 +12,8 @@ class PacingBudget {
   /// Today's calculated effort share (remainingEffort ÷ daysLeft).
   final double todayEffortShare;
 
-  /// The specific beats selected to fulfill today's effort budget.
-  /// Preserves strict mentor chronological queue order.
-  final List<BeatEntity> todaysBeats;
-
-  /// Combined effort weight of the beats selected for today.
-  final double todaysSelectedEffort;
-
   /// True if all beats in the roadmap are completed.
   final bool isRoadmapCompleted;
-
-  /// True if today's assigned beats are all completed.
-  final bool isDailyQuotaCompleted;
-
-  /// Indicates sustained lag (e.g. 3+ consecutive days of shortfall).
-  final bool isSustainedLag;
-
-  /// Number of consecutive days the user has fallen short of daily budget.
-  final int lagStreakDays;
-
-  /// Average completed effort per day over recent activity window.
-  final double recentVelocity;
-
-  /// Total unabsorbed effort debt accumulated across recent lagging days.
-  final double shortfallDebt;
-
-  /// Required velocity minus actual recent velocity.
-  final double velocityDeficit;
 
   /// Indicates if this track is scheduled to start in the future and has not yet kicked off.
   final bool isUpcoming;
@@ -58,26 +26,10 @@ class PacingBudget {
     required this.remainingEffort,
     required this.daysLeft,
     required this.todayEffortShare,
-    required this.todaysBeats,
-    required this.todaysSelectedEffort,
     this.isRoadmapCompleted = false,
-    this.isDailyQuotaCompleted = false,
-    this.isSustainedLag = false,
-    this.lagStreakDays = 0,
-    this.recentVelocity = 0.0,
-    this.shortfallDebt = 0.0,
-    this.velocityDeficit = 0.0,
     this.isUpcoming = false,
     this.daysUntilStart = 0,
   });
-
-  /// Ratio of completed beats today vs total assigned for today.
-  double get dailyCompletionRatio {
-    if (isUpcoming) return 0.0;
-    if (todaysBeats.isEmpty) return isRoadmapCompleted ? 1.0 : 0.0;
-    final completed = todaysBeats.where((b) => b.isCompleted).length;
-    return completed / todaysBeats.length;
-  }
 
   /// Formatted readable effort string (e.g. "2.5 effort units").
   String get formattedBudget => todayEffortShare.toStringAsFixed(1);
@@ -87,15 +39,7 @@ class PacingBudget {
     double? remainingEffort,
     int? daysLeft,
     double? todayEffortShare,
-    List<BeatEntity>? todaysBeats,
-    double? todaysSelectedEffort,
     bool? isRoadmapCompleted,
-    bool? isDailyQuotaCompleted,
-    bool? isSustainedLag,
-    int? lagStreakDays,
-    double? recentVelocity,
-    double? shortfallDebt,
-    double? velocityDeficit,
     bool? isUpcoming,
     int? daysUntilStart,
   }) {
@@ -104,15 +48,7 @@ class PacingBudget {
       remainingEffort: remainingEffort ?? this.remainingEffort,
       daysLeft: daysLeft ?? this.daysLeft,
       todayEffortShare: todayEffortShare ?? this.todayEffortShare,
-      todaysBeats: todaysBeats ?? this.todaysBeats,
-      todaysSelectedEffort: todaysSelectedEffort ?? this.todaysSelectedEffort,
       isRoadmapCompleted: isRoadmapCompleted ?? this.isRoadmapCompleted,
-      isDailyQuotaCompleted: isDailyQuotaCompleted ?? this.isDailyQuotaCompleted,
-      isSustainedLag: isSustainedLag ?? this.isSustainedLag,
-      lagStreakDays: lagStreakDays ?? this.lagStreakDays,
-      recentVelocity: recentVelocity ?? this.recentVelocity,
-      shortfallDebt: shortfallDebt ?? this.shortfallDebt,
-      velocityDeficit: velocityDeficit ?? this.velocityDeficit,
       isUpcoming: isUpcoming ?? this.isUpcoming,
       daysUntilStart: daysUntilStart ?? this.daysUntilStart,
     );

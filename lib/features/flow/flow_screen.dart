@@ -16,10 +16,7 @@ import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
-import 'widgets/backlog_decision_sheet.dart';
-import 'widgets/daily_revision_board.dart';
 import '../explore/widgets/chapter_accordion.dart';
-import '../../core/revision/models/revision_item.dart';
 import '../../core/navigation/smooth_page_route.dart';
 
 /// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
@@ -44,10 +41,10 @@ class FlowScreen extends StatefulWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final VoidCallback? onExploreTracks;
   final void Function(RoadmapEntity roadmap)? onOpenRoadmapDetail;
-  final Future<void> Function(RoadmapEntity roadmap, PacingDecision decision)? onApplyPacingDecision;
   final LocalInferenceService? inferenceService;
   final Set<String> delayedBeatIds;
   final void Function(BeatEntity beat)? onToggleDelay;
+  final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
 
   const FlowScreen({
     super.key,
@@ -65,27 +62,11 @@ class FlowScreen extends StatefulWidget {
     required this.onBeatToggled,
     this.onExploreTracks,
     this.onOpenRoadmapDetail,
-    this.onApplyPacingDecision,
     this.inferenceService,
     this.delayedBeatIds = const {},
     this.onToggleDelay,
-    this.revisionItems = const [],
-    this.onMarkRevised,
-    this.onFlagForRevision,
-    this.onRequestRevisionRecommendations,
-    this.isScanningRevision = false,
-    this.onStudyAhead,
     this.onStartEarly,
   });
-
-  final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
-  final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
-
-  final List<RevisionItem> revisionItems;
-  final ValueChanged<RevisionItem>? onMarkRevised;
-  final ValueChanged<BeatEntity>? onFlagForRevision;
-  final VoidCallback? onRequestRevisionRecommendations;
-  final bool isScanningRevision;
 
   @override
   State<FlowScreen> createState() => _FlowScreenState();
@@ -136,25 +117,6 @@ class _FlowScreenState extends State<FlowScreen> {
     final displayedRoadmaps = _selectedTrackFilter == 'all'
         ? roadmaps
         : roadmaps.where((r) => r.id == _selectedTrackFilter).toList();
-
-    // Check for sustained lag in any active roadmap
-    RoadmapEntity? laggingRoadmap;
-    PacingBudget? laggingBudget;
-    for (final rm in roadmaps) {
-      final budget = widget.budgetsByRoadmap?[rm.id] ??
-          (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
-      if (budget != null &&
-          budget.isSustainedLag &&
-          !budget.isRoadmapCompleted &&
-          budget.shortfallDebt > 0.5 &&
-          budget.lagStreakDays >= 3) {
-        laggingRoadmap = rm;
-        laggingBudget = budget;
-        break;
-      }
-    }
-
-    final effectiveRevisionItems = widget.revisionItems;
 
     final topPadding = MediaQuery.of(context).padding.top;
 
@@ -266,29 +228,6 @@ class _FlowScreenState extends State<FlowScreen> {
             isDark: isDark,
           ),
 
-          // Sustained Lag Non-Punitive Recalibration Banner
-          if (laggingRoadmap != null && laggingBudget != null) ...[
-            const SizedBox(height: 16),
-            _SustainedLagRecalibrationBanner(
-              roadmap: laggingRoadmap,
-              pacingBudget: laggingBudget,
-              themeColors: themeColors,
-              isDark: isDark,
-              onRecalibrate: () {
-                BacklogDecisionSheet.show(
-                  context,
-                  roadmap: laggingRoadmap!,
-                  pacingBudget: laggingBudget!,
-                  allRoadmaps: roadmaps,
-                  inferenceService: widget.inferenceService,
-                  onDecisionSelected: (decision) {
-                    widget.onApplyPacingDecision?.call(laggingRoadmap!, decision);
-                  },
-                );
-              },
-            ),
-          ],
-
           const SizedBox(height: 18),
 
           // Multi-Track Filter Pill Bar (if multiple tracks exist)
@@ -342,21 +281,6 @@ class _FlowScreenState extends State<FlowScreen> {
             ],
           ),
 
-          const SizedBox(height: 12),
-
-          // Daily Revision Board placed prominently just below Today's Focus
-          DailyRevisionBoard(
-            revisionItems: effectiveRevisionItems,
-            onMarkRevised: (item) {
-              widget.onMarkRevised?.call(item);
-            },
-            inferenceService: widget.inferenceService,
-            onRequestRecommendations: widget.onRequestRevisionRecommendations,
-            isScanning: widget.isScanningRevision,
-            themeColors: themeColors,
-            isDark: isDark,
-          ),
-
           // Render Whole Todo List for Each Track
           if (displayedRoadmaps.isEmpty)
             _EmptyMissionState(
@@ -373,14 +297,10 @@ class _FlowScreenState extends State<FlowScreen> {
               final rmBudget = widget.budgetsByRoadmap?[rm.id] ??
                   (rm.id == widget.activeRoadmap?.id ? widget.pacingBudget : null);
 
-              final todaysBeats = rmBudget?.todaysBeats ?? [];
-              final todaysBeatIds = todaysBeats.map((b) => b.id).toSet();
-
               return _TrackTodoListCard(
                 roadmap: rm,
                 chapters: rmChapters,
                 allBeats: rmBeats,
-                todaysBeatIds: todaysBeatIds,
                 pacingBudget: rmBudget,
                 themeColors: themeColors,
                 isDark: isDark,
@@ -388,7 +308,6 @@ class _FlowScreenState extends State<FlowScreen> {
                 onToggleDelay: widget.onToggleDelay,
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
-                onStudyAhead: widget.onStudyAhead,
                 onStartEarly: widget.onStartEarly,
                 onOpenDetail: widget.onOpenRoadmapDetail != null
                     ? () => widget.onOpenRoadmapDetail!(rm)
@@ -471,7 +390,6 @@ class _TrackTodoListCard extends StatelessWidget {
   final RoadmapEntity roadmap;
   final List<ChapterEntity> chapters;
   final List<BeatEntity> allBeats;
-  final Set<String> todaysBeatIds;
   final PacingBudget? pacingBudget;
   final RythemColorTokens themeColors;
   final bool isDark;
@@ -480,14 +398,12 @@ class _TrackTodoListCard extends StatelessWidget {
   final VoidCallback? onOpenDetail;
   final Set<String> delayedBeatIds;
   final void Function(BeatEntity beat)? onToggleDelay;
-  final Future<void> Function(RoadmapEntity roadmap)? onStudyAhead;
   final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
 
   const _TrackTodoListCard({
     required this.roadmap,
     required this.chapters,
     required this.allBeats,
-    required this.todaysBeatIds,
     required this.pacingBudget,
     required this.themeColors,
     required this.isDark,
@@ -496,7 +412,6 @@ class _TrackTodoListCard extends StatelessWidget {
     this.onOpenDetail,
     this.delayedBeatIds = const {},
     this.onToggleDelay,
-    this.onStudyAhead,
     this.onStartEarly,
   });
 
@@ -598,36 +513,6 @@ class _TrackTodoListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (pacingBudget?.isSustainedLag == true ||
-                          (pacingBudget?.shortfallDebt != null && pacingBudget!.shortfallDebt > 0)) ...[
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(isDark ? 0.22 : 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: Colors.amber.withOpacity(isDark ? 0.45 : 0.3),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.schedule_rounded, size: 10, color: Colors.amber),
-                              const SizedBox(width: 3),
-                              Text(
-                                'BACKLOG: ${pacingBudget!.shortfallDebt.toStringAsFixed(1)} pts',
-                                style: const TextStyle(
-                                  color: Colors.amber,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
@@ -738,45 +623,31 @@ class _TrackTodoListCard extends StatelessWidget {
                   );
                 }
 
-                // 1. Incomplete beats for quick fallback if budget has not loaded yet
-                final incompleteBeats =
-                    sortedAllBeats.where((b) => !b.isCompleted).toList();
-
-                // 2. Assemble today's mission beats with strikethrough retention
+                // Assemble beats for today's queue (delayed beats and beats completed today)
                 final seenIds = <String>{};
-
                 final flowBeats = <BeatEntity>[];
                 final delayedBeats = sortedAllBeats.where((b) => !b.isCompleted && delayedBeatIds.contains(b.id)).toList();
 
-                // A. Add delayed beats (if any)
                 for (final b in delayedBeats) {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
-
-                // B. Add today's mission beats (preserving both completed tasks with strikethrough and pending tasks)
-                if (pacingBudget != null && pacingBudget!.todaysBeats.isNotEmpty) {
-                  for (final b in pacingBudget!.todaysBeats) {
-                    if (seenIds.add(b.id)) flowBeats.add(b);
-                  }
-                } else if (!isUpcoming) {
-                  // Initial fallback while pacing budget is loading (only if track is not upcoming)
-                  for (final b in completedToday) {
-                    if (seenIds.add(b.id)) flowBeats.add(b);
-                  }
-                  for (final b in incompleteBeats.take(1)) {
-                    if (seenIds.add(b.id)) flowBeats.add(b);
-                  }
-                }
-
-                // C. Ensure any bonus beats completed today are retained on screen with strikethrough
                 for (final b in completedToday) {
                   if (seenIds.add(b.id)) flowBeats.add(b);
                 }
 
-                if (flowBeats.isEmpty && sortedAllBeats.isNotEmpty && !isUpcoming) {
-                  flowBeats.addAll(sortedAllBeats.take(1));
+                if (flowBeats.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    child: Center(
+                      child: Text(
+                        'No tasks in today\'s queue.',
+                        style: RythemTypography.bodySmall.copyWith(
+                          color: themeColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                  );
                 }
-
 
                 return Column(
                   children: [
@@ -807,80 +678,6 @@ class _TrackTodoListCard extends StatelessWidget {
                         );
                       },
                     ),
-                    if (flowBeats.isNotEmpty && flowBeats.every((b) => b.isCompleted))
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0x2210B981) : const Color(0x1810B981),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isDark ? const Color(0x5510B981) : const Color(0x4010B981),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.nightlight_round, size: 16, color: Color(0xFF10B981)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Evening Unlocked • Daily Rhythm Complete',
-                                      style: RythemTypography.titleMedium.copyWith(
-                                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'You\'ve satisfied today\'s goal. Rest guilt-free, or study ahead if you have momentum.',
-                                style: RythemTypography.bodySmall.copyWith(
-                                  color: themeColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              if (onStudyAhead != null && sortedAllBeats.any((b) => !b.isCompleted && !seenIds.contains(b.id))) ...[
-                                const SizedBox(height: 10),
-                                InkWell(
-                                  onTap: () => onStudyAhead!(roadmap),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: themeColors.glassBorder, width: 0.6),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.add_rounded, size: 14, color: themeColors.textPrimary),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Pull Next Beat • Study Ahead',
-                                          style: RythemTypography.labelSmall.copyWith(
-                                            color: themeColors.textPrimary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
                     if (allBeats.length > flowBeats.length)
                       GestureDetector(
                         onTap: onOpenDetail,
@@ -1084,144 +881,7 @@ class _TrackTodoListCard extends StatelessWidget {
 }
 
 /// Non-punitive recalibration notification banner when sustained shortfall occurs.
-class _SustainedLagRecalibrationBanner extends StatelessWidget {
-  final RoadmapEntity roadmap;
-  final PacingBudget pacingBudget;
-  final VoidCallback onRecalibrate;
-  final RythemColorTokens themeColors;
-  final bool isDark;
 
-  const _SustainedLagRecalibrationBanner({
-    required this.roadmap,
-    required this.pacingBudget,
-    required this.onRecalibrate,
-    required this.themeColors,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-      builder: (context, anim, child) => Opacity(
-        opacity: anim,
-        child: Transform.translate(
-          offset: Offset(0, 6 * (1.0 - anim)),
-          child: child,
-        ),
-      ),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onRecalibrate();
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706)).withOpacity(0.08),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark
-                        ? [
-                            const Color(0x30F59E0B),
-                            const Color(0x18F59E0B),
-                          ]
-                        : [
-                            const Color(0x20F59E0B),
-                            const Color(0x0CF59E0B),
-                          ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? const Color(0x60F59E0B) : const Color(0x40F59E0B),
-                    width: 0.9,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.schedule_outlined,
-                          size: 15,
-                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "You're falling behind",
-                          style: RythemTypography.titleSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                        if (pacingBudget.shortfallDebt > 0) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(isDark ? 0.25 : 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '${pacingBudget.shortfallDebt.toStringAsFixed(1)} pts',
-                              style: const TextStyle(
-                                color: Colors.amber,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          'Review plan',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 13,
-                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// 7-day Ambient Glass Streak Calendar with horizontal week scrolling,
 /// chevron navigation, and direct SQLite BeatLogRepository data pipeline.

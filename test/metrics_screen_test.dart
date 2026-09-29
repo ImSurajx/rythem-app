@@ -50,13 +50,7 @@ void main() {
       remainingEffort: 3.0,
       daysLeft: 20,
       todayEffortShare: 1.0,
-      todaysBeats: [],
-      todaysSelectedEffort: 0.0,
       isRoadmapCompleted: false,
-      isDailyQuotaCompleted: false,
-      isSustainedLag: false,
-      lagStreakDays: 0,
-      recentVelocity: 1.5,
     );
 
     final activity = [

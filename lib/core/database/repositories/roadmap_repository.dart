@@ -157,13 +157,6 @@ class RoadmapRepository {
     )).map((r) => r['name'] as String).toSet();
 
     final batch = db.batch();
-    if (existingTables.contains(DatabaseTables.dailyMissions)) {
-      batch.delete(
-        DatabaseTables.dailyMissions,
-        where: '${DailyMissionColumns.roadmapId} = ?',
-        whereArgs: [id],
-      );
-    }
     if (existingTables.contains(DatabaseTables.beatLogs)) {
       batch.delete(
         DatabaseTables.beatLogs,

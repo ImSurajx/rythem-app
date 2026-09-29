@@ -46,7 +46,6 @@ void main() {
       final roadmapRepo = RoadmapRepository();
       final chapterRepo = ChapterRepository();
       final beatRepo = BeatRepository();
-      final beatLogRepo = BeatLogRepository();
       final settingsRepo = AppSettingsRepository();
 
       final now = DateTime.now();
@@ -100,7 +99,6 @@ void main() {
       final pacingService = PacingService(
         roadmapRepo: roadmapRepo,
         beatRepo: beatRepo,
-        beatLogRepo: beatLogRepo,
         settingsRepo: settingsRepo,
       );
 

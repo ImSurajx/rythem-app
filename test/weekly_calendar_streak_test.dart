@@ -191,10 +191,8 @@ void main() {
     const testBudget = PacingBudget(
       roadmapId: 'rm_test',
       todayEffortShare: 1.0,
-      todaysSelectedEffort: 1.0,
       remainingEffort: 1.0,
       daysLeft: 14,
-      todaysBeats: [],
     );
 
     testWidgets('Fresh tracker initializes with 0 days active and STREAK CALENDAR title', (tester) async {

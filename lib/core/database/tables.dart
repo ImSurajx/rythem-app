@@ -6,7 +6,6 @@ class DatabaseTables {
   static const String beats = 'beats';
   static const String beatLogs = 'beat_logs';
   static const String appSettings = 'app_settings';
-  static const String dailyMissions = 'daily_missions';
 }
 
 class RoadmapColumns {
@@ -70,16 +69,5 @@ class AppSettingsColumns {
   static const String key = 'key';
   static const String value = 'value';
   static const String updatedAt = 'updated_at';
-}
-
-class DailyMissionColumns {
-  DailyMissionColumns._();
-
-  static const String id = 'id';
-  static const String roadmapId = 'roadmap_id';
-  static const String date = 'date'; // YYYY-MM-DD
-  static const String beatId = 'beat_id';
-  static const String sortIndex = 'sort_index';
-  static const String createdAt = 'created_at';
 }
 

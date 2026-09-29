@@ -150,26 +150,6 @@ class DatabaseService {
       );
     ''');
 
-    // 6. Daily Missions Table
-    batch.execute('''
-      CREATE TABLE ${DatabaseTables.dailyMissions} (
-        ${DailyMissionColumns.id} TEXT PRIMARY KEY,
-        ${DailyMissionColumns.roadmapId} TEXT NOT NULL,
-        ${DailyMissionColumns.date} TEXT NOT NULL,
-        ${DailyMissionColumns.beatId} TEXT NOT NULL,
-        ${DailyMissionColumns.sortIndex} INTEGER NOT NULL,
-        ${DailyMissionColumns.createdAt} TEXT NOT NULL,
-        FOREIGN KEY (${DailyMissionColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
-        FOREIGN KEY (${DailyMissionColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-      );
-    ''');
-    batch.execute('''
-      CREATE INDEX idx_daily_missions_date ON ${DatabaseTables.dailyMissions} (
-        ${DailyMissionColumns.roadmapId},
-        ${DailyMissionColumns.date}
-      );
-    ''');
-
     await batch.commit(noResult: true);
   }
 
@@ -178,26 +158,6 @@ class DatabaseService {
       await db.execute('''
         ALTER TABLE ${DatabaseTables.roadmaps}
         ADD COLUMN ${RoadmapColumns.startDate} TEXT;
-      ''');
-
-      await db.execute('''
-        CREATE TABLE ${DatabaseTables.dailyMissions} (
-          ${DailyMissionColumns.id} TEXT PRIMARY KEY,
-          ${DailyMissionColumns.roadmapId} TEXT NOT NULL,
-          ${DailyMissionColumns.date} TEXT NOT NULL,
-          ${DailyMissionColumns.beatId} TEXT NOT NULL,
-          ${DailyMissionColumns.sortIndex} INTEGER NOT NULL,
-          ${DailyMissionColumns.createdAt} TEXT NOT NULL,
-          FOREIGN KEY (${DailyMissionColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
-          FOREIGN KEY (${DailyMissionColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-        );
-      ''');
-
-      await db.execute('''
-        CREATE INDEX idx_daily_missions_date ON ${DatabaseTables.dailyMissions} (
-          ${DailyMissionColumns.roadmapId},
-          ${DailyMissionColumns.date}
-        );
       ''');
     }
   }

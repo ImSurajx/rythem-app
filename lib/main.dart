@@ -19,8 +19,6 @@ import 'features/metrics/metrics_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
 import 'core/backup/services/backup_service.dart';
 import 'core/backup/services/auto_backup_manager.dart';
-import 'core/revision/models/revision_item.dart';
-import 'core/revision/services/revision_service.dart';
 import 'core/navigation/smooth_page_route.dart';
 
 void main() async {
@@ -152,7 +150,6 @@ class _DesignSystemShowcaseScreenState
   late final _pacingService = PacingService(
     roadmapRepo: _roadmapRepo,
     beatRepo: _beatRepo,
-    beatLogRepo: _beatLogRepo,
     settingsRepo: _appSettingsRepo,
   );
   final _modelDownloadManager = ModelDownloadManager();
@@ -163,8 +160,6 @@ class _DesignSystemShowcaseScreenState
     pacingService: _pacingService,
   );
   LocalInferenceService get inferenceService => _localInferenceService;
-  late final _revisionService = RevisionService(settingsRepo: _appSettingsRepo);
-  List<RevisionItem> _revisionItems = [];
 
   StreamSubscription<DatabaseEvent>? _eventSubscription;
 
@@ -185,8 +180,6 @@ class _DesignSystemShowcaseScreenState
   bool _compactDownloaded = false;
   bool _balancedDownloaded = false;
   Set<String> _delayedBeatIds = {'beat_delayed_sample'};
-  bool _hasRequestedRevision = false;
-  bool _isScanningRevision = false;
   bool _isLoadingDbState = false;
   bool _hasPendingDbReload = false;
 
@@ -265,45 +258,7 @@ class _DesignSystemShowcaseScreenState
     return op;
   }
 
-  Future<void> _handleRequestRevisionRecommendations() async {
-    if (_isScanningRevision) return;
-    setState(() => _isScanningRevision = true);
-    HapticFeedback.mediumImpact();
-    _showToast('AI Mentor scanning tracker & memory decay curves...');
-    try {
-      final budget = _budgetsByRoadmap[_roadmapId];
-      final finalBeats = _beatsByRoadmap[_roadmapId] ?? [];
-      final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
-          ? budget!.todaysBeats
-          : finalBeats.where((b) => !b.isCompleted).take(2).toList();
 
-      final items = await _revisionService.getDailyRevisionRecommendations(
-        roadmaps: _allRoadmaps,
-        beatsByRoadmap: _beatsByRoadmap,
-        upcomingFocusBeats: upcomingFocus,
-        todayEffortBudget: budget?.todayEffortShare,
-        inferenceService: _localInferenceService,
-      );
-
-      if (mounted) {
-        setState(() {
-          _hasRequestedRevision = true;
-          _isScanningRevision = false;
-          _revisionItems = items;
-        });
-        if (items.isEmpty) {
-          _showToast('Trackers are fresh! No concepts need urgent revision today.');
-        } else {
-          _showToast('AI recommended ${items.length} high-yield topic${items.length == 1 ? '' : 's'} to revise');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isScanningRevision = false);
-        _showToast('Could not analyze revision: $e');
-      }
-    }
-  }
 
   Future<void> _handleToggleBeatDelay(BeatEntity beat) async {
     HapticFeedback.selectionClick();
@@ -324,72 +279,7 @@ class _DesignSystemShowcaseScreenState
     }
   }
 
-  Future<void> _handleMarkRevised(RevisionItem item) async {
-    final wasCompleted = item.isCompletedToday;
-    final newCompletedState = !wasCompleted;
-    final now = DateTime.now();
-    final todayDateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    // 1. Instantly update in-memory state so strikethrough updates immediately without dropping items
-    setState(() {
-      _revisionItems = _revisionItems.map((r) {
-        if (r.beatId == item.beatId) {
-          return r.copyWith(
-            isCompleted: newCompletedState,
-            lastRevisedAt: newCompletedState ? now : null,
-          );
-        }
-        return r;
-      }).toList();
-    });
-
-    BeatEntity? beat;
-    for (final beatList in _beatsByRoadmap.values) {
-      final match = beatList.where((b) => b.id == item.beatId).firstOrNull;
-      if (match != null) {
-        beat = match;
-        break;
-      }
-    }
-    beat ??= await _beatRepo.getBeatById(item.beatId);
-    beat ??= BeatEntity(
-      id: item.beatId,
-      chapterId: '',
-      roadmapId: item.roadmapId,
-      title: item.title,
-      effortWeight: 1.0,
-      sortOrder: 0,
-      isCompleted: true,
-      createdAt: now,
-      updatedAt: now,
-    );
-
-    if (wasCompleted) {
-      await _revisionService.unmarkTopicRevised(beat, roadmapTitle: item.roadmapTitle);
-      await _beatLogRepo.removeBeatCompletion(
-        beatId: beat.id,
-        completedDate: todayDateStr,
-      );
-      _showToast(
-        'Reopened "${item.title}" for revision',
-        icon: Icons.history_rounded,
-        accentColor: Colors.amber,
-      );
-    } else {
-      await _revisionService.markTopicRevised(beat, roadmapTitle: item.roadmapTitle);
-      final points = item.beatPoints;
-      await _beatLogRepo.logBeatCompletion(
-        beatId: beat.id,
-        roadmapId: beat.roadmapId,
-        completedDate: todayDateStr,
-      );
-      _showToast(
-        '+${points.toStringAsFixed(1)} Beat Points! Revised "${item.title}"',
-        icon: Icons.bolt_rounded,
-        accentColor: const Color(0xFF10B981),
-      );
-    }
-  }
 
   @override
   void initState() {
@@ -469,9 +359,6 @@ class _DesignSystemShowcaseScreenState
       final db = await DatabaseService.instance.database;
       try {
         await db.delete(DatabaseTables.beatLogs);
-      } catch (_) {}
-      try {
-        await db.delete(DatabaseTables.dailyMissions);
       } catch (_) {}
       if (mounted) {
         setState(() {
@@ -559,19 +446,6 @@ class _DesignSystemShowcaseScreenState
     }
 
     final finalBeats = beatsByRoadmap[_roadmapId] ?? [];
-    final upcomingFocus = budget?.todaysBeats.isNotEmpty == true
-        ? budget!.todaysBeats
-        : finalBeats.where((b) => !b.isCompleted).take(2).toList();
-    List<RevisionItem> revisionItems = _revisionItems;
-    if (_hasRequestedRevision) {
-      revisionItems = await _revisionService.getDailyRevisionRecommendations(
-        roadmaps: allRoadmaps,
-        beatsByRoadmap: beatsByRoadmap,
-        upcomingFocusBeats: upcomingFocus,
-        todayEffortBudget: budget?.todayEffortShare,
-        inferenceService: _localInferenceService,
-      );
-    }
 
     if (mounted) {
       setState(() {
@@ -586,7 +460,6 @@ class _DesignSystemShowcaseScreenState
         _pacingBudget = budget;
         _weeklySchedule = weeklySchedule;
         _delayedBeatIds = delayedBeatIds;
-        _revisionItems = revisionItems;
         _latestAutoBackup = latestBackup;
         _backupLocationDescription = backupLocation;
       });
@@ -866,38 +739,9 @@ class _DesignSystemShowcaseScreenState
       onBeatToggled: _setBeatCompletion,
       delayedBeatIds: _delayedBeatIds,
       onToggleDelay: _handleToggleBeatDelay,
-      revisionItems: _revisionItems,
-      onMarkRevised: _handleMarkRevised,
-      onRequestRevisionRecommendations: _handleRequestRevisionRecommendations,
-      isScanningRevision: _isScanningRevision,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onStartEarly: _handleStartRoadmapEarly,
-      onStudyAhead: (roadmap) async {
-        final pulled = await _pacingService.pullNextBeatIntoMission(roadmap.id);
-        await _loadDatabaseState();
-        if (mounted) {
-          if (pulled != null) {
-            _showToast('Added "${pulled.title}" to today\'s session');
-          } else {
-            _showToast('All pending beats in this track are already in focus!');
-          }
-        }
-      },
-      onApplyPacingDecision: (roadmap, decision) async {
-        await _pacingService.applyPacingDecision(roadmap.id, decision);
-        await _loadDatabaseState();
-        if (mounted) {
-          final label = decision.type == PacingDecisionType.extendTargetDate
-              ? 'Timeline extended by ${decision.extensionDays ?? 7} days'
-              : (decision.type == PacingDecisionType.trimToCore
-                  ? 'Deferred mentor extras to focus on core'
-                  : (decision.type == PacingDecisionType.borrowSlack
-                      ? 'Rebalanced pace across tracks'
-                      : 'Pace accepted — rhythm preserved'));
-          _showToast('Recalibrated: $label');
-        }
-      },
       inferenceService: _localInferenceService,
     );
   }

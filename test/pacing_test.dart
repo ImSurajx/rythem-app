@@ -85,101 +85,6 @@ void main() {
       );
     });
 
-    test('walkQueueToFillBudget strictly preserves mentor order and halts on target', () {
-      final now = DateTime.now();
-      final beats = List.generate(
-        6,
-        (i) => BeatEntity(
-          id: 'b_$i',
-          chapterId: 'c1',
-          roadmapId: 'r1',
-          title: 'Lesson ${i + 1}',
-          effortWeight: 1.0,
-          sortOrder: i, // 0..5
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      );
-
-      // Budget 2.5 effort units -> should select beats 0, 1, 2 (accumulated effort = 3.0 >= 2.5)
-      final selected = PacingCalculator.walkQueueToFillBudget(
-        pendingBeats: beats,
-        targetBudget: 2.5,
-      );
-
-      expect(selected.length, 3);
-      expect(selected[0].title, 'Lesson 1');
-      expect(selected[1].title, 'Lesson 2');
-      expect(selected[2].title, 'Lesson 3');
-      expect(selected.map((b) => b.sortOrder), [0, 1, 2]);
-    });
-
-    test('walkQueueToFillBudget strictly enforces chapter sequence with overlapping sortOrders', () {
-      final now = DateTime.now();
-      final beats = [
-        BeatEntity(
-          id: 'b_ch2_0',
-          chapterId: 'ch2',
-          roadmapId: 'r1',
-          title: 'Chapter 2 Intro',
-          effortWeight: 1.0,
-          sortOrder: 0,
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        BeatEntity(
-          id: 'b_ch1_0',
-          chapterId: 'ch1',
-          roadmapId: 'r1',
-          title: 'Chapter 1 Intro',
-          effortWeight: 1.0,
-          sortOrder: 0,
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        BeatEntity(
-          id: 'b_ch1_1',
-          chapterId: 'ch1',
-          roadmapId: 'r1',
-          title: 'Chapter 1 Core',
-          effortWeight: 1.0,
-          sortOrder: 1,
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        BeatEntity(
-          id: 'b_ch2_1',
-          chapterId: 'ch2',
-          roadmapId: 'r1',
-          title: 'Chapter 2 Core',
-          effortWeight: 1.0,
-          sortOrder: 1,
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-
-      final chapterOrderMap = {'ch1': 0, 'ch2': 1};
-
-      // Budget 2.0 -> Must select Chapter 1 Intro and Chapter 1 Core, NEVER Chapter 2 Intro!
-      final selected = PacingCalculator.walkQueueToFillBudget(
-        pendingBeats: beats,
-        targetBudget: 2.0,
-        chapterOrderMap: chapterOrderMap,
-      );
-
-      expect(selected.length, 2);
-      expect(selected[0].title, 'Chapter 1 Intro');
-      expect(selected[1].title, 'Chapter 1 Core');
-      expect(selected[0].chapterId, 'ch1');
-      expect(selected[1].chapterId, 'ch1');
-    });
-
     test('calculateRhythmAdjustedDailyShare respects goal date pace and weekly rhythm multipliers', () {
       const remainingEffort = 20.0;
       const daysLeft = 10;
@@ -253,34 +158,6 @@ void main() {
       );
       expect(day3Budget, 3.75);
     });
-
-    test('Shortfall trend detector absorbs single off-days and flags sustained 3-day lag', () {
-      const expectedBudget = 3.0;
-
-      // Single off-day: [3.0, 3.0, 0.0] -> absorbed silently
-      final singleOff = PacingCalculator.detectShortfallTrend(
-        recentDailyEfforts: [3.0, 3.0, 0.0],
-        expectedDailyBudget: expectedBudget,
-      );
-      expect(singleOff.isSustainedLag, false);
-      expect(singleOff.lagDaysCount, 1);
-
-      // Two off-days: [3.0, 0.0, 0.5] -> still absorbed silently
-      final twoOff = PacingCalculator.detectShortfallTrend(
-        recentDailyEfforts: [3.0, 0.0, 0.5],
-        expectedDailyBudget: expectedBudget,
-      );
-      expect(twoOff.isSustainedLag, false);
-      expect(twoOff.lagDaysCount, 2);
-
-      // Three consecutive lagging days: [3.0, 0.2, 0.0, 0.4] -> triggers sustained lag
-      final threeOff = PacingCalculator.detectShortfallTrend(
-        recentDailyEfforts: [3.0, 0.2, 0.0, 0.4],
-        expectedDailyBudget: expectedBudget,
-      );
-      expect(threeOff.isSustainedLag, true);
-      expect(threeOff.lagDaysCount, 3);
-    });
   });
 
   group('PacingService SQLite Integration', () {
@@ -288,7 +165,6 @@ void main() {
     late RoadmapRepository roadmapRepo;
     late ChapterRepository chapterRepo;
     late BeatRepository beatRepo;
-    late BeatLogRepository beatLogRepo;
     late PacingService pacingService;
 
     setUp(() async {
@@ -357,18 +233,6 @@ void main() {
                 updated_at TEXT NOT NULL
               );
             ''');
-            batch.execute('''
-              CREATE TABLE ${DatabaseTables.dailyMissions} (
-                ${DailyMissionColumns.id} TEXT PRIMARY KEY,
-                ${DailyMissionColumns.roadmapId} TEXT NOT NULL,
-                ${DailyMissionColumns.date} TEXT NOT NULL,
-                ${DailyMissionColumns.beatId} TEXT NOT NULL,
-                ${DailyMissionColumns.sortIndex} INTEGER NOT NULL,
-                ${DailyMissionColumns.createdAt} TEXT NOT NULL,
-                FOREIGN KEY (${DailyMissionColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
-                FOREIGN KEY (${DailyMissionColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-              );
-            ''');
             await batch.commit(noResult: true);
           },
         ),
@@ -378,11 +242,9 @@ void main() {
       roadmapRepo = RoadmapRepository();
       chapterRepo = ChapterRepository();
       beatRepo = BeatRepository();
-      beatLogRepo = BeatLogRepository();
       pacingService = PacingService(
         roadmapRepo: roadmapRepo,
         beatRepo: beatRepo,
-        beatLogRepo: beatLogRepo,
       );
     });
 
@@ -438,24 +300,7 @@ void main() {
       expect(budget.remainingEffort, 10.0);
       expect(budget.daysLeft, 5);
       expect(budget.todayEffortShare, 2.0);
-      expect(budget.todaysBeats.length, 2); // 2 beats * 1.0 = 2.0 effort
-      expect(budget.todaysBeats[0].id, 'b_0');
-      expect(budget.todaysBeats[1].id, 'b_1');
       expect(budget.isRoadmapCompleted, false);
-
-      // Apply decision: extend target date by 5 days (now 10 days left)
-      await pacingService.applyPacingDecision(
-        'rm_pacing_test',
-        const PacingDecision.extendDate(5),
-      );
-
-      final updatedBudget = await pacingService.computePacingBudget(
-        'rm_pacing_test',
-        simulatedNow: now,
-      );
-      expect(updatedBudget.daysLeft, 10);
-      expect(updatedBudget.todayEffortShare, 1.0); // 10 / 10 = 1.0/day
-      expect(updatedBudget.todaysBeats.length, 1); // 1 beat * 1.0 = 1.0 effort
     });
   });
 }

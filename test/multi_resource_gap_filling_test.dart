@@ -7,7 +7,6 @@ import 'package:rythem_app/core/ingestion/models/extracted_resource.dart';
 import 'package:rythem_app/core/ingestion/parsers/syllabus_parser.dart';
 import 'package:rythem_app/core/ingestion/services/curriculum_ingestion_service.dart';
 import 'package:rythem_app/core/ingestion/services/youtube_extractor_service.dart';
-import 'package:rythem_app/core/pacing/pacing.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
 
@@ -249,55 +248,6 @@ void main() {
       for (int i = 0; i < finalBeats.length; i++) {
         expect(finalBeats[i].sortOrder, i);
       }
-    });
-
-    test('PacingQueueWalker serves beats in strict sequential order across stacked resources', () {
-      final now = DateTime.now();
-
-      final stackedBeats = [
-        // Resource 1
-        BeatEntity(
-          id: 'ch1_v_0',
-          chapterId: 'ch_1',
-          roadmapId: 'rm_test',
-          title: 'Res 1 Video 1',
-          sortOrder: 0,
-          isCompleted: true,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        BeatEntity(
-          id: 'ch1_v_1',
-          chapterId: 'ch_1',
-          roadmapId: 'rm_test',
-          title: 'Res 1 Video 2',
-          sortOrder: 1,
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        // Resource 2
-        BeatEntity(
-          id: 'ch1_r2_v_0',
-          chapterId: 'ch_1',
-          roadmapId: 'rm_test',
-          title: 'Res 2 Video 1',
-          sortOrder: 2,
-          isCompleted: false,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-
-      // Walking budget for effort = 1.0 pulls the next incomplete beat from Resource 1 first!
-      final selection = PacingCalculator.walkQueueToFillBudget(
-        pendingBeats: stackedBeats.where((b) => !b.isCompleted).toList(),
-        targetBudget: 1.0,
-      );
-
-      expect(selection.length, 1);
-      expect(selection.first.id, 'ch1_v_1');
-      expect(selection.first.title, 'Res 1 Video 2');
     });
   });
 

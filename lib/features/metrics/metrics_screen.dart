@@ -61,11 +61,10 @@ class MetricsScreen extends StatelessWidget {
       }
     }
 
-    // Velocity from active budget or recent activity
-    final double recentVelocity = activeBudget?.recentVelocity ??
-        (recentActivity.isNotEmpty
-            ? recentActivity.map((e) => e.count).reduce((a, b) => a + b) / 7.0
-            : 0.0);
+    // Velocity from recent activity
+    final double recentVelocity = recentActivity.isNotEmpty
+        ? recentActivity.map((e) => e.count).reduce((a, b) => a + b) / 7.0
+        : 0.0;
 
     final topPadding = MediaQuery.of(context).padding.top;
 
@@ -317,12 +316,6 @@ class _TrackOverviewCard extends StatelessWidget {
 
     if (isCompleted) {
       pacingStatus = 'COMPLETED';
-      statusColor = const Color(0xFF34C759);
-    } else if (budget?.isSustainedLag == true) {
-      pacingStatus = 'LAGGING (${budget!.lagStreakDays}D)';
-      statusColor = const Color(0xFFFF9500);
-    } else if (budget?.isDailyQuotaCompleted == true) {
-      pacingStatus = 'MISSION DONE';
       statusColor = const Color(0xFF34C759);
     }
 

@@ -57,10 +57,8 @@ void main() {
     const testBudget = PacingBudget(
       roadmapId: 'rm_metrics_test',
       todayEffortShare: 2.0,
-      todaysSelectedEffort: 2.0,
       remainingEffort: 4.0,
       daysLeft: 30,
-      todaysBeats: [],
     );
 
     const recent7Days = [
@@ -261,10 +259,8 @@ void main() {
               pacingBudget: const PacingBudget(
                 roadmapId: 'rm_flow_test',
                 todayEffortShare: 2.0,
-                todaysSelectedEffort: 2.0,
                 remainingEffort: 3.0,
                 daysLeft: 14,
-                todaysBeats: [],
               ),
               chaptersByRoadmap: {'rm_flow_test': testChapters},
               beatsByRoadmap: {'rm_flow_test': testBeats},

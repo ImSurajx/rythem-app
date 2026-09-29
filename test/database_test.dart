@@ -89,18 +89,6 @@ void main() {
               ${AppSettingsColumns.updatedAt} TEXT NOT NULL
             );
           ''');
-          batch.execute('''
-            CREATE TABLE ${DatabaseTables.dailyMissions} (
-              ${DailyMissionColumns.id} TEXT PRIMARY KEY,
-              ${DailyMissionColumns.roadmapId} TEXT NOT NULL,
-              ${DailyMissionColumns.date} TEXT NOT NULL,
-              ${DailyMissionColumns.beatId} TEXT NOT NULL,
-              ${DailyMissionColumns.sortIndex} INTEGER NOT NULL,
-              ${DailyMissionColumns.createdAt} TEXT NOT NULL,
-              FOREIGN KEY (${DailyMissionColumns.beatId}) REFERENCES ${DatabaseTables.beats} (${BeatColumns.id}) ON DELETE CASCADE,
-              FOREIGN KEY (${DailyMissionColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
-            );
-          ''');
           await batch.commit(noResult: true);
         },
       ),

@@ -116,16 +116,14 @@ void main() {
       final budget = await pacingService.computePacingBudget(rm.id);
 
       expect(budget.isUpcoming, isTrue);
-      expect(budget.todaysBeats, isEmpty);
       expect(budget.todayEffortShare, 0.0);
       expect(budget.daysUntilStart, greaterThanOrEqualTo(4));
     });
 
-    test('Deleting a roadmap explicitly purges daily_missions and beat_logs from SQLite', () async {
+    test('Deleting a roadmap explicitly purges beat_logs from SQLite', () async {
       final roadmapRepo = RoadmapRepository();
       final chapterRepo = ChapterRepository();
       final beatRepo = BeatRepository();
-      final missionRepo = DailyMissionRepository();
       final beatLogRepo = BeatLogRepository();
 
       final now = DateTime.now();
@@ -159,13 +157,6 @@ void main() {
       );
       await beatRepo.createBeat(beat);
 
-      // Create a daily mission
-      await missionRepo.setDailyMission(
-        roadmapId: rm.id,
-        date: todayStr,
-        beatIds: [beat.id],
-      );
-
       // Create a beat log
       await beatLogRepo.logBeatCompletion(
         beatId: beat.id,
@@ -178,7 +169,6 @@ void main() {
       expect(await chapterRepo.getChaptersByRoadmapId(rm.id), hasLength(1));
       expect(await beatRepo.getBeatsByRoadmapId(rm.id), hasLength(1));
       expect(await beatLogRepo.getTotalBeatsCompleted(), 1);
-      expect(await missionRepo.getMissionBeatsForDate(rm.id, todayStr), hasLength(1));
 
       // Now call deleteRoadmap
       await roadmapRepo.deleteRoadmap(rm.id);
@@ -188,7 +178,6 @@ void main() {
       expect(await chapterRepo.getChaptersByRoadmapId(rm.id), isEmpty);
       expect(await beatRepo.getBeatsByRoadmapId(rm.id), isEmpty);
       expect(await beatLogRepo.getTotalBeatsCompleted(), 0);
-      expect(await missionRepo.getMissionBeatsForDate(rm.id, todayStr), isEmpty);
     });
   });
 
@@ -236,8 +225,6 @@ void main() {
         remainingEffort: 3.0,
         daysLeft: 20,
         todayEffortShare: 0.0,
-        todaysBeats: [],
-        todaysSelectedEffort: 0.0,
         isUpcoming: true,
         daysUntilStart: 3,
       );

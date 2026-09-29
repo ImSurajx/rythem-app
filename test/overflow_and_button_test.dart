@@ -54,6 +54,7 @@ void main() {
               allRoadmaps: [testRoadmap],
               chapters: [testChapterLong],
               allBeats: [testBeatLong],
+              delayedBeatIds: const {'b_long'},
               pacingBudget: null,
               chaptersByRoadmap: {
                 testRoadmap.id: [testChapterLong],

@@ -86,13 +86,17 @@ void main() {
 
   group('FlowScreen Core Habit Loop Tests', () {
     testWidgets('renders streak, date, and allocated mission beats', (tester) async {
-      final budget = PacingBudget(
+      final now = DateTime.now();
+      final activeBeats = [
+        testBeats[0].copyWith(isCompleted: true, completedAt: now),
+        testBeats[1].copyWith(isCompleted: true, completedAt: now),
+      ];
+
+      const budget = PacingBudget(
         roadmapId: 'rm_test',
         todayEffortShare: 2.5,
-        todaysSelectedEffort: 2.5,
         remainingEffort: 2.5,
         daysLeft: 7,
-        todaysBeats: testBeats,
       );
 
       await tester.pumpWidget(
@@ -103,7 +107,7 @@ void main() {
               activeRoadmap: testRoadmap,
               allRoadmaps: [testRoadmap],
               chapters: testChapters,
-              allBeats: testBeats,
+              allBeats: activeBeats,
               pacingBudget: budget,
               streakDays: 5,
               onSwitchRoadmap: () {},
@@ -135,15 +139,14 @@ void main() {
     });
 
     testWidgets('renders Streak Calendar with glass circular cells and zero locked states', (tester) async {
-      final completedBeats = testBeats.map((b) => b.copyWith(isCompleted: true)).toList();
-      final budget = PacingBudget(
+      final now = DateTime.now();
+      final completedBeats = testBeats.map((b) => b.copyWith(isCompleted: true, completedAt: now)).toList();
+      const budget = PacingBudget(
         roadmapId: 'rm_test',
         todayEffortShare: 2.5,
-        todaysSelectedEffort: 2.5,
         remainingEffort: 0.0,
         daysLeft: 7,
-        todaysBeats: completedBeats,
-        isDailyQuotaCompleted: true,
+        isRoadmapCompleted: true,
       );
 
       await tester.pumpWidget(

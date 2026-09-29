@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2-pre.1] - 2026-09-29
+
+### Removed
+- **Todo Suggestion System**: Completely stripped automatic daily topic suggestion mechanism, sequential queue walker (`walkQueueToFillBudget`), `daily_missions` database table, repository, and auto-pull study-ahead logic.
+- **Revision Suggestion Engine**: Completely removed spaced repetition forgetting curve suggestion service (`RevisionService`, `RevisionItem`), `DailyRevisionBoard` UI component, and local AI revision candidate ranking.
+- **Backlog Manager & Lag Recalibration**: Removed backlog debt calculation, shortfall streak detection (`detectShortfallTrend`, `isSustainedLag`), `_SustainedLagRecalibrationBanner`, and `BacklogDecisionSheet`.
+
 ## [1.0.1] - 2026-09-19
 
 ### Added
