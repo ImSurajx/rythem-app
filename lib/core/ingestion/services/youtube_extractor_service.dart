@@ -890,25 +890,9 @@ class YoutubeExtractorService implements IYoutubeClient {
         }
       }
 
-      // Return basic metadata fallback if no chapters found
-      return ExtractedResource(
-        title: title,
-        description: descriptionLines.join('\n'),
-        author: author,
-        sourceUrl: videoUrl,
-        resourceType: ExtractedResourceType.singleVideo,
-        items: [
-          RawResourceItem(
-            title: title,
-            sourceUrl: videoUrl,
-            timestampSeconds: 0,
-            durationSeconds: 900,
-            index: 0,
-            description: descriptionLines.join('\n'),
-            thumbnailUrl: defaultThumbnail,
-          ),
-        ],
-      );
+      // If no native or description chapters found in Next endpoint, return null
+      // so _extractVideoViaInnertubePlayer or youtube_explode can supply exact video duration.
+      return null;
     } catch (e) {
       debugPrint('Notice: Innertube next chapter extraction fell back: $e');
       return null;
@@ -939,8 +923,27 @@ class YoutubeExtractorService implements IYoutubeClient {
       final videoUrl = 'https://www.youtube.com/watch?v=$videoId';
       final thumbnailUrl = 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
 
+      // Parse actual video duration from HTML if available
+      int durationSec = 600;
+      final lengthMatch = RegExp(r'"lengthSeconds":"([0-9]+)"').firstMatch(html);
+      if (lengthMatch != null) {
+        durationSec = int.tryParse(lengthMatch.group(1)!) ?? 600;
+      } else {
+        final isoMatch = RegExp(r'itemprop="duration" content="PT(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+)S)?"').firstMatch(html);
+        if (isoMatch != null) {
+          final h = int.tryParse(isoMatch.group(1) ?? '0') ?? 0;
+          final m = int.tryParse(isoMatch.group(2) ?? '0') ?? 0;
+          final s = int.tryParse(isoMatch.group(3) ?? '0') ?? 0;
+          final total = (h * 3600) + (m * 60) + s;
+          if (total > 0) durationSec = total;
+        }
+      }
+
       // Check description in HTML for timestamps
-      final tsSegments = TimestampParser.parseDescription(description);
+      final tsSegments = TimestampParser.parseDescription(
+        description,
+        totalVideoDurationSeconds: durationSec,
+      );
       if (tsSegments.length >= 2) {
         final rawItems = <RawResourceItem>[];
         for (int i = 0; i < tsSegments.length; i++) {
@@ -977,7 +980,7 @@ class YoutubeExtractorService implements IYoutubeClient {
             title: title,
             sourceUrl: videoUrl,
             timestampSeconds: 0,
-            durationSeconds: 900,
+            durationSeconds: durationSec,
             index: 0,
             description: description,
             thumbnailUrl: thumbnailUrl,

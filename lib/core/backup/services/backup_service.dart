@@ -7,6 +7,8 @@ import '../../database/database_service.dart';
 import '../../database/database_event_bus.dart';
 import '../../database/tables.dart';
 import '../../ingestion/parsers/effort_weight_calculator.dart';
+import '../../ingestion/services/curriculum_ingestion_service.dart';
+import '../../ingestion/models/sync_result.dart';
 
 /// Service responsible for complete local database backup export and restoration.
 /// 
@@ -15,12 +17,15 @@ import '../../ingestion/parsers/effort_weight_calculator.dart';
 class BackupService {
   final DatabaseService _dbService;
   final DatabaseEventBus _eventBus;
+  final CurriculumIngestionService _ingestionService;
 
   BackupService({
     DatabaseService? dbService,
     DatabaseEventBus? eventBus,
+    CurriculumIngestionService? ingestionService,
   })  : _dbService = dbService ?? DatabaseService.instance,
-        _eventBus = eventBus ?? DatabaseEventBus.instance;
+        _eventBus = eventBus ?? DatabaseEventBus.instance,
+        _ingestionService = ingestionService ?? CurriculumIngestionService();
 
   /// Generates the complete backup payload as a pretty-printed JSON string.
   Future<String> exportBackupJson() async {
@@ -231,6 +236,20 @@ class BackupService {
       type: DatabaseEventType.roadmapUpdated,
       roadmapId: 'all',
     ));
+
+    // Automatically trigger background sync and remapping of restored roadmaps
+    for (final rm in roadmaps) {
+      final rmId = rm['id'] as String?;
+      if (rmId != null && rmId.isNotEmpty) {
+        _ingestionService.syncAndRemapRoadmapResources(rmId).catchError((_) {
+          return const SyncResult(
+            updatedTopicsCount: 0,
+            newTopicsAddedCount: 0,
+            totalEffortPoints: 0.0,
+          );
+        });
+      }
+    }
 
     return {
       'roadmaps': roadmaps.length,

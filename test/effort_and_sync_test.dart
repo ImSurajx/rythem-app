@@ -21,6 +21,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _MockYoutubeClient implements IYoutubeClient {
   final Map<String, ExtractedResource> playlistResponses = {};
+  final Map<String, ExtractedResource> videoResponses = {};
 
   @override
   Future<ExtractedResource> extractPlaylist(String playlistUrl) async {
@@ -40,6 +41,9 @@ class _MockYoutubeClient implements IYoutubeClient {
 
   @override
   Future<ExtractedResource> extractVideo(String videoUrl) async {
+    if (videoResponses.containsKey(videoUrl)) {
+      return videoResponses[videoUrl]!;
+    }
     return ExtractedResource(
       title: 'Video',
       sourceUrl: videoUrl,
@@ -244,6 +248,105 @@ void main() {
       expect(newBeat.title, 'Eigenvalues and Eigenvectors (New Episode)');
       expect(newBeat.effortWeight, 1.0);
       expect(newBeat.isCompleted, isFalse);
+    });
+
+    test('syncAndRemapRoadmapResources remaps standalone videos even when beats already have legacy 1.0 effort points', () async {
+      final now = DateTime.now();
+      const rmId = 'rm_standalone_sync_test';
+      const chId = 'ch_standalone_1';
+
+      await roadmapRepo.createRoadmap(RoadmapEntity(
+        id: rmId,
+        title: 'Microservices with Go',
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      await chapterRepo.createChapter(ChapterEntity(
+        id: chId,
+        roadmapId: rmId,
+        title: 'gRPC Architecture',
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Beat 1: Has standalone video URL (without playlist id), with legacy effort 1.0
+      const v1Url = 'https://www.youtube.com/watch?v=STANDALONE_V1';
+      final b1 = BeatEntity(
+        id: 'beat_standalone_1',
+        chapterId: chId,
+        roadmapId: rmId,
+        title: 'Protocol Buffers Fundamentals',
+        sourceUrl: v1Url,
+        effortWeight: 1.0,
+        sortOrder: 0,
+        isCompleted: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      // Beat 2: Has standalone video URL, with legacy effort 1.0
+      const v2Url = 'https://www.youtube.com/watch?v=STANDALONE_V2';
+      final b2 = BeatEntity(
+        id: 'beat_standalone_2',
+        chapterId: chId,
+        roadmapId: rmId,
+        title: 'Streaming RPC Implementations',
+        sourceUrl: v2Url,
+        effortWeight: 1.0,
+        sortOrder: 1,
+        isCompleted: false,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await beatRepo.createBeatsBatch([b1, b2]);
+
+      // Mock video responses:
+      // Video 1 is 14 minutes (840s) -> 1.4 effort points
+      // Video 2 is 25 minutes (1500s) -> 2.5 effort points
+      mockYt.videoResponses[v1Url] = const ExtractedResource(
+        title: 'Protocol Buffers Fundamentals',
+        sourceUrl: v1Url,
+        resourceType: ExtractedResourceType.singleVideo,
+        items: [
+          RawResourceItem(
+            title: 'Protocol Buffers Fundamentals',
+            sourceUrl: v1Url,
+            durationSeconds: 840,
+            index: 0,
+          ),
+        ],
+      );
+
+      mockYt.videoResponses[v2Url] = const ExtractedResource(
+        title: 'Streaming RPC Implementations',
+        sourceUrl: v2Url,
+        resourceType: ExtractedResourceType.singleVideo,
+        items: [
+          RawResourceItem(
+            title: 'Streaming RPC Implementations',
+            sourceUrl: v2Url,
+            durationSeconds: 1500,
+            index: 0,
+          ),
+        ],
+      );
+
+      final result = await ingestionService.syncAndRemapRoadmapResources(rmId);
+
+      expect(result.updatedTopicsCount, 2);
+      expect(result.totalEffortPoints, 3.9);
+
+      final updatedB1 = await beatRepo.getBeatById(b1.id);
+      final updatedB2 = await beatRepo.getBeatById(b2.id);
+
+      expect(updatedB1!.effortWeight, 1.4);
+      expect(updatedB1.isCompleted, isTrue); // Preserved completion
+
+      expect(updatedB2!.effortWeight, 2.5);
+      expect(updatedB2.isCompleted, isFalse);
     });
   });
 

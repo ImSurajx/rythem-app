@@ -629,6 +629,12 @@ class CurriculumIngestionService {
           }
         }
       }
+      if (roadmap.description != null && roadmap.description!.isNotEmpty) {
+        final pId = YoutubeExtractorService.parsePlaylistId(roadmap.description!);
+        if (pId != null) {
+          playlistUrls.add('https://www.youtube.com/playlist?list=$pId');
+        }
+      }
     } catch (_) {}
 
     for (final beat in beats) {
@@ -653,7 +659,7 @@ class CurriculumIngestionService {
       try {
         final extracted = await _youtubeClient
             .extractPlaylist(pUrl)
-            .timeout(const Duration(seconds: 12));
+            .timeout(const Duration(seconds: 18));
         if (extracted.items.isEmpty) continue;
 
         for (int i = 0; i < extracted.items.length; i++) {
@@ -663,21 +669,28 @@ class CurriculumIngestionService {
 
           final effort = EffortWeightCalculator.calculate(item.durationSeconds);
 
-          // Find match among existing beats by video ID
+          // Find match among existing beats by video ID or title
           final match = beats.where((b) {
-            if (b.sourceUrl == null) return false;
-            final bVid = YoutubeExtractorService.parseVideoId(b.sourceUrl!);
-            if (bVid != videoId) return false;
-            if (item.timestampSeconds != null && b.timestampSeconds != null) {
-              return (item.timestampSeconds! - b.timestampSeconds!).abs() < 5;
+            if (b.sourceUrl != null && b.sourceUrl!.isNotEmpty) {
+              final bVid = YoutubeExtractorService.parseVideoId(b.sourceUrl!);
+              if (bVid != null && bVid == videoId) {
+                if (item.timestampSeconds != null && b.timestampSeconds != null) {
+                  return (item.timestampSeconds! - b.timestampSeconds!).abs() < 5;
+                }
+                return true;
+              }
             }
-            return true;
+            return false;
+          }).firstOrNull ?? beats.where((b) {
+            return (b.sourceUrl == null || b.sourceUrl!.isEmpty) &&
+                b.title.trim().toLowerCase() == item.title.trim().toLowerCase();
           }).firstOrNull;
 
           if (match != null) {
             // Remap existing beat with exact new 10-min effort
             final updated = match.copyWith(
               title: item.title,
+              sourceUrl: match.sourceUrl ?? item.sourceUrl,
               effortWeight: effort,
               timestampSeconds: item.timestampSeconds ?? match.timestampSeconds,
               updatedAt: DateTime.now(),
@@ -711,22 +724,18 @@ class CurriculumIngestionService {
       }
     }
 
-    // 3. Sync standalone videos: only query YouTube for beats missing valid effort weights
+    // 3. Sync standalone videos: fetch actual durations for remaining standalone beats
     final remainingStandalone = standaloneVideoBeats
         .where((b) => !updatedBeatMap.containsKey(b.id))
         .toList();
 
-    final needsExtraction = remainingStandalone
-        .where((b) => b.effortWeight <= 0.0 || b.title.isEmpty)
-        .toList();
-
-    if (needsExtraction.isNotEmpty) {
-      const batchSize = 6;
-      for (int i = 0; i < needsExtraction.length; i += batchSize) {
-        final batch = needsExtraction.sublist(
+    if (remainingStandalone.isNotEmpty) {
+      const batchSize = 4;
+      for (int i = 0; i < remainingStandalone.length; i += batchSize) {
+        final batch = remainingStandalone.sublist(
           i,
-          i + batchSize > needsExtraction.length
-              ? needsExtraction.length
+          i + batchSize > remainingStandalone.length
+              ? remainingStandalone.length
               : i + batchSize,
         );
 
@@ -735,7 +744,7 @@ class CurriculumIngestionService {
             try {
               final extracted = await _youtubeClient
                   .extractVideo(beat.sourceUrl!)
-                  .timeout(const Duration(seconds: 3));
+                  .timeout(const Duration(seconds: 4));
               if (extracted.items.isNotEmpty) {
                 final effort = EffortWeightCalculator.calculate(
                     extracted.items.first.durationSeconds);
@@ -746,8 +755,8 @@ class CurriculumIngestionService {
                 updatedBeatMap[beat.id] = updated;
                 updatedCount++;
               }
-            } catch (_) {
-              // Gracefully keep existing or normalized effort on network error/timeout
+            } catch (e) {
+              debugPrint('Notice: Standalone video sync fell back for ${beat.sourceUrl}: $e');
             }
           }),
         );
