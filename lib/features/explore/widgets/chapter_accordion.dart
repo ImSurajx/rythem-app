@@ -898,7 +898,7 @@ class BeatTile extends StatelessWidget {
                 icon: Icon(
                   Icons.more_vert_rounded,
                   size: 16,
-                  color: themeColors.textTertiary,
+                  color: themeColors.textPrimary,
                 ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
@@ -932,7 +932,7 @@ class BeatTile extends StatelessWidget {
                           const SizedBox(width: 10),
                           Text(
                             'Checkpoint',
-                            style: TextStyle(
+                            style: RythemTypography.bodySmall.copyWith(
                               color: themeColors.textPrimary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -948,14 +948,14 @@ class BeatTile extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(
-                            Icons.help_outline_rounded,
+                            Icons.outlined_flag_rounded,
                             size: 15,
-                            color: themeColors.textTertiary,
+                            color: themeColors.textPrimary,
                           ),
                           const SizedBox(width: 10),
                           Text(
                             'Flag as Confusing',
-                            style: TextStyle(
+                            style: RythemTypography.bodySmall.copyWith(
                               color: themeColors.textPrimary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -985,13 +985,14 @@ class BeatTile extends StatelessWidget {
               if (onFlag != null)
                 IconButton(
                   icon: Icon(
-                    Icons.help_outline_rounded,
+                    Icons.outlined_flag_rounded,
                     size: 15,
-                    color: themeColors.textTertiary,
+                    color: themeColors.textPrimary,
                   ),
                   onPressed: onFlag,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                  tooltip: 'Flag Confusion',
                 ),
             ],
           ],

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:rythem_app/core/database/database_event_bus.dart';
 import 'package:rythem_app/core/database/repositories/roadmap_repository.dart';
 import 'package:rythem_app/core/database/repositories/chapter_repository.dart';

@@ -100,7 +100,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                     Row(
                       children: [
                         Icon(
-                          Icons.help_outline_rounded,
+                          Icons.outlined_flag_rounded,
                           size: 20,
                           color: themeColors.textPrimary,
                         ),
@@ -183,7 +183,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                         GlassButton(
                           label: 'Save Flag',
                           variant: GlassButtonVariant.primary,
-                          icon: Icons.bookmark_add_outlined,
+                          icon: Icons.outlined_flag_rounded,
                           onPressed: () {
                             HapticFeedback.mediumImpact();
                             final note = _noteController.text.trim();
@@ -192,7 +192,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                             showGlassToast(
                               context,
                               'Flag saved. Flow continues uninterrupted.',
-                              icon: Icons.bookmark_added_outlined,
+                              icon: Icons.flag_rounded,
                             );
                           },
                         ),

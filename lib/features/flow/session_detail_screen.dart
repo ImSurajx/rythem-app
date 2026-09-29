@@ -545,9 +545,9 @@ class _FocusBeatTile extends StatelessWidget {
                 // Flag confusing action
                 IconButton(
                   icon: Icon(
-                    Icons.help_outline_rounded,
+                    Icons.outlined_flag_rounded,
                     size: 16,
-                    color: themeColors.textTertiary,
+                    color: themeColors.textPrimary,
                   ),
                   onPressed: onFlag,
                   tooltip: 'Flag Confusion',
