@@ -45,6 +45,9 @@ class FlowScreen extends StatefulWidget {
   final Set<String> delayedBeatIds;
   final void Function(BeatEntity beat)? onToggleDelay;
   final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
+  final Map<String, String> activeFocusBeatByRoadmap;
+  final void Function(RoadmapEntity roadmap)? onPullNextTopic;
+  final void Function(RoadmapEntity roadmap, BeatEntity beat)? onReturnToTracker;
 
   const FlowScreen({
     super.key,
@@ -66,6 +69,9 @@ class FlowScreen extends StatefulWidget {
     this.delayedBeatIds = const {},
     this.onToggleDelay,
     this.onStartEarly,
+    this.activeFocusBeatByRoadmap = const {},
+    this.onPullNextTopic,
+    this.onReturnToTracker,
   });
 
   @override
@@ -304,6 +310,9 @@ class _FlowScreenState extends State<FlowScreen> {
                 pacingBudget: rmBudget,
                 themeColors: themeColors,
                 isDark: isDark,
+                activeFocusBeatId: widget.activeFocusBeatByRoadmap[rm.id],
+                onPullNextTopic: widget.onPullNextTopic != null ? () => widget.onPullNextTopic!(rm) : null,
+                onReturnToTracker: widget.onReturnToTracker,
                 delayedBeatIds: widget.delayedBeatIds,
                 onToggleDelay: widget.onToggleDelay,
                 onBeatToggled: widget.onBeatToggled,
@@ -393,6 +402,9 @@ class _TrackTodoListCard extends StatelessWidget {
   final PacingBudget? pacingBudget;
   final RythemColorTokens themeColors;
   final bool isDark;
+  final String? activeFocusBeatId;
+  final VoidCallback? onPullNextTopic;
+  final void Function(RoadmapEntity roadmap, BeatEntity beat)? onReturnToTracker;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat) onOpenFocusSession;
   final VoidCallback? onOpenDetail;
@@ -407,6 +419,9 @@ class _TrackTodoListCard extends StatelessWidget {
     required this.pacingBudget,
     required this.themeColors,
     required this.isDark,
+    this.activeFocusBeatId,
+    this.onPullNextTopic,
+    this.onReturnToTracker,
     required this.onBeatToggled,
     required this.onOpenFocusSession,
     this.onOpenDetail,
@@ -613,7 +628,16 @@ class _TrackTodoListCard extends StatelessWidget {
                     : todayStart;
                 final isUpcoming = pacingBudget?.isUpcoming == true || todayStart.isBefore(trackStart);
 
-                if (isUpcoming && completedToday.isEmpty) {
+                // Active beat candidate (user-driven pulled topic)
+                BeatEntity? activeBeat;
+                if (activeFocusBeatId != null) {
+                  final candidate = sortedAllBeats.where((b) => b.id == activeFocusBeatId).firstOrNull;
+                  if (candidate != null && !candidate.isCompleted) {
+                    activeBeat = candidate;
+                  }
+                }
+
+                if (isUpcoming && completedToday.isEmpty && activeBeat == null) {
                   final daysUntil = pacingBudget?.daysUntilStart ??
                       (todayStart.isBefore(trackStart) ? trackStart.difference(todayStart).inDays : 0);
                   return _buildUpcomingTrackCard(
@@ -623,80 +647,312 @@ class _TrackTodoListCard extends StatelessWidget {
                   );
                 }
 
-                // Assemble beats for today's queue (delayed beats and beats completed today)
-                final seenIds = <String>{};
-                final flowBeats = <BeatEntity>[];
-                final delayedBeats = sortedAllBeats.where((b) => !b.isCompleted && delayedBeatIds.contains(b.id)).toList();
+                final hasIncompleteBeats = sortedAllBeats.any((b) => !b.isCompleted);
+                final isAllTrackCompleted = allBeats.isNotEmpty && !hasIncompleteBeats;
 
-                for (final b in delayedBeats) {
-                  if (seenIds.add(b.id)) flowBeats.add(b);
-                }
-                for (final b in completedToday) {
-                  if (seenIds.add(b.id)) flowBeats.add(b);
-                }
+                // Delayed beats that are not completed and not the active beat
+                final delayedBeats = sortedAllBeats
+                    .where((b) => !b.isCompleted && delayedBeatIds.contains(b.id) && b.id != activeBeat?.id)
+                    .toList();
 
-                if (flowBeats.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                    child: Center(
-                      child: Text(
-                        'No tasks in today\'s queue.',
-                        style: RythemTypography.bodySmall.copyWith(
-                          color: themeColors.textTertiary,
-                        ),
-                      ),
-                    ),
-                  );
-                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Active Focus Topic (if pulled)
+                      if (activeBeat != null) ...[
+                        () {
+                          final currentBeat = activeBeat!;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'CURRENT FOCUS',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.6,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (onReturnToTracker != null)
+                                      GestureDetector(
+                                        onTap: () => onReturnToTracker!(roadmap, currentBeat),
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.reply_rounded,
+                                              size: 13,
+                                              color: themeColors.textTertiary,
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              'Return to Tracker',
+                                              style: RythemTypography.labelSmall.copyWith(
+                                                color: themeColors.textTertiary,
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              BeatTile(
+                                beat: currentBeat,
+                                themeColors: themeColors,
+                                isDark: isDark,
+                                isDelayed: delayedBeatIds.contains(currentBeat.id),
+                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(currentBeat) : null,
+                                onToggle: (val) => onBeatToggled(currentBeat, val),
+                                onOpenResource: () => ResourceLauncher.openResource(
+                                  context,
+                                  url: currentBeat.sourceUrl,
+                                  title: currentBeat.title,
+                                ),
+                                onFlag: () {
+                                  ConfusingBeatDialog.show(context, beat: currentBeat);
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          );
+                        }(),
+                      ],
 
-                return Column(
-                  children: [
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      itemCount: flowBeats.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final beat = flowBeats[index];
+                      // 2. Delayed Beats (if any exist)
+                      if (delayedBeats.isNotEmpty) ...[
+                        ...delayedBeats.map((beat) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: BeatTile(
+                                beat: beat,
+                                themeColors: themeColors,
+                                isDark: isDark,
+                                isDelayed: true,
+                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
+                                onToggle: (val) => onBeatToggled(beat, val),
+                                onOpenResource: () => ResourceLauncher.openResource(
+                                  context,
+                                  url: beat.sourceUrl,
+                                  title: beat.title,
+                                ),
+                                onFlag: () {
+                                  ConfusingBeatDialog.show(context, beat: beat);
+                                },
+                              ),
+                            )),
+                      ],
 
-                        return BeatTile(
-                          beat: beat,
-                          themeColors: themeColors,
-                          isDark: isDark,
-                          isDelayed: delayedBeatIds.contains(beat.id),
-                          onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
-                          onToggle: (val) => onBeatToggled(beat, val),
-                          onOpenResource: () => ResourceLauncher.openResource(
-                            context,
-                            url: beat.sourceUrl,
-                            title: beat.title,
+                      // 3. Completed Today (celebratory checked items)
+                      if (completedToday.isNotEmpty) ...[
+                        if (activeBeat != null || delayedBeats.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, bottom: 6, left: 4),
+                            child: Text(
+                              'COMPLETED TODAY (${completedToday.length})',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                          onFlag: () {
-                            ConfusingBeatDialog.show(context, beat: beat);
-                          },
-                        );
-                      },
-                    ),
-                    if (allBeats.length > flowBeats.length)
+                        ...completedToday.map((beat) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: BeatTile(
+                                beat: beat,
+                                themeColors: themeColors,
+                                isDark: isDark,
+                                isDelayed: delayedBeatIds.contains(beat.id),
+                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
+                                onToggle: (val) => onBeatToggled(beat, val),
+                                onOpenResource: () => ResourceLauncher.openResource(
+                                  context,
+                                  url: beat.sourceUrl,
+                                  title: beat.title,
+                                ),
+                                onFlag: () {
+                                  ConfusingBeatDialog.show(context, beat: beat);
+                                },
+                              ),
+                            )),
+                      ],
+
+                      // 4. Empty State if nothing is pulled and nothing completed today
+                      if (activeBeat == null && completedToday.isEmpty && delayedBeats.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              isAllTrackCompleted
+                                  ? 'All topics completed!'
+                                  : 'No active topic in focus right now.',
+                              style: RythemTypography.bodySmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 6),
+
+                      // 5. Pull Next Topic / Locked / All Completed Action Area
+                      if (isAllTrackCompleted)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: (isDark ? const Color(0xFF10B981) : const Color(0xFF059669)).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF10B981).withOpacity(0.3),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                size: 15,
+                                color: Color(0xFF10B981),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Track Complete! 100% Finished 🎉',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: const Color(0xFF10B981),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (activeBeat != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.lock_outline_rounded,
+                                size: 14,
+                                color: themeColors.textTertiary.withOpacity(0.6),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Complete current topic to unlock next',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textTertiary.withOpacity(0.7),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (hasIncompleteBeats)
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: onPullNextTopic,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_rounded,
+                                    size: 16,
+                                    color: themeColors.textPrimary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Pull Next Topic',
+                                    style: RythemTypography.button.copyWith(
+                                      color: themeColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(height: 8),
+
+                      // 6. View Full Tracker Footer Link
                       GestureDetector(
                         onTap: onOpenDetail,
                         behavior: HitTestBehavior.opaque,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Center(
                             child: Text(
                               'View full tracker (${allBeats.length} beats) →',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: themeColors.textSecondary,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 11.5,
+                                fontSize: 11,
                               ),
                             ),
                           ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),

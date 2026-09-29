@@ -179,6 +179,7 @@ class _DesignSystemShowcaseScreenState
   bool _compactDownloaded = false;
   bool _balancedDownloaded = false;
   Set<String> _delayedBeatIds = {'beat_delayed_sample'};
+  Map<String, String> _activeFocusBeatByRoadmap = {};
   bool _isLoadingDbState = false;
   bool _hasPendingDbReload = false;
 
@@ -230,6 +231,9 @@ class _DesignSystemShowcaseScreenState
           _beatsByRoadmap[beat.roadmapId] =
               rmList.map((b) => b.id == beat.id ? updatedBeat : b).toList();
         }
+        if (isCompleted && _activeFocusBeatByRoadmap[beat.roadmapId] == beat.id) {
+          _activeFocusBeatByRoadmap = Map<String, String>.from(_activeFocusBeatByRoadmap)..remove(beat.roadmapId);
+        }
       });
     }
 
@@ -244,6 +248,15 @@ class _DesignSystemShowcaseScreenState
             _delayedBeatIds = updated;
           });
           _showToast('Delayed beat completed: "${beat.title}"! 🎉');
+        }
+      }
+      if (isCompleted && _activeFocusBeatByRoadmap[beat.roadmapId] == beat.id) {
+        final updated = Map<String, String>.from(_activeFocusBeatByRoadmap)..remove(beat.roadmapId);
+        await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
+        if (mounted) {
+          setState(() {
+            _activeFocusBeatByRoadmap = updated;
+          });
         }
       }
       _pendingBeatToggles.remove(beat.id);
@@ -275,6 +288,55 @@ class _DesignSystemShowcaseScreenState
       setState(() {
         _delayedBeatIds = updated;
       });
+    }
+  }
+
+  Future<void> _handlePullNextTopic(RoadmapEntity roadmap) async {
+    HapticFeedback.mediumImpact();
+    final chapters = _chaptersByRoadmap[roadmap.id] ??
+        (roadmap.id == _roadmapId ? _chapters : <ChapterEntity>[]);
+    final beats = _beatsByRoadmap[roadmap.id] ??
+        (roadmap.id == _roadmapId ? _beats : <BeatEntity>[]);
+
+    final chapterOrderMap = <String, int>{};
+    for (int c = 0; c < chapters.length; c++) {
+      chapterOrderMap[chapters[c].id] = chapters[c].sortOrder;
+    }
+
+    final sortedBeats = List<BeatEntity>.from(beats)
+      ..sort((a, b) {
+        final chA = chapterOrderMap[a.chapterId] ?? 999;
+        final chB = chapterOrderMap[b.chapterId] ?? 999;
+        if (chA != chB) return chA.compareTo(chB);
+        return a.sortOrder.compareTo(b.sortOrder);
+      });
+
+    final nextBeat = sortedBeats.where((b) => !b.isCompleted).firstOrNull;
+    if (nextBeat != null) {
+      final updated = Map<String, String>.from(_activeFocusBeatByRoadmap);
+      updated[roadmap.id] = nextBeat.id;
+      await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
+      if (mounted) {
+        setState(() {
+          _activeFocusBeatByRoadmap = updated;
+        });
+        _showToast('Pulled "${nextBeat.title}" into Today\'s Focus! 🎯');
+      }
+    } else {
+      _showToast('All topics in this track are already completed! 🎉');
+    }
+  }
+
+  Future<void> _handleReturnTopicToTracker(RoadmapEntity roadmap, BeatEntity beat) async {
+    HapticFeedback.lightImpact();
+    final updated = Map<String, String>.from(_activeFocusBeatByRoadmap);
+    updated.remove(roadmap.id);
+    await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
+    if (mounted) {
+      setState(() {
+        _activeFocusBeatByRoadmap = updated;
+      });
+      _showToast('Returned "${beat.title}" to tracker');
     }
   }
 
@@ -442,6 +504,25 @@ class _DesignSystemShowcaseScreenState
       delayedBeatIds = {};
     }
 
+    Map<String, String> activeFocusBeatByRoadmap = {};
+    try {
+      final rawFocus = await _appSettingsRepo.getSetting('active_focus_by_roadmap');
+      if (rawFocus != null && rawFocus.isNotEmpty) {
+        final decoded = jsonDecode(rawFocus) as Map<String, dynamic>;
+        for (final entry in decoded.entries) {
+          final rmId = entry.key;
+          final beatId = entry.value.toString();
+          final rmBeats = beatsByRoadmap[rmId] ?? [];
+          final beat = rmBeats.where((b) => b.id == beatId).firstOrNull;
+          if (beat != null && !beat.isCompleted) {
+            activeFocusBeatByRoadmap[rmId] = beatId;
+          }
+        }
+      }
+    } catch (_) {
+      activeFocusBeatByRoadmap = {};
+    }
+
     final finalBeats = beatsByRoadmap[_roadmapId] ?? [];
 
     if (mounted) {
@@ -456,6 +537,7 @@ class _DesignSystemShowcaseScreenState
         _recentActivity = recentActivity;
         _pacingBudget = budget;
         _delayedBeatIds = delayedBeatIds;
+        _activeFocusBeatByRoadmap = activeFocusBeatByRoadmap;
         _latestAutoBackup = latestBackup;
         _backupLocationDescription = backupLocation;
       });
@@ -735,6 +817,9 @@ class _DesignSystemShowcaseScreenState
       onBeatToggled: _setBeatCompletion,
       delayedBeatIds: _delayedBeatIds,
       onToggleDelay: _handleToggleBeatDelay,
+      activeFocusBeatByRoadmap: _activeFocusBeatByRoadmap,
+      onPullNextTopic: _handlePullNextTopic,
+      onReturnToTracker: _handleReturnTopicToTracker,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onStartEarly: _handleStartRoadmapEarly,
