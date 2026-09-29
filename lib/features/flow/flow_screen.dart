@@ -294,25 +294,31 @@ class _FlowScreenState extends State<FlowScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.cloud_download_outlined,
-                                size: 14,
-                                color: themeColors.textPrimary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${tierInfo.displayName} Downloading ($pct%)',
-                                style: RythemTypography.labelSmall.copyWith(
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.cloud_download_outlined,
+                                  size: 14,
                                   color: themeColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 10.5,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${tierInfo.displayName} ($pct%)',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: themeColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
                             '${progress.formattedReceived} / ${progress.formattedTotal}',
                             style: RythemTypography.labelSmall.copyWith(
@@ -802,26 +808,18 @@ class _TrackTodoListCard extends StatelessWidget {
                             children: [
                               if (completedToday.isNotEmpty || delayedBeats.isNotEmpty)
                                 const SizedBox(height: 6),
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-                                    width: 0.8,
-                                  ),
-                                ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, right: 4, bottom: 6),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Tooltip(
-                                      message: 'Current Focus',
-                                      child: Icon(
-                                        Icons.center_focus_strong_rounded,
-                                        size: 15,
+                                    Text(
+                                      'CURRENT FOCUS',
+                                      style: RythemTypography.labelSmall.copyWith(
                                         color: themeColors.textPrimary,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 10,
+                                        letterSpacing: 0.6,
                                       ),
                                     ),
                                     if (onReturnToTracker != null)

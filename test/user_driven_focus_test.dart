@@ -155,8 +155,8 @@ void main() {
         ),
       );
 
-      // Verify active focus card with focus icon and topic title
-      expect(find.byIcon(Icons.center_focus_strong_rounded), findsOneWidget);
+      // Verify active focus card with bold CURRENT FOCUS title and topic title
+      expect(find.text('CURRENT FOCUS'), findsOneWidget);
       expect(find.text('Topic 1.1: Core Memory Model'), findsOneWidget);
 
       // Verify Return to Tracker icon button
