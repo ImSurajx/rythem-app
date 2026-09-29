@@ -155,19 +155,19 @@ void main() {
         ),
       );
 
-      // Verify active focus card and topic title
-      expect(find.text('CURRENT FOCUS'), findsOneWidget);
+      // Verify active focus card with focus icon and topic title
+      expect(find.byIcon(Icons.center_focus_strong_rounded), findsOneWidget);
       expect(find.text('Topic 1.1: Core Memory Model'), findsOneWidget);
 
-      // Verify Return to Tracker button
-      expect(find.text('Return to Tracker'), findsOneWidget);
+      // Verify Return to Tracker icon button
+      expect(find.byIcon(Icons.reply_rounded), findsOneWidget);
 
       // Verify locked state message below
       expect(find.text('Complete current topic to unlock next'), findsOneWidget);
       expect(find.text('Pull Next Topic'), findsNothing);
 
       // Tap Return to Tracker
-      await tester.tap(find.text('Return to Tracker'));
+      await tester.tap(find.byIcon(Icons.reply_rounded));
       await tester.pumpAndSettle();
 
       expect(returnedRoadmap?.id, 'rm_test');

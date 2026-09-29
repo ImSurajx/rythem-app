@@ -54,7 +54,7 @@ class ModelDownloadManager {
 
   ModelDownloadManager._internal()
       : _settingsRepo = AppSettingsRepository(),
-        _client = http.Client(),
+        _customClient = null,
         _overrideModelsDir = null;
 
   ModelDownloadManager._custom({
@@ -62,7 +62,7 @@ class ModelDownloadManager {
     http.Client? client,
     String? overrideModelsDir,
   })  : _settingsRepo = settingsRepo ?? AppSettingsRepository(),
-        _client = client ?? http.Client(),
+        _customClient = client,
         _overrideModelsDir = overrideModelsDir;
 
   @visibleForTesting
@@ -71,7 +71,7 @@ class ModelDownloadManager {
   }
 
   final AppSettingsRepository _settingsRepo;
-  final http.Client _client;
+  final http.Client? _customClient;
   String? _overrideModelsDir;
 
   http.Client? _activeDownloadClient;
@@ -199,14 +199,36 @@ class ModelDownloadManager {
   /// Returns the tier of any pending/interrupted download saved in settings.
   Future<ModelTier?> getPendingDownloadTier() async {
     final raw = await _settingsRepo.getSetting(_prefPendingTierKey);
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final tier = ModelTier.values.firstWhere((t) => t.name == raw);
-      if (tier != ModelTier.fallback) {
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final tier = ModelTier.values.firstWhere((t) => t.name == raw);
+        if (tier != ModelTier.fallback) {
+          final isCompleted = await isModelDownloaded(tier);
+          if (!isCompleted) return tier;
+        }
+      } catch (_) {}
+    }
+
+    // Check if any .part file exists on disk from an interrupted session
+    for (final tier in [ModelTier.compact, ModelTier.balanced]) {
+      final path = await getModelFilePath(tier);
+      if (path != null && File('$path.part').existsSync()) {
         final isCompleted = await isModelDownloaded(tier);
         if (!isCompleted) return tier;
       }
-    } catch (_) {}
+    }
+
+    // Also check preferred model tier if neither model is downloaded yet
+    final preferredRaw = await _settingsRepo.getSetting(_prefPreferredModelTierKey);
+    if (preferredRaw != null && preferredRaw.isNotEmpty) {
+      final tier = ModelInfo.fromString(preferredRaw).tier;
+      if (tier != ModelTier.fallback) {
+        final hasAny = await isModelDownloaded(ModelTier.compact) ||
+            await isModelDownloaded(ModelTier.balanced);
+        if (!hasAny) return tier;
+      }
+    }
+
     return null;
   }
 
@@ -254,7 +276,7 @@ class ModelDownloadManager {
     final partFile = File(partPath);
 
     _downloadingTier = tier;
-    final downloadClient = _client;
+    final downloadClient = _customClient ?? http.Client();
     _activeDownloadClient = downloadClient;
 
     // Reset progress and clear any previous errors
@@ -413,13 +435,20 @@ class ModelDownloadManager {
       rethrow;
     } finally {
       _downloadingTier = null;
+      if (_customClient == null && _activeDownloadClient != null) {
+        try {
+          _activeDownloadClient!.close();
+        } catch (_) {}
+      }
       _activeDownloadClient = null;
     }
   }
 
   void cancelDownload() {
     if (_activeDownloadClient != null) {
-      _activeDownloadClient!.close();
+      try {
+        _activeDownloadClient!.close();
+      } catch (_) {}
       _activeDownloadClient = null;
     }
     if (_downloadingTier != null) {

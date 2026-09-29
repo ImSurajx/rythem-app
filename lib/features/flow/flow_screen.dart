@@ -13,7 +13,9 @@ import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/utils/resource_launcher.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
+import 'package:rythem_app/core/ai/models/model_tier.dart';
 import 'package:rythem_app/core/ai/services/local_inference_service.dart';
+import 'package:rythem_app/core/ai/services/model_download_manager.dart';
 import 'confusing_beat_dialog.dart';
 import 'session_detail_screen.dart';
 import '../explore/widgets/chapter_accordion.dart';
@@ -264,6 +266,77 @@ class _FlowScreenState extends State<FlowScreen> {
             ),
             const SizedBox(height: 16),
           ],
+
+          // Live Ambient AI Model Background Download Pill (if active)
+          if (widget.inferenceService != null)
+            ValueListenableBuilder<DownloadProgress?>(
+              valueListenable: widget.inferenceService!.downloadProgressNotifier,
+              builder: (context, progress, _) {
+                if (progress == null || progress.isCompleted || progress.error != null) {
+                  return const SizedBox.shrink();
+                }
+                final tierInfo = ModelInfo.forTier(progress.tier);
+                final pct = (progress.progress * 100).toInt();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0x16FFFFFF) : const Color(0x0A000000),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark ? themeColors.glassBorder : const Color(0x12000000),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_download_outlined,
+                                size: 14,
+                                color: themeColors.textPrimary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${tierInfo.displayName} Downloading ($pct%)',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '${progress.formattedReceived} / ${progress.formattedTotal}',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: progress.progress > 0 ? progress.progress : null,
+                          backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                          valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                          minHeight: 3.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
 
           // Section Title
           Row(
@@ -741,25 +814,32 @@ class _TrackTodoListCard extends StatelessWidget {
                                   ),
                                 ),
                                 child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                    Tooltip(
+                                      message: 'Current Focus',
+                                      child: Icon(
+                                        Icons.center_focus_strong_rounded,
+                                        size: 15,
+                                        color: themeColors.textPrimary,
                                       ),
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'CURRENT FOCUS',
-                                      style: RythemTypography.labelSmall.copyWith(
-                                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.6,
+                                    if (onReturnToTracker != null)
+                                      Tooltip(
+                                        message: 'Return to Tracker',
+                                        child: GestureDetector(
+                                          onTap: () => onReturnToTracker!(roadmap, currentBeat),
+                                          behavior: HitTestBehavior.opaque,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(2),
+                                            child: Icon(
+                                              Icons.reply_rounded,
+                                              size: 15,
+                                              color: themeColors.textTertiary,
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -779,36 +859,6 @@ class _TrackTodoListCard extends StatelessWidget {
                                   ConfusingBeatDialog.show(context, beat: currentBeat);
                                 },
                               ),
-                              if (onReturnToTracker != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 6, bottom: 2, right: 4),
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: GestureDetector(
-                                      onTap: () => onReturnToTracker!(roadmap, currentBeat),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.reply_rounded,
-                                            size: 13,
-                                            color: themeColors.textTertiary,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Return to Tracker',
-                                            style: RythemTypography.labelSmall.copyWith(
-                                              color: themeColors.textTertiary,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               const SizedBox(height: 6),
                             ],
                           );
