@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.2-pre.1] - 2026-09-29
 
+### Changed
+- **Unified Data Backup & Recovery System**: Merged the two separate backup cards into a single cohesive, on-device glass card handling both automated daily snapshots (with 7-day rollback history) and manual JSON export/import.
+
 ### Removed
 - **Todo Suggestion System**: Completely stripped automatic daily topic suggestion mechanism, sequential queue walker (`walkQueueToFillBudget`), `daily_missions` database table, repository, and auto-pull study-ahead logic.
 - **Revision Suggestion Engine**: Completely removed spaced repetition forgetting curve suggestion service (`RevisionService`, `RevisionItem`), `DailyRevisionBoard` UI component, and local AI revision candidate ranking.
 - **Backlog Manager & Lag Recalibration**: Removed backlog debt calculation, shortfall streak detection (`detectShortfallTrend`, `isSustainedLag`), `_SustainedLagRecalibrationBanner`, and `BacklogDecisionSheet`.
+- **Target Beat & Quota System**: Removed rigid weekly study rhythm calibration (22 beats/wk, 34 beats/wk, 8 beats/wk) and daily intensity quotas from Onboarding and Settings; streamlined onboarding to 3 self-paced steps.
 
 ## [1.0.1] - 2026-09-19
 

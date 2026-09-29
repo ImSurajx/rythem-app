@@ -139,12 +139,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // Verify Settings & 7-Day Study Intensity & Backup
+    // Verify Settings & Unified Backup & Restore
     expect(find.text('SETTINGS'), findsOneWidget);
-    expect(find.text('7-DAY STUDY INTENSITY & DAILY GOALS'), findsOneWidget);
     expect(find.text('APPEARANCE'), findsOneWidget);
+    expect(find.text('ON-DEVICE AI'), findsOneWidget);
     expect(find.text('DATA BACKUP & RESTORE'), findsOneWidget);
-    expect(find.text('Weekly Study Rhythm'), findsOneWidget);
+    expect(find.text('Backup & Recovery'), findsOneWidget);
+    expect(find.text('Back Up Now'), findsOneWidget);
 
     for (int i = 0; i < 20; i++) {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));

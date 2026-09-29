@@ -249,11 +249,8 @@ void main() {
       await tester.tap(find.text('Balanced Mentor'));
       await tester.pumpAndSettle();
 
-      // Tap Continue to advance to Step 4 (Rhythm calibration)
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('SET YOUR WEEKLY RHYTHM'), findsOneWidget);
+      // On Step 3 (final step), button is Enter Daily Flow
+      expect(find.text('Enter Daily Flow'), findsOneWidget);
     });
   });
 }

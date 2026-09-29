@@ -55,9 +55,9 @@ Traditional study trackers trap learners in anxiety: toxic countdown timers, ove
 
 ## 📱 How to Operate the App
 
-### 1. Onboarding & Study Rhythm Calibration
+### 1. Onboarding & Self-Paced Setup
 Upon launching Rythem:
-- **Calibrate Your Pace**: Choose your default study pace (**Default Balanced** at ~22 beats/wk, **Accelerated**, or **Gentle**).
+- **Philosophy & Freedom**: Experience learning without stopwatch pressure, artificial deadlines, or rigid daily quotas.
 - **Select Offline AI Tier**: Choose between **Compact Mentor** (Qwen 2.5 0.5B, ~468MB for low RAM) or **Balanced Mentor** (Qwen 2.5 1.5B, ~1.04GB). Rythem downloads weights seamlessly in the background with automatic heuristic fallbacks.
 
 ### 2. Creating or Ingesting Learning Tracks
@@ -68,10 +68,8 @@ Navigate to the **Explore** tab to create a track:
 
 ### 3. Conquering Your Daily Flow
 Navigate to the **Flow** tab:
-- **Daily Mission**: Focus on today’s curated beats matching your target completion date and effort budget.
+- **Self-Paced Learning**: Progress through your tracks freely without artificial quotas or overdue shaming.
 - **One-Tap Completion**: Tap checkmarks with tactile haptic feedback.
-- **Evening Unlock**: Once your quota is reached, Rythem celebrates with an evening rest confirmation.
-- **Spaced Revision**: Open the Daily Revision Board for active recall prompts tailored to your forgetting curve.
 
 ### 4. Analyzing Momentum & Velocity
 Navigate to the **Metrics** tab:
@@ -82,8 +80,8 @@ Navigate to the **Metrics** tab:
 
 ### 5. Settings & Disaster Recovery
 Navigate to the **Settings** tab:
-- **Weekly Rhythm Schedule**: Customize target intensities for each day of the week (Mon–Sun): Rest (0b), Light (2b), Normal (4b), or Deep (6b).
-- **Full Backup & Restore**: Export your entire database (tracks, chapters, beats, streak history, settings) into a single `.json` file or restore from a backup anytime.
+- **On-Device AI Engine**: Inspect offline models, toggle active tiers, or monitor background downloads.
+- **Unified Data Backup & Recovery**: Automated rolling daily snapshots (7-day history) alongside instant JSON file export and restoration for total data portability.
 
 ---
 

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../../core/ai/models/model_tier.dart';
 import '../../core/ai/services/model_download_manager.dart';
 import '../../core/database/repositories/app_settings_repository.dart';
-import '../../core/pacing/models/study_intensity.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/glass_button.dart';
@@ -12,9 +11,8 @@ import '../../core/widgets/glass_progress_bar.dart';
 
 /// First-launch onboarding wizard introducing core Rythem principles:
 /// 1. Philosophy: "Beats Over Clocks"
-/// 2. Pacing Dilution: Guilt-free adaptation
-/// 3. Offline AI: Mandatory on-device model setup (Compact ~1.2GB or Balanced ~2.4GB)
-/// 4. Calibration: Setting your initial rhythm
+/// 2. Self-Paced Freedom: Learn without rigid daily quotas or pressure
+/// 3. Offline AI: Mandatory on-device model setup (Compact or Balanced)
 class OnboardingWizardScreen extends StatefulWidget {
   final VoidCallback onFinished;
   final Future<void> Function()? onSeedDemoTrack;
@@ -35,10 +33,8 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   final ModelDownloadManager _modelManager = ModelDownloadManager();
 
   int _currentPage = 0;
-  static const int _totalPages = 4;
+  static const int _totalPages = 3;
 
-  // Calibration choices
-  String _selectedCadencePreset = 'balanced'; // accelerated, balanced, gentle
   ModelTier _selectedModelTier = ModelTier.compact;
   bool _compactDownloaded = false;
   bool _balancedDownloaded = false;
@@ -152,28 +148,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     try {
       // 1. Save onboarding completion flag in SQLite
       await _settingsRepo.setSetting('has_completed_onboarding', 'true');
-      final schedule = switch (_selectedCadencePreset) {
-        'accelerated' => WeeklyStudySchedule.custom(
-            monday: StudyIntensity.intense,
-            tuesday: StudyIntensity.intense,
-            wednesday: StudyIntensity.intense,
-            thursday: StudyIntensity.intense,
-            friday: StudyIntensity.intense,
-            saturday: StudyIntensity.light,
-            sunday: StudyIntensity.light,
-          ),
-        'gentle' => WeeklyStudySchedule.custom(
-            monday: StudyIntensity.light,
-            tuesday: StudyIntensity.rest,
-            wednesday: StudyIntensity.light,
-            thursday: StudyIntensity.rest,
-            friday: StudyIntensity.light,
-            saturday: StudyIntensity.light,
-            sunday: StudyIntensity.rest,
-          ),
-        _ => WeeklyStudySchedule.defaultSchedule(),
-      };
-      await _settingsRepo.setSetting('study_intensity_schedule', schedule.encode());
       await _settingsRepo.setSetting('preferred_model_tier', _selectedModelTier.name);
       if (_compactDownloaded || _balancedDownloaded) {
         await _settingsRepo.setSetting('active_model_tier', _selectedModelTier.name);
@@ -320,7 +294,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                   _buildPhilosophyPage(themeColors, isDark),
                   _buildPacingPage(themeColors, isDark),
                   _buildAiMentorPage(themeColors, isDark),
-                  _buildCalibrationPage(themeColors, isDark),
                 ],
               ),
             ),
@@ -407,7 +380,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     );
   }
 
-  // Page 2: Pacing Dilution (Guilt-Free Math)
+  // Page 2: Self-Paced Freedom
   Widget _buildPacingPage(RythemColorTokens themeColors, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -425,14 +398,14 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               ),
             ),
             child: Icon(
-              Icons.water_drop_outlined,
+              Icons.spa_outlined,
               size: 40,
               color: themeColors.textPrimary,
             ),
           ),
           const SizedBox(height: 28),
           Text(
-            'AUTOMATIC PACING DILUTION',
+            'SELF-PACED FREEDOM',
             style: RythemTypography.labelSmall.copyWith(
               color: themeColors.textTertiary,
               letterSpacing: 1.4,
@@ -441,7 +414,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Life happens.\nZero backlog guilt.',
+            'Learn at your pace.\nZero target pressure.',
             style: RythemTypography.displayMedium.copyWith(
               color: themeColors.textPrimary,
               fontWeight: FontWeight.w800,
@@ -451,7 +424,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Miss a day? Rythem never shames you with red overdue banners. Instead, remaining effort is gently diluted across your target calendar window.\n\nWhen you finish today\'s mission, the Evening Unlock activates. Close the app and rest guilt-free.',
+            'No rigid daily quotas, no weekly beat targets, and no overdue shaming. Study when you have momentum, rest when you need to.\n\nEvery task you conquer counts towards your journey and tracks honestly in your personal metrics dashboard.',
             style: RythemTypography.bodyLarge.copyWith(
               color: themeColors.textSecondary,
               height: 1.5,
@@ -795,189 +768,4 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     );
   }
 
-  // Page 4: Calibration
-  Widget _buildCalibrationPage(RythemColorTokens themeColors, bool isDark) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-              border: Border.all(
-                color: isDark ? Colors.white24 : Colors.black12,
-              ),
-            ),
-            child: Icon(
-              Icons.speed_rounded,
-              size: 40,
-              color: themeColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'SET YOUR WEEKLY RHYTHM',
-            style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textTertiary,
-              letterSpacing: 1.4,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Calibrate your study cadence.',
-            style: RythemTypography.displayMedium.copyWith(
-              color: themeColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.0,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Choose your baseline weekly intensity. Daily goals dynamically calculate from this schedule, customizable for every weekday in Settings.',
-            style: RythemTypography.bodyMedium.copyWith(
-              color: themeColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Weekly Rhythm Cadence Options
-          _buildPillOption(
-            label: 'Accelerated Rhythm',
-            sublabel: 'High intensity daily focus sessions across the week',
-            badge: '34 beats / wk',
-            isSelected: _selectedCadencePreset == 'accelerated',
-            themeColors: themeColors,
-            isDark: isDark,
-            onSelect: () => setState(() => _selectedCadencePreset = 'accelerated'),
-          ),
-          const SizedBox(height: 10),
-          _buildPillOption(
-            label: 'Balanced Rhythm',
-            sublabel: 'Sustainable weekday focus with relaxed weekends (Recommended)',
-            badge: '22 beats / wk',
-            isSelected: _selectedCadencePreset == 'balanced',
-            themeColors: themeColors,
-            isDark: isDark,
-            onSelect: () => setState(() => _selectedCadencePreset = 'balanced'),
-          ),
-          const SizedBox(height: 10),
-          _buildPillOption(
-            label: 'Gentle Rhythm',
-            sublabel: 'Low cognitive load suited for unpredictable schedules',
-            badge: '8 beats / wk',
-            isSelected: _selectedCadencePreset == 'gentle',
-            themeColors: themeColors,
-            isDark: isDark,
-            onSelect: () => setState(() => _selectedCadencePreset = 'gentle'),
-          ),
-
-          const SizedBox(height: 24),
-          Text(
-            'A starter track ("Deep Learning & Neural Flow") will be initialized for your first session.',
-            style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textTertiary,
-              fontSize: 10.5,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPillOption({
-    required String label,
-    required String sublabel,
-    required String badge,
-    required bool isSelected,
-    required RythemColorTokens themeColors,
-    required bool isDark,
-    required VoidCallback onSelect,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onSelect();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08))
-              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isSelected
-                ? themeColors.textPrimary
-                : (isDark ? themeColors.glassBorder : const Color(0x14000000)),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-              size: 20,
-              color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: RythemTypography.titleSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          badge,
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    sublabel,
-                    style: RythemTypography.bodySmall.copyWith(
-                      color: themeColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -140,7 +140,6 @@ class _DesignSystemShowcaseScreenState
   String _backupLocationDescription = 'Documents > Rythem > Backups';
   bool _isPerformingAutoBackup = false;
   bool _hasCheckedDisasterRecovery = false;
-  WeeklyStudySchedule _weeklySchedule = WeeklyStudySchedule.defaultSchedule();
 
   late final _ingestionService = CurriculumIngestionService(
     roadmapRepo: _roadmapRepo,
@@ -431,8 +430,6 @@ class _DesignSystemShowcaseScreenState
     }
 
     final budget = budgetsByRoadmap[_roadmapId];
-    final scheduleJson = await _appSettingsRepo.getSetting('study_intensity_schedule');
-    final weeklySchedule = WeeklyStudySchedule.decode(scheduleJson);
 
     Set<String> delayedBeatIds = {};
     try {
@@ -458,7 +455,6 @@ class _DesignSystemShowcaseScreenState
         _currentStreak = streak;
         _recentActivity = recentActivity;
         _pacingBudget = budget;
-        _weeklySchedule = weeklySchedule;
         _delayedBeatIds = delayedBeatIds;
         _latestAutoBackup = latestBackup;
         _backupLocationDescription = backupLocation;
@@ -986,21 +982,7 @@ class _DesignSystemShowcaseScreenState
           _buildAppearanceSegmented(themeColors, isDark),
           const SizedBox(height: 24),
 
-          // 2. 7-Day Study Intensity & Daily Goals (Monday - Sunday)
-          Text(
-            '7-DAY STUDY INTENSITY & DAILY GOALS',
-            style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textSecondary,
-              letterSpacing: 1.0,
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildStudyIntensityScheduleCard(themeColors, isDark),
-          const SizedBox(height: 24),
-
-          // 3. On-Device AI Manager
+          // 2. On-Device AI Manager
           Text(
             'ON-DEVICE AI',
             style: RythemTypography.labelSmall.copyWith(
@@ -1168,7 +1150,7 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 24),
 
-          // 4. Data Backup & Restore
+          // 3. Data Backup & Restore
           Text(
             'DATA BACKUP & RESTORE',
             style: RythemTypography.labelSmall.copyWith(
@@ -1179,9 +1161,7 @@ class _DesignSystemShowcaseScreenState
             ),
           ),
           const SizedBox(height: 8),
-          _buildAutoBackupCard(themeColors, isDark),
-          const SizedBox(height: 12),
-          _buildDataBackupCard(themeColors, isDark),
+          _buildUnifiedBackupCard(themeColors, isDark),
           const SizedBox(height: 24),
 
           // Quiet Version Metadata
@@ -1265,163 +1245,7 @@ class _DesignSystemShowcaseScreenState
     );
   }
 
-  Widget _buildStudyIntensityScheduleCard(RythemThemeColors themeColors, bool isDark) {
-    final days = [
-      (1, 'Mon'),
-      (2, 'Tue'),
-      (3, 'Wed'),
-      (4, 'Thu'),
-      (5, 'Fri'),
-      (6, 'Sat'),
-      (7, 'Sun'),
-    ];
-
-    final totalTargetBeats = _weeklySchedule.totalWeeklyTargetBeats;
-    final activeDays = _weeklySchedule.activeDaysCount;
-
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Weekly Study Rhythm',
-                style: RythemTypography.titleSmall.copyWith(
-                  color: themeColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              Text(
-                '$totalTargetBeats beats / wk',
-                style: RythemTypography.labelSmall.copyWith(
-                  color: themeColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Tap any day to toggle intensity: Rest (0), Light (2), Normal (4), or Deep (6). Your daily pacing quota dynamically follows this schedule.',
-            style: RythemTypography.bodySmall.copyWith(
-              color: themeColors.textTertiary,
-              fontSize: 11,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: days.map((d) {
-              final weekday = d.$1;
-              final dayLabel = d.$2;
-              final intensity = _weeklySchedule.getIntensity(weekday);
-
-              final (intensityColor, icon) = switch (intensity) {
-                StudyIntensity.rest => (themeColors.textTertiary.withOpacity(0.5), Icons.bedtime_outlined),
-                StudyIntensity.light => (const Color(0xFF64B5F6), Icons.wb_twilight_rounded),
-                StudyIntensity.normal => (themeColors.textPrimary, Icons.auto_awesome_rounded),
-                StudyIntensity.intense => (const Color(0xFFFF8A65), Icons.local_fire_department_rounded),
-              };
-
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: GestureDetector(
-                    onTap: () => _cycleStudyIntensity(weekday),
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.06),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            dayLabel,
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 10.5,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Icon(
-                            icon,
-                            size: 15,
-                            color: intensityColor,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            intensity.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: intensityColor,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${intensity.targetBeats}b',
-                            style: RythemTypography.bodySmall.copyWith(
-                              color: themeColors.textTertiary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0x10FFFFFF) : const Color(0x08000000),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Active days: $activeDays/7',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textSecondary,
-                    fontSize: 10.5,
-                  ),
-                ),
-                Text(
-                  'Daily avg: ${(totalTargetBeats / 7).toStringAsFixed(1)} beats',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 10.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAutoBackupCard(RythemThemeColors themeColors, bool isDark) {
+  Widget _buildUnifiedBackupCard(RythemThemeColors themeColors, bool isDark) {
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1433,7 +1257,7 @@ class _DesignSystemShowcaseScreenState
               Row(
                 children: [
                   Text(
-                    'Daily Auto-Backup',
+                    'Backup & Recovery',
                     style: RythemTypography.titleSmall.copyWith(
                       color: themeColors.textPrimary,
                       fontWeight: FontWeight.w600,
@@ -1474,7 +1298,7 @@ class _DesignSystemShowcaseScreenState
                 ],
               ),
               Icon(
-                Icons.schedule_rounded,
+                Icons.shield_outlined,
                 size: 16,
                 color: themeColors.textTertiary,
               ),
@@ -1482,7 +1306,7 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 6),
           Text(
-            'Automatically creates daily resilient snapshots to device storage, retaining 7 rolling days. Survives app cache wipes for instant disaster recovery.',
+            'Automated rolling daily snapshots on device storage, with on-demand JSON export and restoration for total data portability.',
             style: RythemTypography.bodySmall.copyWith(
               color: themeColors.textTertiary,
               fontSize: 11,
@@ -1501,7 +1325,7 @@ class _DesignSystemShowcaseScreenState
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Last Auto-Backup',
+                  'Last Backup',
                   style: TextStyle(
                     color: themeColors.textTertiary,
                     fontSize: 11,
@@ -1547,7 +1371,7 @@ class _DesignSystemShowcaseScreenState
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -1558,7 +1382,7 @@ class _DesignSystemShowcaseScreenState
                   variant: GlassButtonVariant.primary,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: GlassButton(
                   onPressed: _handleRestoreAutoBackup,
@@ -1569,61 +1393,23 @@ class _DesignSystemShowcaseScreenState
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataBackupCard(RythemThemeColors themeColors, bool isDark) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Data Portability & Backup',
-                style: RythemTypography.titleSmall.copyWith(
-                  color: themeColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              Icon(
-                Icons.shield_outlined,
-                size: 16,
-                color: themeColors.textTertiary,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Export your entire learning state (roadmaps, chapters, beats, streaks, logs, and settings) as a portable JSON file, or restore from a previous backup file.',
-            style: RythemTypography.bodySmall.copyWith(
-              color: themeColors.textTertiary,
-              fontSize: 11,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: GlassButton(
                   onPressed: _handleExportBackup,
                   icon: Icons.file_upload_outlined,
-                  label: 'Export Backup',
-                  variant: GlassButtonVariant.primary,
+                  label: 'Export JSON',
+                  variant: GlassButtonVariant.secondary,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: GlassButton(
                   onPressed: _handleImportBackup,
                   icon: Icons.file_download_outlined,
-                  label: 'Restore Backup',
+                  label: 'Restore File',
                   variant: GlassButtonVariant.secondary,
                 ),
               ),
@@ -1632,22 +1418,6 @@ class _DesignSystemShowcaseScreenState
         ],
       ),
     );
-  }
-
-  Future<void> _cycleStudyIntensity(int weekday) async {
-    HapticFeedback.selectionClick();
-    final current = _weeklySchedule.getIntensity(weekday);
-    final next = switch (current) {
-      StudyIntensity.rest => StudyIntensity.light,
-      StudyIntensity.light => StudyIntensity.normal,
-      StudyIntensity.normal => StudyIntensity.intense,
-      StudyIntensity.intense => StudyIntensity.rest,
-    };
-    final updated = _weeklySchedule.withIntensity(weekday, next);
-    setState(() => _weeklySchedule = updated);
-    await _appSettingsRepo.setSetting('study_intensity_schedule', updated.encode());
-    await _loadDatabaseState();
-    _showToast('${WeeklyStudySchedule.dayName(weekday)} set to ${next.label} (${next.targetBeats} beats)');
   }
 
   Future<void> _handleExportBackup() async {
