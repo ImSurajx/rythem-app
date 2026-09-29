@@ -286,6 +286,7 @@ class _FlowScreenState extends State<FlowScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
 
           // Render Whole Todo List for Each Track
           if (displayedRoadmaps.isEmpty)
@@ -660,13 +661,74 @@ class _TrackTodoListCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. Active Focus Topic (if pulled)
+                      // 1. Completed Today (celebratory checked items at top)
+                      if (completedToday.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2, bottom: 6, left: 4),
+                          child: Text(
+                            'COMPLETED TODAY (${completedToday.length})',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        ...completedToday.map((beat) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: BeatTile(
+                                beat: beat,
+                                themeColors: themeColors,
+                                isDark: isDark,
+                                isReadOnly: true,
+                                isDelayed: delayedBeatIds.contains(beat.id),
+                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
+                                onToggle: (_) {},
+                                onOpenResource: () => ResourceLauncher.openResource(
+                                  context,
+                                  url: beat.sourceUrl,
+                                  title: beat.title,
+                                ),
+                                onFlag: () {
+                                  ConfusingBeatDialog.show(context, beat: beat);
+                                },
+                              ),
+                            )),
+                      ],
+
+                      // 2. Delayed Beats (if any exist)
+                      if (delayedBeats.isNotEmpty) ...[
+                        ...delayedBeats.map((beat) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: BeatTile(
+                                beat: beat,
+                                themeColors: themeColors,
+                                isDark: isDark,
+                                isDelayed: true,
+                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
+                                onToggle: (val) => onBeatToggled(beat, val),
+                                onOpenResource: () => ResourceLauncher.openResource(
+                                  context,
+                                  url: beat.sourceUrl,
+                                  title: beat.title,
+                                ),
+                                onFlag: () {
+                                  ConfusingBeatDialog.show(context, beat: beat);
+                                },
+                              ),
+                            )),
+                      ],
+
+                      // 3. Active Focus Topic (Appended at the bottom)
                       if (activeBeat != null) ...[
                         () {
                           final currentBeat = activeBeat!;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (completedToday.isNotEmpty || delayedBeats.isNotEmpty)
+                                const SizedBox(height: 6),
                               Container(
                                 margin: const EdgeInsets.only(bottom: 6),
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -698,31 +760,6 @@ class _TrackTodoListCard extends StatelessWidget {
                                         letterSpacing: 0.6,
                                       ),
                                     ),
-                                    const Spacer(),
-                                    if (onReturnToTracker != null)
-                                      GestureDetector(
-                                        onTap: () => onReturnToTracker!(roadmap, currentBeat),
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.reply_rounded,
-                                              size: 13,
-                                              color: themeColors.textTertiary,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              'Return to Tracker',
-                                              style: RythemTypography.labelSmall.copyWith(
-                                                color: themeColors.textTertiary,
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
@@ -742,70 +779,40 @@ class _TrackTodoListCard extends StatelessWidget {
                                   ConfusingBeatDialog.show(context, beat: currentBeat);
                                 },
                               ),
-                              const SizedBox(height: 8),
+                              if (onReturnToTracker != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6, bottom: 2, right: 4),
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: GestureDetector(
+                                      onTap: () => onReturnToTracker!(roadmap, currentBeat),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.reply_rounded,
+                                            size: 13,
+                                            color: themeColors.textTertiary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Return to Tracker',
+                                            style: RythemTypography.labelSmall.copyWith(
+                                              color: themeColors.textTertiary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 6),
                             ],
                           );
                         }(),
-                      ],
-
-                      // 2. Delayed Beats (if any exist)
-                      if (delayedBeats.isNotEmpty) ...[
-                        ...delayedBeats.map((beat) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: BeatTile(
-                                beat: beat,
-                                themeColors: themeColors,
-                                isDark: isDark,
-                                isDelayed: true,
-                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
-                                onToggle: (val) => onBeatToggled(beat, val),
-                                onOpenResource: () => ResourceLauncher.openResource(
-                                  context,
-                                  url: beat.sourceUrl,
-                                  title: beat.title,
-                                ),
-                                onFlag: () {
-                                  ConfusingBeatDialog.show(context, beat: beat);
-                                },
-                              ),
-                            )),
-                      ],
-
-                      // 3. Completed Today (celebratory checked items)
-                      if (completedToday.isNotEmpty) ...[
-                        if (activeBeat != null || delayedBeats.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4, bottom: 6, left: 4),
-                            child: Text(
-                              'COMPLETED TODAY (${completedToday.length})',
-                              style: RythemTypography.labelSmall.copyWith(
-                                color: themeColors.textTertiary,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ...completedToday.map((beat) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: BeatTile(
-                                beat: beat,
-                                themeColors: themeColors,
-                                isDark: isDark,
-                                isReadOnly: true,
-                                isDelayed: delayedBeatIds.contains(beat.id),
-                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
-                                onToggle: (_) {},
-                                onOpenResource: () => ResourceLauncher.openResource(
-                                  context,
-                                  url: beat.sourceUrl,
-                                  title: beat.title,
-                                ),
-                                onFlag: () {
-                                  ConfusingBeatDialog.show(context, beat: beat);
-                                },
-                              ),
-                            )),
                       ],
 
                       // 4. Empty State if nothing is pulled and nothing completed today

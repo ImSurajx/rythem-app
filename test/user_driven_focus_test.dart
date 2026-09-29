@@ -202,7 +202,7 @@ void main() {
       );
 
       // Completed today header and beat are visible
-      expect(find.text('COMPLETED TODAY (1)'), findsNothing); // only 1 section so header hidden or shown
+      expect(find.text('COMPLETED TODAY (1)'), findsOneWidget);
       expect(find.text('Topic 1.1: Core Memory Model'), findsOneWidget);
 
       // Next topic button is unlocked!
