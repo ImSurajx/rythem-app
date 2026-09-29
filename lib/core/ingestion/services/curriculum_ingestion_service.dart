@@ -187,6 +187,12 @@ class CurriculumIngestionService {
       await _roadmapRepo.setPrimaryRoadmap(roadmapId);
     }
 
+    try {
+      if (extracted.sourceUrl.isNotEmpty) {
+        await _settingsRepo.setSetting('roadmap_source_url_$roadmapId', extracted.sourceUrl.trim());
+      }
+    } catch (_) {}
+
     return IngestionResult(
       roadmapId: roadmapId,
       roadmapTitle: roadmapTitle,
@@ -280,6 +286,9 @@ class CurriculumIngestionService {
 
     final cleanResource = resourceUrl?.trim();
     if (cleanResource != null && cleanResource.isNotEmpty) {
+      try {
+        await _settingsRepo.setSetting('roadmap_source_url_$roadmapId', cleanResource);
+      } catch (_) {}
       final audit = await attachResourceToRoadmap(
         roadmapId: roadmapId,
         resourceUrl: cleanResource,

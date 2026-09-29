@@ -181,7 +181,7 @@ class YoutubeExtractorService implements IYoutubeClient {
           final durationSec = video.duration?.inSeconds ?? 600;
           explodeItems.add(RawResourceItem(
             title: video.title,
-            sourceUrl: video.url,
+            sourceUrl: 'https://www.youtube.com/watch?v=${video.id.value}&list=$playlistId',
             durationSeconds: durationSec,
             index: index++,
             description: video.description,
@@ -315,7 +315,7 @@ class YoutubeExtractorService implements IYoutubeClient {
                 seenVideoIds.add(videoId);
                 items.add(RawResourceItem(
                   title: title,
-                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId&list=$playlistId',
                   durationSeconds: seconds > 0 ? seconds : 600,
                   index: index++,
                   thumbnailUrl: thumbnailUrl,
@@ -332,7 +332,7 @@ class YoutubeExtractorService implements IYoutubeClient {
                 seenVideoIds.add(videoId);
                 items.add(RawResourceItem(
                   title: title,
-                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId&list=$playlistId',
                   durationSeconds: lengthSec,
                   index: index++,
                   thumbnailUrl: 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
@@ -349,7 +349,7 @@ class YoutubeExtractorService implements IYoutubeClient {
                 seenVideoIds.add(videoId);
                 items.add(RawResourceItem(
                   title: title,
-                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                  sourceUrl: 'https://www.youtube.com/watch?v=$videoId&list=$playlistId',
                   durationSeconds: lengthSec,
                   index: index++,
                   thumbnailUrl: 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
@@ -522,7 +522,7 @@ class YoutubeExtractorService implements IYoutubeClient {
               seenVideoIds.add(videoId);
               items.add(RawResourceItem(
                 title: title,
-                sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                sourceUrl: 'https://www.youtube.com/watch?v=$videoId&list=$playlistId',
                 durationSeconds: lengthSec,
                 index: index++,
                 thumbnailUrl: 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
@@ -536,7 +536,7 @@ class YoutubeExtractorService implements IYoutubeClient {
               seenVideoIds.add(videoId);
               items.add(RawResourceItem(
                 title: title,
-                sourceUrl: 'https://www.youtube.com/watch?v=$videoId',
+                sourceUrl: 'https://www.youtube.com/watch?v=$videoId&list=$playlistId',
                 durationSeconds: 600,
                 index: index++,
                 thumbnailUrl: 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
