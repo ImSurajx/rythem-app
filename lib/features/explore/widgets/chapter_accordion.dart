@@ -71,6 +71,8 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
     final completedCount = widget.beats.where((b) => b.isCompleted).length;
     final totalCount = widget.beats.length;
+    final totalEffort = widget.beats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
+    final completedEffort = widget.beats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
     final gapsCount = widget.beats.where((b) => b.sourceUrl == null && !b.isMentorExtra).length;
 
@@ -144,14 +146,29 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                         const SizedBox(height: 4),
                         Row(
                           children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 13,
+                              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 2),
                             Text(
-                              '$completedCount of $totalCount beats',
+                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
                               style: RythemTypography.bodySmall.copyWith(
-                                color: themeColors.textTertiary,
+                                color: themeColors.textSecondary,
                                 fontSize: 11,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 5),
+                            Text(
+                              '($completedCount/$totalCount)',
+                              style: RythemTypography.bodySmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontSize: 10,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
                             Text(
                               '• ${(progressRatio * 100).toInt()}%',
                               style: RythemTypography.labelSmall.copyWith(
@@ -232,7 +249,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Center(
                             child: Text(
-                              'No beats in this chapter',
+                              'No topics in this module yet',
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                               ),
@@ -311,12 +328,13 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     for (int m = 0; m < milestoneSections.length; m++) {
       final milestone = milestoneSections[m];
       final beats = milestone.beats;
+      final milestoneEffort = beats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
       final completed = beats.where((b) => b.isCompleted).length;
 
       sections.add(
         _TopicGroupSection(
           title: milestone.title,
-          subtitle: '$completed/${beats.length} complete • ${beats.length} video${beats.length == 1 ? '' : 's'}',
+          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length} complete',
           icon: Icons.menu_book_rounded,
           accentColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
           themeColors: themeColors,

@@ -100,8 +100,8 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.textContaining('Fundamental Theorem'), findsOneWidget);
-      expect(find.byIcon(Icons.bolt_rounded), findsOneWidget);
-      expect(find.textContaining('2.5'), findsOneWidget);
+      expect(find.byIcon(Icons.bolt_rounded), findsWidgets);
+      expect(find.textContaining('2.5'), findsWidgets);
     });
 
     testWidgets('Completed task in Flow retains visibility and applies strike-through decoration', (tester) async {

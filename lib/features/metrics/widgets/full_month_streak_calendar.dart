@@ -251,7 +251,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '$totalMonthBeats beats • $activeDaysCount active days',
+                '⚡ $totalMonthBeats pts earned • $activeDaysCount active days',
                 style: RythemTypography.caption.copyWith(
                   color: widget.themeColors.textTertiary,
                   fontSize: 11,
@@ -386,8 +386,8 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   const Spacer(),
                   Text(
                     selectedCount > 0
-                        ? '$selectedCount beat${selectedCount == 1 ? '' : 's'} logged'
-                        : 'No beats recorded',
+                        ? '⚡ $selectedCount effort pts logged'
+                        : 'No effort recorded',
                     style: RythemTypography.caption.copyWith(
                       color: selectedCount > 0
                           ? (widget.isDark ? Colors.white : Colors.black)

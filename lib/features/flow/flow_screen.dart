@@ -620,56 +620,46 @@ class _TrackTodoListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.08)
-                                  : Colors.black.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.bolt_rounded,
-                                  size: 13,
-                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)}',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    color: themeColors.textPrimary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                            width: 0.8,
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.08)
-                                  : Colors.black.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 13,
+                              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                             ),
-                            child: Text(
-                              '$completedCount/$totalCount Beats',
+                            const SizedBox(width: 2),
+                            Text(
+                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
                               style: RythemTypography.labelSmall.copyWith(
-                                color: themeColors.textSecondary,
+                                color: themeColors.textPrimary,
                                 fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              '($completedCount/$totalCount)',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textSecondary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -717,7 +707,7 @@ class _TrackTodoListCard extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Center(
                 child: Text(
-                  'No beats in this track yet.',
+                  'No topics in this track yet.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                   ),
@@ -1030,7 +1020,7 @@ class _TrackTodoListCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Center(
                             child: Text(
-                              'View full tracker (${allBeats.length} beats) →',
+                              'View full tracker (⚡ ${totalEffort.toStringAsFixed(1)} pts • ${allBeats.length} topics) →',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: themeColors.textSecondary,
                                 fontWeight: FontWeight.w600,

@@ -308,7 +308,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.textContaining('1 beats • 1 active days'), findsOneWidget);
+      expect(find.textContaining('⚡ 1 pts earned • 1 active days'), findsOneWidget);
 
       // Mount PerformanceGraphsCard
       await tester.pumpWidget(
@@ -364,7 +364,7 @@ void main() {
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.textContaining('0 beats • 0 active days'), findsOneWidget);
+      expect(find.textContaining('⚡ 0 pts earned • 0 active days'), findsOneWidget);
     });
   });
 }

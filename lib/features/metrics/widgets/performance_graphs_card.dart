@@ -100,8 +100,8 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
 
     switch (_mode) {
       case GraphMode.sevenDays:
-        headerTitle = '7-DAY BEAT RHYTHM';
-        headerSubtitle = 'Daily completed beats over the past week';
+        headerTitle = '7-DAY EFFORT RHYTHM';
+        headerSubtitle = 'Daily effort points earned over the past week';
         headerIcon = Icons.bar_chart_rounded;
         break;
       case GraphMode.monthly:
@@ -110,8 +110,8 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         headerIcon = Icons.show_chart_rounded;
         break;
       case GraphMode.lifetime:
-        headerTitle = 'LIFETIME BEATS';
-        headerSubtitle = 'Cumulative lifetime beats curve showcasing deep flow momentum';
+        headerTitle = 'LIFETIME EFFORT';
+        headerSubtitle = 'Cumulative lifetime effort curve showcasing deep flow momentum';
         headerIcon = Icons.auto_graph_rounded;
         break;
     }
@@ -186,7 +186,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                       },
                     ),
                     _buildToggleItem(
-                      title: 'Lifetime Beats',
+                      title: 'Lifetime Effort',
                       isSelected: _mode == GraphMode.lifetime,
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -287,7 +287,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildMiniMetric('7D BEATS', '$total7Days', widget.themeColors),
+            _buildMiniMetric('7D EFFORT', '$total7Days ⚡', widget.themeColors),
             _buildMiniMetric('AVG PACE', '$avg7Days /d', widget.themeColors),
             _buildMiniMetric('ACTIVE DAYS', '$active7Days / 7d', widget.themeColors),
           ],
@@ -413,7 +413,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildMiniMetric('TOTAL BEATS', '$totalBeats', widget.themeColors),
+            _buildMiniMetric('MONTHLY EFFORT', '$totalBeats ⚡', widget.themeColors),
             _buildMiniMetric('PEAK VELOCITY', '$peakVelocity /d', widget.themeColors),
             _buildMiniMetric('ACTIVE DAYS', '$activeDays / ${now.day}d', widget.themeColors),
           ],
@@ -482,7 +482,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                     ),
                   ),
                   Text(
-                    '${selectedDay.count} beats completed',
+                    '⚡ ${selectedDay.count} pts earned',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -528,7 +528,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildMiniMetric('LIFETIME BEATS', '${cumulativePoints.last.cumulative} ⚡', widget.themeColors),
+            _buildMiniMetric('LIFETIME EFFORT', '${cumulativePoints.last.cumulative} ⚡', widget.themeColors),
             _buildMiniMetric('ACTIVE JOURNEY', '${cumulativePoints.length}d', widget.themeColors),
             _buildMiniMetric('MILESTONES', '${(cumulativePoints.last.cumulative / 10).floor()} achieved 🎯', widget.themeColors),
           ],
@@ -595,7 +595,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                 ],
               ),
               Text(
-                '${selectedPoint.cumulative} lifetime beats',
+                '⚡ ${selectedPoint.cumulative} lifetime pts',
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,

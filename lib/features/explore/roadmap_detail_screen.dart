@@ -20,8 +20,6 @@ import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 import 'package:rythem_app/features/flow/session_detail_screen.dart';
 import '../../core/navigation/smooth_page_route.dart';
 import '../../core/ingestion/services/curriculum_ingestion_service.dart';
-import '../../core/ingestion/services/youtube_extractor_service.dart';
-import 'package:rythem_app/core/database/repositories/app_settings_repository.dart';
 import 'widgets/chapter_accordion.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
@@ -69,7 +67,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   final _roadmapRepo = RoadmapRepository();
   final _chapterRepo = ChapterRepository();
   final _beatRepo = BeatRepository();
-  final _settingsRepo = AppSettingsRepository();
   final _ingestionService = CurriculumIngestionService();
   StreamSubscription<DatabaseEvent>? _eventSub;
   bool _isAttaching = false;
@@ -125,158 +122,18 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     }
   }
 
-  Future<void> _handleSyncResources({bool forcePrompt = false}) async {
-    if (_isSyncing) return;
-
-    final storedUrl = await _settingsRepo.getSetting('roadmap_source_url_${_currentRoadmap.id}');
-    final hasPlaylistInBeats = _currentBeats.any((b) =>
-        b.sourceUrl != null && YoutubeExtractorService.parsePlaylistId(b.sourceUrl!) != null);
-    final hasDescPlaylist = YoutubeExtractorService.parsePlaylistId(_currentRoadmap.description ?? '') != null;
-
-    if (forcePrompt || (storedUrl == null && !hasPlaylistInBeats && !hasDescPlaylist)) {
-      _showSyncResourceDialog(storedUrl);
-      return;
-    }
-
-    await _executeSync(storedUrl);
-  }
-
-  void _showSyncResourceDialog(String? currentUrl) {
-    final controller = TextEditingController(text: currentUrl ?? '');
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final theme = Theme.of(ctx);
-        final isDark = theme.brightness == Brightness.dark;
-        final themeColors = isDark ? RythemColors.dark : RythemColors.light;
-
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xF0181818) : const Color(0xF5FFFFFF),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border.all(
-                color: isDark ? themeColors.glassBorder : const Color(0x20000000),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'SYNC TRACK RESOURCES',
-                      style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, size: 20, color: themeColors.textSecondary),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Enter a YouTube playlist or video URL to fetch fresh video durations, remap exact 10-minute effort points (⚡), and append newly uploaded videos.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 11.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'https://youtube.com/playlist?list=... or video URL',
-                    hintStyle: TextStyle(color: themeColors.textTertiary, fontSize: 12),
-                    filled: true,
-                    fillColor: isDark
-                        ? Colors.white.withOpacity(0.06)
-                        : Colors.black.withOpacity(0.04),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: themeColors.glassBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: themeColors.glassBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark ? themeColors.glassBorderHighlight : Colors.black87,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: GlassButton(
-                    label: 'Sync Resource URL',
-                    icon: Icons.sync_rounded,
-                    height: 48,
-                    variant: GlassButtonVariant.primary,
-                    onPressed: () {
-                      final url = controller.text.trim();
-                      Navigator.pop(ctx);
-                      _executeSync(url.isNotEmpty ? url : null);
-                    },
-                  ),
-                ),
-                if (_currentBeats.any((b) => b.sourceUrl != null && b.sourceUrl!.isNotEmpty)) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: GlassButton(
-                      label: 'Sync Existing Video Links',
-                      icon: Icons.link_rounded,
-                      height: 44,
-                      variant: GlassButtonVariant.secondary,
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _executeSync(null);
-                      },
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _executeSync([String? customUrl]) async {
+  Future<void> _handleSyncResources() async {
     if (_isSyncing) return;
     HapticFeedback.mediumImpact();
     setState(() => _isSyncing = true);
     showGlassToast(
       context,
-      'Refetching & remapping resources...',
+      'Syncing & remapping all module playlists...',
       icon: Icons.sync_rounded,
       accentColor: const Color(0xFF6366F1),
     );
 
     try {
-      if (customUrl != null && customUrl.trim().isNotEmpty) {
-        await _settingsRepo.setSetting('roadmap_source_url_${_currentRoadmap.id}', customUrl.trim());
-      }
       final result = await _ingestionService
           .syncAndRemapRoadmapResources(_currentRoadmap.id)
           .timeout(const Duration(seconds: 45));
@@ -864,10 +721,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                           const SizedBox(width: 8),
                           Tooltip(
-                            message: 'Sync & Remap Resources (Hold to edit URL)',
+                            message: 'Sync & Remap Resources',
                             child: GestureDetector(
-                              onTap: _isSyncing ? null : () => _handleSyncResources(),
-                              onLongPress: _isSyncing ? null : () => _handleSyncResources(forcePrompt: true),
+                              onTap: _isSyncing ? null : _handleSyncResources,
                               behavior: HitTestBehavior.opaque,
                               child: Container(
                                 width: 32,
@@ -985,12 +841,31 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '$completedCount of $totalCount beats completed',
-                                style: RythemTypography.bodySmall.copyWith(
-                                  color: themeColors.textSecondary,
-                                  fontSize: 12,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.bolt_rounded,
+                                    size: 14,
+                                    color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts completed',
+                                    style: RythemTypography.bodySmall.copyWith(
+                                      color: themeColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    ' • $completedCount/$totalCount topics',
+                                    style: RythemTypography.bodySmall.copyWith(
+                                      color: themeColors.textSecondary,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
                               ),
                               Text(
                                 '${(progressRatio * 100).toInt()}%',

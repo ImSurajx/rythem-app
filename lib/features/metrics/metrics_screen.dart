@@ -130,7 +130,7 @@ class MetricsScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'COMPLETED BEATS',
+                      'EFFORT POINTS EARNED',
                       style: RythemTypography.labelSmall.copyWith(
                         color: themeColors.textTertiary,
                         fontSize: 10,
@@ -139,7 +139,7 @@ class MetricsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '$completedBeats of $totalBeats total',
+                      'of ${totalEffort.toStringAsFixed(1)} pts ($completedBeats/$totalBeats topics)',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textSecondary,
                         fontSize: 11,
@@ -148,14 +148,30 @@ class MetricsScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  '$completedBeats',
-                  style: RythemTypography.displayMedium.copyWith(
-                    color: themeColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 40,
-                    height: 1.0,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      completedEffort.toStringAsFixed(1),
+                      style: RythemTypography.displayMedium.copyWith(
+                        color: themeColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 40,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '⚡ pts',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Divider(
@@ -222,6 +238,8 @@ class MetricsScreen extends StatelessWidget {
             ...roadmaps.map((rm) {
               final beats = beatsByRoadmap[rm.id] ?? [];
               final rmCompleted = beats.where((b) => b.isCompleted).length;
+              final rmTotalEffort = beats.fold<double>(0.0, (acc, b) => acc + b.effortWeight);
+              final rmCompletedEffort = beats.where((b) => b.isCompleted).fold<double>(0.0, (acc, b) => acc + b.effortWeight);
               final budget = budgetsByRoadmap?[rm.id] ??
                   (rm.id == activeBudget?.roadmapId ? activeBudget : null);
 
@@ -231,6 +249,8 @@ class MetricsScreen extends StatelessWidget {
                   roadmap: rm,
                   totalBeats: beats.length,
                   completedBeats: rmCompleted,
+                  totalEffort: rmTotalEffort,
+                  completedEffort: rmCompletedEffort,
                   budget: budget,
                   themeColors: themeColors,
                   isDark: isDark,
@@ -291,6 +311,8 @@ class _TrackOverviewCard extends StatelessWidget {
   final RoadmapEntity roadmap;
   final int totalBeats;
   final int completedBeats;
+  final double totalEffort;
+  final double completedEffort;
   final PacingBudget? budget;
   final RythemColorTokens themeColors;
   final bool isDark;
@@ -300,6 +322,8 @@ class _TrackOverviewCard extends StatelessWidget {
     required this.roadmap,
     required this.totalBeats,
     required this.completedBeats,
+    required this.totalEffort,
+    required this.completedEffort,
     required this.budget,
     required this.themeColors,
     required this.isDark,
@@ -381,12 +405,23 @@ class _TrackOverviewCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '$completedBeats / $totalBeats Beats (${(progress * 100).toInt()}%)',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textSecondary,
-                    fontSize: 10.5,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.bolt_rounded,
+                      size: 13,
+                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${completedEffort.toStringAsFixed(1)} / ${totalEffort.toStringAsFixed(1)} pts (${(progress * 100).toInt()}%)',
+                      style: RythemTypography.labelSmall.copyWith(
+                        color: themeColors.textSecondary,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
                 ),
                 if (budget != null)
                   Text(

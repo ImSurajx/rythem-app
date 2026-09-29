@@ -263,7 +263,8 @@ void main() {
       // Header info
       expect(find.text('Distributed Systems Architecture'), findsWidgets);
       expect(find.text('ENGINEERING'), findsOneWidget);
-      expect(find.text('1 of 3 beats completed'), findsOneWidget);
+      expect(find.text('1.0 of 3.5 pts completed'), findsOneWidget);
+      expect(find.text(' • 1/3 topics'), findsOneWidget);
       expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
 
       // Chapter 1 beats visible (first chapter expanded by default)

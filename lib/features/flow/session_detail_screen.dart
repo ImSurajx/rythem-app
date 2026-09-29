@@ -66,6 +66,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       _currentBeats.where((b) => b.id == _activeBeatId).firstOrNull;
 
   int get _completedCount => _currentBeats.where((b) => b.isCompleted).length;
+  double get _totalEffort =>
+      _currentBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
+  double get _completedEffort => _currentBeats
+      .where((b) => b.isCompleted)
+      .fold<double>(0.0, (sum, b) => sum + b.effortWeight);
   double get _progressRatio =>
       _currentBeats.isEmpty ? 0.0 : _completedCount / _currentBeats.length;
 
@@ -132,10 +137,10 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           curve: Curves.easeOutCubic,
         );
       } else {
-        // All beats finished
+        // All topics finished
         showGlassToast(
           context,
-          'All chapter beats complete! Returning to Flow...',
+          'All module topics complete! (⚡ ${_totalEffort.toStringAsFixed(1)} pts earned)',
           icon: Icons.check_circle_outline_rounded,
         );
         Future.delayed(const Duration(milliseconds: 600), () {
@@ -204,7 +209,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
                           color: isDark
                               ? Colors.white.withOpacity(0.08)
@@ -214,13 +219,24 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                             color: isDark ? themeColors.glassBorder : const Color(0x14000000),
                           ),
                         ),
-                        child: Text(
-                          '$_completedCount of ${_currentBeats.length}',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10.5,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 13,
+                              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${_completedEffort.toStringAsFixed(1)}/${_totalEffort.toStringAsFixed(1)} pts',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -243,7 +259,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   child: _currentBeats.isEmpty
                       ? Center(
                           child: Text(
-                            'No beats found in this chapter',
+                            'No topics found in this module',
                             style: RythemTypography.bodyMedium.copyWith(
                               color: themeColors.textTertiary,
                             ),
@@ -331,7 +347,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _activeBeat?.title ?? 'All beats complete',
+                                _activeBeat?.title ?? 'All topics complete',
                                 style: RythemTypography.bodySmall.copyWith(
                                   color: themeColors.textPrimary,
                                   fontWeight: FontWeight.w600,

@@ -303,9 +303,9 @@ void main() {
 
       expect(response, contains('Tracker Status & Timeline Analysis'));
       expect(response, contains('DSA with Python'));
-      expect(response, contains('1 of 2 beats completed'));
+      expect(response, contains('1 of 2 topics completed'));
       expect(response, contains('days'));
-      expect(response, contains('beats/day'));
+      expect(response, contains('effort pts/day'));
     });
   });
 }

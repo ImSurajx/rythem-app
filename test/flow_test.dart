@@ -202,7 +202,8 @@ void main() {
       // Focus headers
       expect(find.text('ACTIVE ROADMAP'), findsOneWidget);
       expect(find.text('Core Mathematics'), findsOneWidget);
-      expect(find.text('0 of 2'), findsOneWidget);
+      expect(find.text('0.0/2.5 pts'), findsOneWidget);
+      expect(find.byIcon(Icons.bolt_rounded), findsWidgets);
 
       // Beat sequence (appears in list and active bottom bar)
       expect(find.text('First Beat Title'), findsWidgets);

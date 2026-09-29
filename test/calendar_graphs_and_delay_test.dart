@@ -103,21 +103,21 @@ void main() {
 
       // Verify Unified Performance Graphs card exists with 3 modes
       expect(find.byType(PerformanceGraphsCard), findsOneWidget);
-      expect(find.text('7-DAY BEAT RHYTHM'), findsOneWidget);
+      expect(find.text('7-DAY EFFORT RHYTHM'), findsOneWidget);
       expect(find.text('7 Days'), findsOneWidget);
       expect(find.text('Monthly'), findsOneWidget);
-      expect(find.text('Lifetime Beats'), findsOneWidget);
+      expect(find.text('Lifetime Effort'), findsOneWidget);
 
       // Verify toggling to Monthly works
       await tester.tap(find.text('Monthly'));
       await tester.pumpAndSettle();
       expect(find.text('MONTHLY PERFORMANCE'), findsOneWidget);
 
-      // Verify toggling to Lifetime Beats works
-      await tester.tap(find.text('Lifetime Beats'));
+      // Verify toggling to Lifetime Effort works
+      await tester.tap(find.text('Lifetime Effort'));
       await tester.pumpAndSettle();
 
-      expect(find.text('LIFETIME BEATS'), findsWidgets);
+      expect(find.text('LIFETIME EFFORT'), findsWidgets);
     });
 
     testWidgets('FullMonthStreakCalendar supports navigating previous and next months', (tester) async {
@@ -192,7 +192,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should show honest zero values for empty state
-      expect(find.text('0'), findsWidgets);
+      expect(find.text('0 ⚡'), findsOneWidget);
       expect(find.text('0.0 /d'), findsOneWidget);
       expect(find.text('0 / 7d'), findsOneWidget);
     });
