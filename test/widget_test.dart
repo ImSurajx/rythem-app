@@ -132,7 +132,7 @@ void main() {
     // Verify Explore screen structure
     expect(find.text('EXPLORE'), findsOneWidget);
     expect(find.text('All Tracks'), findsOneWidget);
-    expect(find.text('New Track'), findsOneWidget);
+    expect(find.byIcon(Icons.add_rounded), findsWidgets);
 
     // Switch to Settings tab
     await tester.tap(find.text('Settings'));

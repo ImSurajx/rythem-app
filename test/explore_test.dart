@@ -8,8 +8,14 @@ import 'package:rythem_app/features/explore/explore_screen.dart';
 import 'package:rythem_app/features/explore/new_track_modal.dart';
 import 'package:rythem_app/features/explore/roadmap_detail_screen.dart';
 import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+
   final now = DateTime(2026, 9, 13, 10, 0);
 
   final testRoadmap1 = RoadmapEntity(
@@ -117,10 +123,10 @@ void main() {
         ),
       );
 
-      // Verify Header & New Track Button
+      // Verify Header & Round New Track Icon Button
       expect(find.text('EXPLORE'), findsOneWidget);
       expect(find.text('All Tracks'), findsOneWidget);
-      expect(find.text('New Track'), findsOneWidget);
+      expect(find.byIcon(Icons.add_rounded), findsWidgets);
 
       // Verify Roadmap Cards
       expect(find.text('Distributed Systems Architecture'), findsOneWidget);
@@ -258,7 +264,7 @@ void main() {
       expect(find.text('Distributed Systems Architecture'), findsWidgets);
       expect(find.text('ENGINEERING'), findsOneWidget);
       expect(find.text('1 of 3 beats completed'), findsOneWidget);
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
 
       // Chapter 1 beats visible (first chapter expanded by default)
       expect(find.text('Consensus & Raft Protocol'), findsOneWidget);

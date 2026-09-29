@@ -91,6 +91,11 @@ class ModelDownloadManager {
     _overrideModelsDir = dir;
   }
 
+  @visibleForTesting
+  void setDownloadingTierForTesting(ModelTier? tier) {
+    _downloadingTier = tier;
+  }
+
   bool get isDownloading => _downloadingTier != null;
   ModelTier? get downloadingTier => _downloadingTier;
 
@@ -266,6 +271,10 @@ class ModelDownloadManager {
   }) async {
     if (tier == ModelTier.fallback) return;
     if (_downloadingTier != null) {
+      if (_downloadingTier == tier) {
+        // Download for this tier is already actively running in the background; return cleanly
+        return;
+      }
       throw StateError('Another download is already in progress: $_downloadingTier');
     }
 

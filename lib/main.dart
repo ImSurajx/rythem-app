@@ -709,6 +709,10 @@ class _DesignSystemShowcaseScreenState
   }
 
   Future<void> _handleDownloadModel(ModelTier tier) async {
+    if (_modelDownloadManager.isDownloading && _modelDownloadManager.downloadingTier == tier) {
+      _showToast('${ModelInfo.forTier(tier).displayName} download in progress...');
+      return;
+    }
     _modelDownloadManager.clearDownloadError();
     HapticFeedback.mediumImpact();
     _showToast('Downloading ${ModelInfo.forTier(tier).displayName}...');
@@ -717,6 +721,11 @@ class _DesignSystemShowcaseScreenState
       await _loadModelStatus();
       _showToast('${ModelInfo.forTier(tier).displayName} ready & activated!');
     } catch (e) {
+      if (e.toString().contains('already in progress')) {
+        // Silently ignore if already streaming in the background
+        await _loadModelStatus();
+        return;
+      }
       if (mounted) {
         GlassErrorDialog.show(
           context,

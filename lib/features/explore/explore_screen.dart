@@ -188,12 +188,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 ],
               ),
-              GlassButton(
-                label: 'New Track',
-                icon: Icons.add_rounded,
-                height: 38,
-                variant: GlassButtonVariant.primary,
-                onPressed: _openNewTrackModal,
+              Tooltip(
+                message: 'New Track',
+                child: GestureDetector(
+                  onTap: _openNewTrackModal,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: themeColors.textPrimary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark ? Colors.black.withOpacity(0.3) : const Color(0xFF0E1420).withOpacity(0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: 22,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

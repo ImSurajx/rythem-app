@@ -4,6 +4,7 @@ import '../../ai/services/local_inference_service.dart';
 import '../../ai/models/curriculum_audit_result.dart';
 import '../models/extracted_resource.dart';
 import '../models/ingestion_result.dart';
+import '../models/sync_result.dart';
 import '../models/syllabus_topic.dart';
 import '../parsers/chapter_clusterer.dart';
 import '../parsers/effort_weight_calculator.dart';
@@ -568,5 +569,162 @@ class CurriculumIngestionService {
     );
 
     await _beatRepo.updateBeat(updated);
+  }
+
+  /// Refetches and remaps resources for an entire roadmap:
+  /// - Gathers all attached playlists and video resources.
+  /// - Extracts fresh durations and timestamps.
+  /// - Converts duration to 10-minute effort points: (durationSeconds / 600.0).
+  /// - Matches each item by YouTube Video ID and updates corresponding beats in SQLite.
+  /// - Appends any newly uploaded creator videos from the playlist.
+  /// - Strictly preserves user completion status, checkpoints, and notes.
+  /// - Returns a [SyncResult] with count of updated topics and total effort points.
+  Future<SyncResult> syncAndRemapRoadmapResources(String roadmapId) async {
+    final roadmap = await _roadmapRepo.getRoadmapById(roadmapId);
+    if (roadmap == null) {
+      throw Exception('Roadmap not found: $roadmapId');
+    }
+
+    final chapters = await _chapterRepo.getChaptersByRoadmapId(roadmapId);
+    final beats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
+    if (beats.isEmpty) {
+      return const SyncResult(
+        updatedTopicsCount: 0,
+        newTopicsAddedCount: 0,
+        totalEffortPoints: 0.0,
+      );
+    }
+
+    // 1. Identify all playlist URLs and standalone video URLs
+    final playlistUrls = <String>{};
+    final standaloneVideoBeats = <BeatEntity>[];
+
+    for (final beat in beats) {
+      final url = beat.sourceUrl?.trim();
+      if (url == null || url.isEmpty) continue;
+
+      final playlistId = YoutubeExtractorService.parsePlaylistId(url);
+      if (playlistId != null) {
+        playlistUrls.add('https://www.youtube.com/playlist?list=$playlistId');
+      } else if (YoutubeExtractorService.parseVideoId(url) != null) {
+        standaloneVideoBeats.add(beat);
+      }
+    }
+
+    int updatedCount = 0;
+    int newCount = 0;
+    final updatedBeatMap = <String, BeatEntity>{};
+    final newBeats = <BeatEntity>[];
+
+    // 2. Sync from Playlist URLs
+    for (final pUrl in playlistUrls) {
+      try {
+        final extracted = await _youtubeClient.extractPlaylist(pUrl);
+        if (extracted.items.isEmpty) continue;
+
+        for (int i = 0; i < extracted.items.length; i++) {
+          final item = extracted.items[i];
+          final videoId = YoutubeExtractorService.parseVideoId(item.sourceUrl);
+          if (videoId == null) continue;
+
+          final effort = EffortWeightCalculator.calculate(item.durationSeconds);
+
+          // Find match among existing beats by video ID
+          final match = beats.where((b) {
+            if (b.sourceUrl == null) return false;
+            final bVid = YoutubeExtractorService.parseVideoId(b.sourceUrl!);
+            if (bVid != videoId) return false;
+            if (item.timestampSeconds != null && b.timestampSeconds != null) {
+              return (item.timestampSeconds! - b.timestampSeconds!).abs() < 5;
+            }
+            return true;
+          }).firstOrNull;
+
+          if (match != null) {
+            // Remap existing beat with exact new 10-min effort
+            final updated = match.copyWith(
+              title: item.title,
+              effortWeight: effort,
+              timestampSeconds: item.timestampSeconds ?? match.timestampSeconds,
+              updatedAt: DateTime.now(),
+            );
+            updatedBeatMap[match.id] = updated;
+            updatedCount++;
+          } else {
+            // New video in the playlist! Append to the latest chapter
+            final targetChapterId = chapters.isNotEmpty ? chapters.last.id : '';
+            if (targetChapterId.isNotEmpty) {
+              final newBeat = BeatEntity(
+                id: '${targetChapterId}_sync_${videoId}_$i',
+                chapterId: targetChapterId,
+                roadmapId: roadmapId,
+                title: item.title,
+                sourceUrl: item.sourceUrl,
+                timestampSeconds: item.timestampSeconds,
+                effortWeight: effort,
+                sortOrder: beats.length + newBeats.length,
+                isCompleted: false,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+              newBeats.add(newBeat);
+              newCount++;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Notice: Error syncing playlist $pUrl: $e');
+      }
+    }
+
+    // 3. Sync standalone videos that were not part of a playlist
+    for (final beat in standaloneVideoBeats) {
+      if (updatedBeatMap.containsKey(beat.id)) continue;
+      try {
+        final extracted = await _youtubeClient.extractVideo(beat.sourceUrl!);
+        if (extracted.items.isNotEmpty) {
+          final effort = EffortWeightCalculator.calculate(extracted.items.first.durationSeconds);
+          final updated = beat.copyWith(
+            effortWeight: effort,
+            updatedAt: DateTime.now(),
+          );
+          updatedBeatMap[beat.id] = updated;
+          updatedCount++;
+        }
+      } catch (_) {}
+    }
+
+    // 4. Also remap any remaining beats that were not touched
+    for (final beat in beats) {
+      if (!updatedBeatMap.containsKey(beat.id)) {
+        if (beat.effortWeight <= 0) {
+          updatedBeatMap[beat.id] = beat.copyWith(
+            effortWeight: 1.0,
+            updatedAt: DateTime.now(),
+          );
+          updatedCount++;
+        }
+      }
+    }
+
+    // 5. Persist updates and new beats to SQLite
+    for (final updatedBeat in updatedBeatMap.values) {
+      await _beatRepo.updateBeat(updatedBeat);
+    }
+    if (newBeats.isNotEmpty) {
+      await _beatRepo.createBeatsBatch(newBeats);
+    }
+
+    // 6. Recalculate roadmap total effort
+    final finalBeats = await _beatRepo.getBeatsByRoadmapId(roadmapId);
+    final totalEffort = finalBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
+
+    await _roadmapRepo.updateRoadmap(roadmap.copyWith(updatedAt: DateTime.now()));
+
+    return SyncResult(
+      updatedTopicsCount: updatedCount,
+      newTopicsAddedCount: newCount,
+      totalEffortPoints: double.parse(totalEffort.toStringAsFixed(1)),
+    );
   }
 }

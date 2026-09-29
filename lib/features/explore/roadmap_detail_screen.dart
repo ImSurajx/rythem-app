@@ -19,6 +19,7 @@ import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 import 'package:rythem_app/features/flow/session_detail_screen.dart';
 import '../../core/navigation/smooth_page_route.dart';
+import '../../core/ingestion/services/curriculum_ingestion_service.dart';
 import 'widgets/chapter_accordion.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
@@ -66,8 +67,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   final _roadmapRepo = RoadmapRepository();
   final _chapterRepo = ChapterRepository();
   final _beatRepo = BeatRepository();
+  final _ingestionService = CurriculumIngestionService();
   StreamSubscription<DatabaseEvent>? _eventSub;
   bool _isAttaching = false;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -116,6 +119,42 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       }
     } catch (e) {
       debugPrint('Error reloading roadmap detail from DB: $e');
+    }
+  }
+
+  Future<void> _handleSyncResources() async {
+    if (_isSyncing) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _isSyncing = true);
+    showGlassToast(
+      context,
+      'Refetching & remapping resources...',
+      icon: Icons.sync_rounded,
+      accentColor: const Color(0xFF6366F1),
+    );
+
+    try {
+      final result = await _ingestionService.syncAndRemapRoadmapResources(_currentRoadmap.id);
+      await _reloadFromDb();
+      if (mounted) {
+        showGlassToast(
+          context,
+          'Synced: ${result.updatedTopicsCount} topics remapped (${result.totalEffortPoints.toStringAsFixed(1)} pts total)! ⚡',
+          icon: Icons.check_circle_outline_rounded,
+          accentColor: const Color(0xFF10B981),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showGlassToast(
+          context,
+          'Sync failed: $e',
+          icon: Icons.error_outline_rounded,
+          accentColor: Colors.redAccent,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
     }
   }
 
@@ -672,12 +711,40 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          GlassButton(
-                            label: 'Add',
-                            icon: Icons.link_rounded,
-                            height: 32,
-                            variant: GlassButtonVariant.secondary,
-                            onPressed: _showAttachResourceDialog,
+                          Tooltip(
+                            message: 'Sync & Remap Resources',
+                            child: GestureDetector(
+                              onTap: _isSyncing ? null : _handleSyncResources,
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                                  border: Border.all(
+                                    color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
+                                    width: 0.9,
+                                  ),
+                                ),
+                                child: _isSyncing
+                                    ? Center(
+                                        child: SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.8,
+                                            valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                                          ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.sync_rounded,
+                                        size: 16,
+                                        color: themeColors.textPrimary,
+                                      ),
+                              ),
+                            ),
                           ),
                           if (widget.onDeleteRoadmap != null) ...[
                             const SizedBox(width: 6),
@@ -974,28 +1041,46 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  GlassButton(
-                                    label: nextPendingBeat.sourceUrl?.isNotEmpty == true
+                                  Tooltip(
+                                    message: nextPendingBeat.sourceUrl?.isNotEmpty == true
                                         ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
-                                            ? 'Watch'
-                                            : 'Learn')
-                                        : 'Start',
-                                    icon: nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                        ? Icons.open_in_new_rounded
-                                        : null,
-                                    height: 34,
-                                    variant: GlassButtonVariant.secondary,
-                                    onPressed: () {
-                                      if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
-                                        ResourceLauncher.openResource(
-                                          context,
-                                          url: nextPendingBeat.sourceUrl,
-                                          title: nextPendingBeat.title,
-                                        );
-                                      } else {
-                                        _openFocusSession(nextPendingBeat);
-                                      }
-                                    },
+                                            ? 'Watch Video'
+                                            : 'Open Resource')
+                                        : 'Start Focus',
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
+                                          ResourceLauncher.openResource(
+                                            context,
+                                            url: nextPendingBeat.sourceUrl,
+                                            title: nextPendingBeat.title,
+                                          );
+                                        } else {
+                                          _openFocusSession(nextPendingBeat);
+                                        }
+                                      },
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        width: 34,
+                                        height: 34,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: themeColors.textPrimary,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: isDark ? Colors.black.withOpacity(0.25) : const Color(0xFF0E1420).withOpacity(0.12),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          Icons.play_arrow_rounded,
+                                          size: 20,
+                                          color: isDark ? Colors.black : Colors.white,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

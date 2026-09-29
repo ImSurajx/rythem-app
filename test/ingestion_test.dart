@@ -61,25 +61,26 @@ void main() {
       expect(segments[4].durationSeconds, 900); // 7200 - 6300 = 900s
     });
 
-    test('calculates invisible effort weight with 15m as baseline 1.0 unit', () {
-      // 5 min (< 15 min) -> ~0.7
+    test('calculates effort weight with 10m as baseline 1.0 unit', () {
+      // 5 min (< 10 min) -> 0.5
       final shortWeight = EffortWeightCalculator.calculate(300);
-      expect(shortWeight, lessThan(1.0));
-      expect(shortWeight, greaterThanOrEqualTo(0.5));
+      expect(shortWeight, 0.5);
 
-      // 15 min -> 1.0 baseline
-      final baselineWeight = EffortWeightCalculator.calculate(900);
+      // 10 min -> 1.0 baseline
+      final baselineWeight = EffortWeightCalculator.calculate(600);
       expect(baselineWeight, 1.0);
 
-      // 30 min -> ~1.8
-      final medWeight = EffortWeightCalculator.calculate(1800);
-      expect(medWeight, greaterThan(1.0));
-      expect(medWeight, lessThan(2.5));
+      // 14 min -> 1.4 (10 + 4 = 1.0 + 0.4)
+      final fourteenMinWeight = EffortWeightCalculator.calculate(840);
+      expect(fourteenMinWeight, 1.4);
 
-      // 60 min -> ~2.5
+      // 30 min -> 3.0
+      final medWeight = EffortWeightCalculator.calculate(1800);
+      expect(medWeight, 3.0);
+
+      // 60 min -> 6.0
       final longWeight = EffortWeightCalculator.calculate(3600);
-      expect(longWeight, greaterThan(2.0));
-      expect(longWeight, lessThanOrEqualTo(EffortWeightCalculator.maxWeight));
+      expect(longWeight, 6.0);
     });
   });
 
