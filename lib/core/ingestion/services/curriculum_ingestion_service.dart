@@ -616,10 +616,12 @@ class CurriculumIngestionService {
     final updatedBeatMap = <String, BeatEntity>{};
     final newBeats = <BeatEntity>[];
 
-    // 2. Sync from Playlist URLs
+    // 2. Sync from Playlist URLs with timeout
     for (final pUrl in playlistUrls) {
       try {
-        final extracted = await _youtubeClient.extractPlaylist(pUrl);
+        final extracted = await _youtubeClient
+            .extractPlaylist(pUrl)
+            .timeout(const Duration(seconds: 10));
         if (extracted.items.isEmpty) continue;
 
         for (int i = 0; i < extracted.items.length; i++) {
@@ -673,33 +675,57 @@ class CurriculumIngestionService {
           }
         }
       } catch (e) {
-        debugPrint('Notice: Error syncing playlist $pUrl: $e');
+        debugPrint('Notice: Error or timeout syncing playlist $pUrl: $e');
       }
     }
 
-    // 3. Sync standalone videos that were not part of a playlist
-    for (final beat in standaloneVideoBeats) {
-      if (updatedBeatMap.containsKey(beat.id)) continue;
-      try {
-        final extracted = await _youtubeClient.extractVideo(beat.sourceUrl!);
-        if (extracted.items.isNotEmpty) {
-          final effort = EffortWeightCalculator.calculate(extracted.items.first.durationSeconds);
-          final updated = beat.copyWith(
-            effortWeight: effort,
-            updatedAt: DateTime.now(),
-          );
-          updatedBeatMap[beat.id] = updated;
-          updatedCount++;
-        }
-      } catch (_) {}
+    // 3. Sync standalone videos with bounded concurrency and timeout
+    final remainingStandalone = standaloneVideoBeats
+        .where((b) => !updatedBeatMap.containsKey(b.id))
+        .toList();
+
+    const batchSize = 4;
+    for (int i = 0; i < remainingStandalone.length; i += batchSize) {
+      final batch = remainingStandalone.sublist(
+        i,
+        i + batchSize > remainingStandalone.length
+            ? remainingStandalone.length
+            : i + batchSize,
+      );
+
+      await Future.wait(
+        batch.map((beat) async {
+          try {
+            final extracted = await _youtubeClient
+                .extractVideo(beat.sourceUrl!)
+                .timeout(const Duration(seconds: 5));
+            if (extracted.items.isNotEmpty) {
+              final effort = EffortWeightCalculator.calculate(
+                  extracted.items.first.durationSeconds);
+              final updated = beat.copyWith(
+                effortWeight: effort,
+                updatedAt: DateTime.now(),
+              );
+              updatedBeatMap[beat.id] = updated;
+              updatedCount++;
+            }
+          } catch (_) {
+            // Gracefully keep existing or normalized effort on network error/timeout
+          }
+        }),
+      );
     }
 
-    // 4. Also remap any remaining beats that were not touched
+    // 4. Ensure all remaining beats have valid 10-minute effort points
     for (final beat in beats) {
       if (!updatedBeatMap.containsKey(beat.id)) {
-        if (beat.effortWeight <= 0) {
+        final currentEffort = beat.effortWeight;
+        final normalized = currentEffort <= 0
+            ? 1.0
+            : double.parse(currentEffort.clamp(0.1, 50.0).toStringAsFixed(1));
+        if (normalized != currentEffort) {
           updatedBeatMap[beat.id] = beat.copyWith(
-            effortWeight: 1.0,
+            effortWeight: normalized,
             updatedAt: DateTime.now(),
           );
           updatedCount++;
@@ -720,6 +746,13 @@ class CurriculumIngestionService {
     final totalEffort = finalBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
 
     await _roadmapRepo.updateRoadmap(roadmap.copyWith(updatedAt: DateTime.now()));
+
+    // 7. Emit database event so all screens (FlowScreen, Explore, etc.) refresh
+    DatabaseEventBus.instance.emit(DatabaseEvent(
+      type: DatabaseEventType.roadmapUpdated,
+      entityId: roadmapId,
+      roadmapId: roadmapId,
+    ));
 
     return SyncResult(
       updatedTopicsCount: updatedCount,

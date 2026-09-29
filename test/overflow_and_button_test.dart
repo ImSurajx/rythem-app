@@ -74,8 +74,8 @@ void main() {
       // Verify text is present and does not trigger Flutter overflow error
       expect(tester.takeException(), isNull);
       expect(find.textContaining('Fundamental Theorem'), findsOneWidget);
-      expect(find.textContaining('video'), findsOneWidget);
-      expect(find.textContaining('2.5 effort'), findsOneWidget);
+      expect(find.byIcon(Icons.bolt_rounded), findsWidgets);
+      expect(find.textContaining('2.5'), findsWidgets);
     });
 
     testWidgets('ChapterAccordion renders long chapter title and long beat metadata without overflow', (tester) async {
@@ -100,8 +100,8 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.textContaining('Fundamental Theorem'), findsOneWidget);
-      expect(find.textContaining('video'), findsOneWidget);
-      expect(find.textContaining('2.5 effort'), findsOneWidget);
+      expect(find.byIcon(Icons.bolt_rounded), findsOneWidget);
+      expect(find.textContaining('2.5'), findsOneWidget);
     });
 
     testWidgets('Completed task in Flow retains visibility and applies strike-through decoration', (tester) async {

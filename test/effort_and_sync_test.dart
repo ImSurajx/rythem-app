@@ -14,6 +14,7 @@ import 'package:rythem_app/core/ingestion/models/extracted_resource.dart';
 import 'package:rythem_app/core/ingestion/parsers/effort_weight_calculator.dart';
 import 'package:rythem_app/core/ingestion/services/curriculum_ingestion_service.dart';
 import 'package:rythem_app/core/ingestion/services/youtube_extractor_service.dart';
+import 'package:rythem_app/core/backup/services/backup_service.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/explore/roadmap_detail_screen.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -303,6 +304,100 @@ void main() {
       // Verify redundant "Watch" text button was replaced by round Play icon
       expect(find.text('Watch'), findsNothing);
       expect(find.byIcon(Icons.play_arrow_rounded), findsAtLeastNWidgets(1));
+
+      // Verify energy symbol (Icons.bolt_rounded) is used instead of "video" or "effort" text
+      expect(find.byIcon(Icons.bolt_rounded), findsWidgets);
+      expect(find.text('video'), findsNothing);
+      expect(find.text('linked'), findsNothing);
+      expect(find.text('1.4 effort'), findsNothing);
+
+      // Verify EFFORT stats chip exists in header
+      expect(find.text('EFFORT'), findsOneWidget);
+    });
+  });
+
+  group('Automatic Effort Normalization on Backup Import Tests', () {
+    test('importBackupJson normalizes effort weights to 10-minute system and preserves integrity', () async {
+      await DatabaseService.instance.initInMemoryForTesting();
+      final dbService = DatabaseService.instance;
+      final backupService = BackupService(dbService: dbService);
+      final beatRepo = BeatRepository(dbService: dbService);
+
+      final now = DateTime.now().toIso8601String();
+      final backupPayload = '''
+      {
+        "app": "rythem",
+        "version": 1,
+        "exported_at": "$now",
+        "tables": {
+          "roadmaps": [
+            {
+              "id": "rm_import_test",
+              "title": "Algorithms & Systems",
+              "status": "active",
+              "is_primary": 1,
+              "created_at": "$now",
+              "updated_at": "$now"
+            }
+          ],
+          "chapters": [
+            {
+              "id": "ch_import_1",
+              "roadmap_id": "rm_import_test",
+              "title": "Core Module",
+              "sort_order": 0,
+              "created_at": "$now",
+              "updated_at": "$now"
+            }
+          ],
+          "beats": [
+            {
+              "id": "beat_imp_1",
+              "chapter_id": "ch_import_1",
+              "roadmap_id": "rm_import_test",
+              "title": "Topic 1 with 0 effort",
+              "source_url": "https://www.youtube.com/watch?v=TEST_VID_1",
+              "effort_weight": 0.0,
+              "sort_order": 0,
+              "is_completed": 0,
+              "created_at": "$now",
+              "updated_at": "$now"
+            },
+            {
+              "id": "beat_imp_2",
+              "chapter_id": "ch_import_1",
+              "roadmap_id": "rm_import_test",
+              "title": "Topic 2 with 1.4 effort",
+              "source_url": "https://www.youtube.com/watch?v=TEST_VID_2",
+              "effort_weight": 1.4,
+              "sort_order": 1,
+              "is_completed": 1,
+              "created_at": "$now",
+              "updated_at": "$now"
+            }
+          ],
+          "beat_logs": [],
+          "app_settings": []
+        }
+      }
+      ''';
+
+      final result = await backupService.importBackupJson(backupPayload);
+      expect(result['roadmaps'], 1);
+      expect(result['beats'], 2);
+
+      // Verify beat 1 effort weight was normalized from 0.0 to 1.0
+      final b1 = await beatRepo.getBeatById('beat_imp_1');
+      expect(b1, isNotNull);
+      expect(b1!.effortWeight, 1.0);
+
+      // Verify beat 2 preserved 1.4 effort weight
+      final b2 = await beatRepo.getBeatById('beat_imp_2');
+      expect(b2, isNotNull);
+      expect(b2!.effortWeight, 1.4);
+      expect(b2.isCompleted, isTrue);
+
+      await dbService.close();
     });
   });
 

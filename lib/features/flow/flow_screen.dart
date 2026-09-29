@@ -525,6 +525,8 @@ class _TrackTodoListCard extends StatelessWidget {
     final completedCount = allBeats.where((b) => b.isCompleted).length;
     final totalCount = allBeats.length;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
+    final totalEffort = allBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
+    final completedEffort = allBeats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -618,22 +620,56 @@ class _TrackTodoListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$completedCount/$totalCount Beats',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textSecondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.08)
+                                  : Colors.black.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.bolt_rounded,
+                                  size: 13,
+                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)}',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.08)
+                                  : Colors.black.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$completedCount/$totalCount Beats',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

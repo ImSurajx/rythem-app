@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../database/database_service.dart';
 import '../../database/repositories/app_settings_repository.dart';
@@ -32,12 +33,15 @@ class BackupSnapshotInfo {
     if (fileName == AutoBackupManager.latestBackupFileName) {
       return 'Latest Snapshot';
     }
-    final match = RegExp(r'rythem_autobackup_(\d{4}-\d{2}-\d{2})\.json').firstMatch(fileName);
+    final match = RegExp(r'rythem_(?:auto)?backup_(\d{4}-\d{2}-\d{2}[^\.]*)\.json').firstMatch(fileName);
     if (match != null) {
       return match.group(1)!;
     }
     if (fileName.startsWith('rythem_autobackup_')) {
       return fileName.replaceFirst('rythem_autobackup_', '').replaceFirst('.json', '');
+    }
+    if (fileName.startsWith('rythem_backup_')) {
+      return fileName.replaceFirst('rythem_backup_', '').replaceFirst('.json', '');
     }
     return fileName;
   }
@@ -246,7 +250,7 @@ class AutoBackupManager {
       final files = dir.listSync().whereType<File>().toList();
 
       final dailySnapshots = files.where((f) {
-        final name = f.path.split('/').last;
+        final name = p.basename(f.path);
         return name.startsWith('rythem_autobackup_') &&
             name.endsWith('.json') &&
             name != latestBackupFileName;
@@ -268,7 +272,7 @@ class AutoBackupManager {
     }
   }
 
-  /// Lists all available local auto-backups, sorted newest first.
+  /// Lists all available local auto-backups and exports, sorted newest first.
   Future<List<BackupSnapshotInfo>> listAvailableBackups() async {
     final results = <BackupSnapshotInfo>[];
     final seenNames = <String>{};
@@ -278,8 +282,9 @@ class AutoBackupManager {
         if (!dir.existsSync()) continue;
         final files = dir.listSync().whereType<File>().toList();
         for (final file in files) {
-          final name = file.path.split('/').last;
-          if (name.startsWith('rythem_autobackup_') && name.endsWith('.json')) {
+          final name = p.basename(file.path);
+          if ((name.startsWith('rythem_autobackup_') || name.startsWith('rythem_backup_')) &&
+              name.endsWith('.json')) {
             if (seenNames.contains(name)) continue;
             final info = await parseSnapshotFile(file);
             if (info != null) {
@@ -367,7 +372,7 @@ class AutoBackupManager {
 
       return BackupSnapshotInfo(
         file: file,
-        fileName: file.path.split('/').last,
+        fileName: p.basename(file.path),
         timestamp: exportedAt,
         roadmapsCount: roadmapsCount,
         chaptersCount: chaptersCount,

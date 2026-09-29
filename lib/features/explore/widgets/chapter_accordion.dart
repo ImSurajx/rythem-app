@@ -545,7 +545,6 @@ class BeatTile extends StatelessWidget {
         beat.syllabusTopicId != null &&
         !beat.isMentorExtra;
     final hasResource = beat.sourceUrl != null && beat.sourceUrl!.trim().isNotEmpty;
-    final isYt = hasResource && ResourceLauncher.isYouTube(beat.sourceUrl!);
 
     return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -793,37 +792,25 @@ class BeatTile extends StatelessWidget {
                             '•',
                             style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
                           ),
-                        ] else ...[
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isYt ? Icons.play_circle_outline_rounded : Icons.link_rounded,
-                                size: 11,
-                                color: themeColors.textSecondary,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                isYt ? 'video' : 'linked',
-                                style: RythemTypography.labelSmall.copyWith(
-                                  color: themeColors.textSecondary,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            '•',
-                            style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
-                          ),
                         ],
-                        Text(
-                          '${beat.effortWeight.toStringAsFixed(1)} effort',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            fontSize: 9.5,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 13,
+                              color: themeColors.textSecondary,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              beat.effortWeight.toStringAsFixed(1),
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textSecondary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

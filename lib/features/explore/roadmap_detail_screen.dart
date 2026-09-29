@@ -134,8 +134,15 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     );
 
     try {
-      final result = await _ingestionService.syncAndRemapRoadmapResources(_currentRoadmap.id);
+      final result = await _ingestionService
+          .syncAndRemapRoadmapResources(_currentRoadmap.id)
+          .timeout(const Duration(seconds: 15));
       await _reloadFromDb();
+      DatabaseEventBus.instance.emit(DatabaseEvent(
+        type: DatabaseEventType.roadmapUpdated,
+        entityId: _currentRoadmap.id,
+        roadmapId: _currentRoadmap.id,
+      ));
       if (mounted) {
         showGlassToast(
           context,
@@ -636,6 +643,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
     final linkedCount = _currentBeats.where((b) => b.sourceUrl?.isNotEmpty == true).length;
     final unlinkedCount = totalCount - linkedCount;
+    final totalEffort = _currentBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
+    final completedEffort = _currentBeats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final category = _currentRoadmap.description?.isNotEmpty == true
         ? _currentRoadmap.description!
         : 'CURRICULUM TRACK';
@@ -929,6 +938,55 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'EFFORT',
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: themeColors.textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.bolt_rounded,
+                                            size: 13,
+                                            color: themeColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Expanded(
+                                            child: Text(
+                                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)}',
+                                              style: RythemTypography.labelSmall.copyWith(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: themeColors.textPrimary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 14),
@@ -996,23 +1054,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06),
-                                    ),
-                                    child: Icon(
-                                      nextPendingBeat.sourceUrl?.isNotEmpty == true
-                                          ? (ResourceLauncher.isYouTube(nextPendingBeat.sourceUrl!)
-                                              ? Icons.play_arrow_rounded
-                                              : Icons.language_rounded)
-                                          : Icons.play_arrow_rounded,
-                                      size: 18,
-                                      color: themeColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,

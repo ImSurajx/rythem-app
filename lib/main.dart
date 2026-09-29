@@ -1070,6 +1070,7 @@ class _DesignSystemShowcaseScreenState
       );
       await _beatRepo.createBeat(beat);
       await _loadDatabaseState();
+      unawaited(_autoBackupManager.checkAndPerformDailyBackup(force: true));
     }
   }
 
@@ -1893,6 +1894,7 @@ class _DesignSystemShowcaseScreenState
         try {
           await _autoBackupManager.restoreSnapshot(selected.file);
           await _loadDatabaseState();
+          unawaited(_autoBackupManager.checkAndPerformDailyBackup(force: true));
           _showToast('Restored from "${selected.displayTitle}"! 🎉');
         } catch (e) {
           _showToast('Restore error: $e');
@@ -2062,6 +2064,7 @@ class _DesignSystemShowcaseScreenState
       final success = await _backupService.pickAndRestoreBackup();
       if (success != null) {
         await _loadDatabaseState();
+        unawaited(_autoBackupManager.checkAndPerformDailyBackup(force: true));
         _showToast('Backup successfully restored!');
       } else {
         _showToast('Restore cancelled or failed');

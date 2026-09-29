@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../database/database_service.dart';
 import '../../database/database_event_bus.dart';
 import '../../database/tables.dart';
+import '../../ingestion/parsers/effort_weight_calculator.dart';
 
 /// Service responsible for complete local database backup export and restoration.
 /// 
@@ -193,6 +194,37 @@ class BackupService {
         await txn.insert(DatabaseTables.appSettings, row);
       }
     });
+
+    // Automatic 10-minute effort normalization across all restored beats
+    try {
+      final rawBeats = await db.query(DatabaseTables.beats);
+      final batch = db.batch();
+      bool hasUpdates = false;
+
+      for (final row in rawBeats) {
+        final id = row[BeatColumns.id] as String;
+        final currentEffort = (row[BeatColumns.effortWeight] as num?)?.toDouble() ?? 1.0;
+        final normalized = currentEffort <= 0
+            ? 1.0
+            : double.parse(currentEffort
+                .clamp(EffortWeightCalculator.minWeight, EffortWeightCalculator.maxWeight)
+                .toStringAsFixed(1));
+
+        if (normalized != currentEffort) {
+          batch.update(
+            DatabaseTables.beats,
+            {BeatColumns.effortWeight: normalized},
+            where: '${BeatColumns.id} = ?',
+            whereArgs: [id],
+          );
+          hasUpdates = true;
+        }
+      }
+
+      if (hasUpdates) {
+        await batch.commit(noResult: true);
+      }
+    } catch (_) {}
 
     // Notify the entire app that the database was fully restored
     _eventBus.emit(const DatabaseEvent(

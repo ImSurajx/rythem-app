@@ -501,12 +501,24 @@ class _FocusBeatTile extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                           ],
-                          Text(
-                            '${beat.effortWeight.toStringAsFixed(1)} effort',
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontSize: 9.5,
-                              color: themeColors.textTertiary,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bolt_rounded,
+                                size: 12,
+                                color: themeColors.textTertiary,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                beat.effortWeight.toStringAsFixed(1),
+                                style: RythemTypography.labelSmall.copyWith(
+                                  fontSize: 9.5,
+                                  color: themeColors.textTertiary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
