@@ -515,6 +515,9 @@ class BeatTile extends StatelessWidget {
   final bool isDelayed;
   final VoidCallback? onToggleDelay;
   final bool isReadOnly;
+  final int progressPercent;
+  final VoidCallback? onCheckpoint;
+  final bool useActionMenu;
 
   const BeatTile({
     super.key,
@@ -530,6 +533,9 @@ class BeatTile extends StatelessWidget {
     this.isDelayed = false,
     this.onToggleDelay,
     this.isReadOnly = false,
+    this.progressPercent = 0,
+    this.onCheckpoint,
+    this.useActionMenu = false,
   });
 
   @override
@@ -821,6 +827,35 @@ class BeatTile extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (progressPercent > 0 && !beat.isCompleted) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: (progressPercent / 100.0).clamp(0.0, 1.0),
+                                backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                ),
+                                minHeight: 3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$progressPercent%',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -853,32 +888,107 @@ class BeatTile extends StatelessWidget {
               ),
             ],
 
-            if (onToggleDelay != null && !beat.isCompleted)
-              IconButton(
+            if (useActionMenu) ...[
+              PopupMenuButton<String>(
                 icon: Icon(
-                  isDelayed ? Icons.restore_rounded : Icons.more_time_rounded,
-                  size: 15,
-                  color: isDelayed
-                      ? (isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100))
-                      : themeColors.textTertiary,
-                ),
-                onPressed: onToggleDelay,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                tooltip: isDelayed ? 'Resume beat into active flow' : 'Delay beat for later',
-              ),
-
-            if (onFlag != null)
-              IconButton(
-                icon: Icon(
-                  Icons.help_outline_rounded,
-                  size: 15,
+                  Icons.more_vert_rounded,
+                  size: 16,
                   color: themeColors.textTertiary,
                 ),
-                onPressed: onFlag,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                color: isDark ? const Color(0xFF202024) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                    width: 0.8,
+                  ),
+                ),
+                onSelected: (val) {
+                  if (val == 'checkpoint' && onCheckpoint != null) {
+                    onCheckpoint!();
+                  } else if (val == 'flag' && onFlag != null) {
+                    onFlag!();
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (onCheckpoint != null && !beat.isCompleted)
+                    PopupMenuItem(
+                      value: 'checkpoint',
+                      height: 38,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.bookmark_added_outlined,
+                            size: 15,
+                            color: themeColors.textPrimary,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Checkpoint',
+                            style: TextStyle(
+                              color: themeColors.textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (onFlag != null)
+                    PopupMenuItem(
+                      value: 'flag',
+                      height: 38,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.help_outline_rounded,
+                            size: 15,
+                            color: themeColors.textTertiary,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Flag as Confusing',
+                            style: TextStyle(
+                              color: themeColors.textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
+            ] else ...[
+              if (onToggleDelay != null && !beat.isCompleted)
+                IconButton(
+                  icon: Icon(
+                    isDelayed ? Icons.restore_rounded : Icons.more_time_rounded,
+                    size: 15,
+                    color: isDelayed
+                        ? (isDark ? const Color(0xFFFFCA28) : const Color(0xFFE65100))
+                        : themeColors.textTertiary,
+                  ),
+                  onPressed: onToggleDelay,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                  tooltip: isDelayed ? 'Resume beat into active flow' : 'Delay beat for later',
+                ),
+
+              if (onFlag != null)
+                IconButton(
+                  icon: Icon(
+                    Icons.help_outline_rounded,
+                    size: 15,
+                    color: themeColors.textTertiary,
+                  ),
+                  onPressed: onFlag,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                ),
+            ],
           ],
         ),
 

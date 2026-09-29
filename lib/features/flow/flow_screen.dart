@@ -17,6 +17,7 @@ import 'package:rythem_app/core/ai/models/model_tier.dart';
 import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'package:rythem_app/core/ai/services/model_download_manager.dart';
 import 'confusing_beat_dialog.dart';
+import 'checkpoint_dialog.dart';
 import 'session_detail_screen.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/navigation/smooth_page_route.dart';
@@ -50,6 +51,9 @@ class FlowScreen extends StatefulWidget {
   final Map<String, String> activeFocusBeatByRoadmap;
   final void Function(RoadmapEntity roadmap)? onPullNextTopic;
   final void Function(RoadmapEntity roadmap, BeatEntity beat)? onReturnToTracker;
+  final Map<String, int> beatProgressMap;
+  final Map<String, String> beatNotesMap;
+  final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
 
   const FlowScreen({
     super.key,
@@ -74,6 +78,9 @@ class FlowScreen extends StatefulWidget {
     this.activeFocusBeatByRoadmap = const {},
     this.onPullNextTopic,
     this.onReturnToTracker,
+    this.beatProgressMap = const {},
+    this.beatNotesMap = const {},
+    this.onSaveCheckpoint,
   });
 
   @override
@@ -393,8 +400,9 @@ class _FlowScreenState extends State<FlowScreen> {
                 activeFocusBeatId: widget.activeFocusBeatByRoadmap[rm.id],
                 onPullNextTopic: widget.onPullNextTopic != null ? () => widget.onPullNextTopic!(rm) : null,
                 onReturnToTracker: widget.onReturnToTracker,
-                delayedBeatIds: widget.delayedBeatIds,
-                onToggleDelay: widget.onToggleDelay,
+                beatProgressMap: widget.beatProgressMap,
+                beatNotesMap: widget.beatNotesMap,
+                onSaveCheckpoint: widget.onSaveCheckpoint,
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
                 onStartEarly: widget.onStartEarly,
@@ -488,8 +496,9 @@ class _TrackTodoListCard extends StatelessWidget {
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat) onOpenFocusSession;
   final VoidCallback? onOpenDetail;
-  final Set<String> delayedBeatIds;
-  final void Function(BeatEntity beat)? onToggleDelay;
+  final Map<String, int> beatProgressMap;
+  final Map<String, String> beatNotesMap;
+  final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
   final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
 
   const _TrackTodoListCard({
@@ -505,8 +514,9 @@ class _TrackTodoListCard extends StatelessWidget {
     required this.onBeatToggled,
     required this.onOpenFocusSession,
     this.onOpenDetail,
-    this.delayedBeatIds = const {},
-    this.onToggleDelay,
+    this.beatProgressMap = const {},
+    this.beatNotesMap = const {},
+    this.onSaveCheckpoint,
     this.onStartEarly,
   });
 
@@ -730,11 +740,6 @@ class _TrackTodoListCard extends StatelessWidget {
                 final hasIncompleteBeats = sortedAllBeats.any((b) => !b.isCompleted);
                 final isAllTrackCompleted = allBeats.isNotEmpty && !hasIncompleteBeats;
 
-                // Delayed beats that are not completed and not the active beat
-                final delayedBeats = sortedAllBeats
-                    .where((b) => !b.isCompleted && delayedBeatIds.contains(b.id) && b.id != activeBeat?.id)
-                    .toList();
-
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Column(
@@ -761,8 +766,7 @@ class _TrackTodoListCard extends StatelessWidget {
                                 themeColors: themeColors,
                                 isDark: isDark,
                                 isReadOnly: true,
-                                isDelayed: delayedBeatIds.contains(beat.id),
-                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
+                                useActionMenu: true,
                                 onToggle: (_) {},
                                 onOpenResource: () => ResourceLauncher.openResource(
                                   context,
@@ -776,37 +780,14 @@ class _TrackTodoListCard extends StatelessWidget {
                             )),
                       ],
 
-                      // 2. Delayed Beats (if any exist)
-                      if (delayedBeats.isNotEmpty) ...[
-                        ...delayedBeats.map((beat) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: BeatTile(
-                                beat: beat,
-                                themeColors: themeColors,
-                                isDark: isDark,
-                                isDelayed: true,
-                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(beat) : null,
-                                onToggle: (val) => onBeatToggled(beat, val),
-                                onOpenResource: () => ResourceLauncher.openResource(
-                                  context,
-                                  url: beat.sourceUrl,
-                                  title: beat.title,
-                                ),
-                                onFlag: () {
-                                  ConfusingBeatDialog.show(context, beat: beat);
-                                },
-                              ),
-                            )),
-                      ],
-
-                      // 3. Active Focus Topic (Appended at the bottom)
+                      // 2. Active Focus Topic (Appended at the bottom)
                       if (activeBeat != null) ...[
                         () {
                           final currentBeat = activeBeat!;
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (completedToday.isNotEmpty || delayedBeats.isNotEmpty)
+                              if (completedToday.isNotEmpty)
                                 const SizedBox(height: 6),
                               Padding(
                                 padding: const EdgeInsets.only(left: 4, right: 4, bottom: 6),
@@ -845,8 +826,19 @@ class _TrackTodoListCard extends StatelessWidget {
                                 beat: currentBeat,
                                 themeColors: themeColors,
                                 isDark: isDark,
-                                isDelayed: delayedBeatIds.contains(currentBeat.id),
-                                onToggleDelay: onToggleDelay != null ? () => onToggleDelay!(currentBeat) : null,
+                                useActionMenu: true,
+                                progressPercent: beatProgressMap[currentBeat.id] ?? 0,
+                                onCheckpoint: () {
+                                  CheckpointDialog.show(
+                                    context,
+                                    beat: currentBeat,
+                                    initialPercent: beatProgressMap[currentBeat.id] ?? 0,
+                                    initialNotes: beatNotesMap[currentBeat.id] ?? '',
+                                    onSaveCheckpoint: (percentage, notes) {
+                                      onSaveCheckpoint?.call(currentBeat, percentage, notes);
+                                    },
+                                  );
+                                },
                                 onToggle: (val) => onBeatToggled(currentBeat, val),
                                 onOpenResource: () => ResourceLauncher.openResource(
                                   context,
@@ -863,8 +855,8 @@ class _TrackTodoListCard extends StatelessWidget {
                         }(),
                       ],
 
-                      // 4. Empty State if nothing is pulled and nothing completed today
-                      if (activeBeat == null && completedToday.isEmpty && delayedBeats.isEmpty)
+                      // 3. Empty State if nothing is pulled and nothing completed today
+                      if (activeBeat == null && completedToday.isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Center(
@@ -882,7 +874,7 @@ class _TrackTodoListCard extends StatelessWidget {
 
                       const SizedBox(height: 6),
 
-                      // 5. Pull Next Topic / Locked / All Completed Action Area
+                      // 4. Pull Next Topic / Locked / All Completed Action Area
                       if (isAllTrackCompleted)
                         Container(
                           width: double.infinity,
@@ -936,12 +928,17 @@ class _TrackTodoListCard extends StatelessWidget {
                                 color: themeColors.textTertiary.withOpacity(0.6),
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                'Complete current topic to unlock next',
-                                style: RythemTypography.labelSmall.copyWith(
-                                  color: themeColors.textTertiary.withOpacity(0.7),
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 11,
+                              Flexible(
+                                child: Text(
+                                  (beatProgressMap[activeBeat.id] ?? 0) > 0
+                                      ? 'Current topic at ${beatProgressMap[activeBeat.id]}% • Complete 100% to unlock next'
+                                      : 'Complete current topic to unlock next',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textTertiary.withOpacity(0.7),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],

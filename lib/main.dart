@@ -180,6 +180,8 @@ class _DesignSystemShowcaseScreenState
   bool _balancedDownloaded = false;
   Set<String> _delayedBeatIds = {'beat_delayed_sample'};
   Map<String, String> _activeFocusBeatByRoadmap = {};
+  Map<String, int> _beatProgressMap = {};
+  Map<String, String> _beatNotesMap = {};
   bool _isLoadingDbState = false;
   bool _hasPendingDbReload = false;
 
@@ -256,6 +258,18 @@ class _DesignSystemShowcaseScreenState
         if (mounted) {
           setState(() {
             _activeFocusBeatByRoadmap = updated;
+          });
+        }
+      }
+      if (isCompleted && _beatProgressMap.containsKey(beat.id)) {
+        final updatedProgress = Map<String, int>.from(_beatProgressMap)..remove(beat.id);
+        final updatedNotes = Map<String, String>.from(_beatNotesMap)..remove(beat.id);
+        await _appSettingsRepo.setSetting('active_focus_progress_by_beat', jsonEncode(updatedProgress));
+        await _appSettingsRepo.setSetting('active_focus_notes_by_beat', jsonEncode(updatedNotes));
+        if (mounted) {
+          setState(() {
+            _beatProgressMap = updatedProgress;
+            _beatNotesMap = updatedNotes;
           });
         }
       }
@@ -361,6 +375,82 @@ class _DesignSystemShowcaseScreenState
         _activeFocusBeatByRoadmap = updated;
       });
       _showToast('Returned "${beat.title}" to tracker');
+    }
+  }
+
+  Future<void> _handleSaveBeatProgress(BeatEntity beat, int newPercentage, String notes) async {
+    HapticFeedback.mediumImpact();
+    final oldPercentage = _beatProgressMap[beat.id] ?? 0;
+    final clamped = newPercentage.clamp(0, 100);
+
+    if (clamped >= 100) {
+      final updatedProgress = Map<String, int>.from(_beatProgressMap)..remove(beat.id);
+      final updatedNotes = Map<String, String>.from(_beatNotesMap)..remove(beat.id);
+      await _appSettingsRepo.setSetting('active_focus_progress_by_beat', jsonEncode(updatedProgress));
+      await _appSettingsRepo.setSetting('active_focus_notes_by_beat', jsonEncode(updatedNotes));
+      if (mounted) {
+        setState(() {
+          _beatProgressMap = updatedProgress;
+          _beatNotesMap = updatedNotes;
+        });
+      }
+      await _setBeatCompletion(beat, true);
+      return;
+    }
+
+    final updatedProgress = Map<String, int>.from(_beatProgressMap);
+    if (clamped > 0) {
+      updatedProgress[beat.id] = clamped;
+    } else {
+      updatedProgress.remove(beat.id);
+    }
+
+    final updatedNotes = Map<String, String>.from(_beatNotesMap);
+    if (notes.isNotEmpty) {
+      updatedNotes[beat.id] = notes;
+    } else {
+      updatedNotes.remove(beat.id);
+    }
+
+    await _appSettingsRepo.setSetting('active_focus_progress_by_beat', jsonEncode(updatedProgress));
+    await _appSettingsRepo.setSetting('active_focus_notes_by_beat', jsonEncode(updatedNotes));
+
+    final deltaPct = (clamped - oldPercentage).clamp(0, 100);
+    final earnedPoints = beat.effortWeight * (deltaPct / 100.0);
+
+    if (earnedPoints > 0) {
+      final now = DateTime.now();
+      final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      await _beatLogRepo.logBeatCompletion(
+        beatId: beat.id,
+        roadmapId: beat.roadmapId,
+        completedDate: todayStr,
+      );
+      final streak = await _beatLogRepo.getCurrentStreak();
+      final recentActivity = await _beatLogRepo.getRecentActivity(daysCount: 7);
+      if (mounted) {
+        setState(() {
+          _currentStreak = streak;
+          _recentActivity = recentActivity;
+        });
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _beatProgressMap = updatedProgress;
+        _beatNotesMap = updatedNotes;
+      });
+      if (earnedPoints > 0) {
+        showGlassToast(
+          context,
+          'Checkpoint saved: $clamped% (+${earnedPoints.toStringAsFixed(2)} pts)! 🎯',
+          icon: Icons.bookmark_added_rounded,
+          accentColor: const Color(0xFF3B82F6),
+        );
+      } else {
+        _showToast('Checkpoint saved: $clamped%');
+      }
     }
   }
 
@@ -547,6 +637,35 @@ class _DesignSystemShowcaseScreenState
       activeFocusBeatByRoadmap = {};
     }
 
+    Map<String, int> beatProgressMap = {};
+    try {
+      final rawProgress = await _appSettingsRepo.getSetting('active_focus_progress_by_beat');
+      if (rawProgress != null && rawProgress.isNotEmpty) {
+        final decoded = jsonDecode(rawProgress) as Map<String, dynamic>;
+        for (final entry in decoded.entries) {
+          final val = int.tryParse(entry.value.toString()) ?? 0;
+          if (val > 0 && val < 100) {
+            beatProgressMap[entry.key] = val;
+          }
+        }
+      }
+    } catch (_) {
+      beatProgressMap = {};
+    }
+
+    Map<String, String> beatNotesMap = {};
+    try {
+      final rawNotes = await _appSettingsRepo.getSetting('active_focus_notes_by_beat');
+      if (rawNotes != null && rawNotes.isNotEmpty) {
+        final decoded = jsonDecode(rawNotes) as Map<String, dynamic>;
+        for (final entry in decoded.entries) {
+          beatNotesMap[entry.key] = entry.value.toString();
+        }
+      }
+    } catch (_) {
+      beatNotesMap = {};
+    }
+
     final finalBeats = beatsByRoadmap[_roadmapId] ?? [];
 
     if (mounted) {
@@ -562,6 +681,8 @@ class _DesignSystemShowcaseScreenState
         _pacingBudget = budget;
         _delayedBeatIds = delayedBeatIds;
         _activeFocusBeatByRoadmap = activeFocusBeatByRoadmap;
+        _beatProgressMap = beatProgressMap;
+        _beatNotesMap = beatNotesMap;
         _latestAutoBackup = latestBackup;
         _backupLocationDescription = backupLocation;
       });
@@ -844,6 +965,9 @@ class _DesignSystemShowcaseScreenState
       activeFocusBeatByRoadmap: _activeFocusBeatByRoadmap,
       onPullNextTopic: _handlePullNextTopic,
       onReturnToTracker: _handleReturnTopicToTracker,
+      beatProgressMap: _beatProgressMap,
+      beatNotesMap: _beatNotesMap,
+      onSaveCheckpoint: _handleSaveBeatProgress,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onStartEarly: _handleStartRoadmapEarly,

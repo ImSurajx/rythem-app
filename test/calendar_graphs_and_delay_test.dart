@@ -9,6 +9,7 @@ import 'package:rythem_app/core/pacing/models/pacing_budget.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/flow/flow_screen.dart';
+import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
 import 'package:rythem_app/features/metrics/metrics_screen.dart';
 import 'package:rythem_app/features/metrics/widgets/full_month_streak_calendar.dart';
 import 'package:rythem_app/features/metrics/widgets/performance_graphs_card.dart';
@@ -244,40 +245,31 @@ void main() {
       ),
     ];
 
-    testWidgets('FlowScreen renders delayed task with DELAYED badge and allows toggling delay', (tester) async {
+    testWidgets('ChapterAccordion preserves delayed task with DELAYED badge and allows toggling delay on main tracker card', (tester) async {
       BeatEntity? delayedToggledBeat;
 
       await tester.pumpWidget(
         MaterialApp(
           theme: RythemTheme.darkTheme,
           home: Scaffold(
-            body: FlowScreen(
-              activeRoadmap: testRoadmap,
-              allRoadmaps: [testRoadmap],
-              chapters: testChapters,
-              allBeats: testBeats,
-              pacingBudget: const PacingBudget(
-                roadmapId: 'rm_flow_test',
-                todayEffortShare: 2.0,
-                remainingEffort: 3.0,
-                daysLeft: 14,
+            body: SingleChildScrollView(
+              child: ChapterAccordion(
+                chapter: testChapters.first,
+                beats: testBeats,
+                initialExpanded: true,
+                delayedBeatIds: const {'beat_delayed_sample'},
+                onToggleDelay: (beat) {
+                  delayedToggledBeat = beat;
+                },
+                onBeatToggled: (beat, isCompleted) async {},
               ),
-              chaptersByRoadmap: {'rm_flow_test': testChapters},
-              beatsByRoadmap: {'rm_flow_test': testBeats},
-              streakDays: 4,
-              delayedBeatIds: const {'beat_delayed_sample'},
-              onToggleDelay: (beat) {
-                delayedToggledBeat = beat;
-              },
-              onSwitchRoadmap: () {},
-              onBeatToggled: (beat, isCompleted) async {},
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Verify the delayed task is visible
+      // Verify the delayed task is visible on main tracker card
       expect(find.text('Backpropagation Vector Calculus (Delayed Task)'), findsOneWidget);
 
       // Verify DELAYED • LATER badge is displayed on the delayed task
@@ -290,6 +282,60 @@ void main() {
       await tester.pump();
 
       expect(delayedToggledBeat?.id, 'beat_delayed_sample');
+    });
+
+    testWidgets('FlowScreen active topic card uses three-dot action menu for Checkpoint and Flag', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: FlowScreen(
+              activeRoadmap: testRoadmap,
+              allRoadmaps: [testRoadmap],
+              chapters: testChapters,
+              allBeats: testBeats,
+              activeFocusBeatByRoadmap: {testRoadmap.id: testBeats.first.id},
+              pacingBudget: PacingBudget(
+                roadmapId: testRoadmap.id,
+                todayEffortShare: 2.0,
+                remainingEffort: 3.0,
+                daysLeft: 14,
+              ),
+              chaptersByRoadmap: {testRoadmap.id: testChapters},
+              beatsByRoadmap: {testRoadmap.id: testBeats},
+              streakDays: 4,
+              onSwitchRoadmap: () {},
+              onBeatToggled: (beat, isCompleted) async {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify active topic is in CURRENT FOCUS
+      expect(find.text('CURRENT FOCUS'), findsOneWidget);
+      expect(find.text('Gradient Descent Basics'), findsOneWidget);
+
+      // Verify three-dot menu icon exists
+      final menuButton = find.byIcon(Icons.more_vert_rounded);
+      expect(menuButton, findsOneWidget);
+
+      // Tap three-dot menu
+      await tester.tap(menuButton);
+      await tester.pumpAndSettle();
+
+      // Verify Checkpoint and Flag options appear in popup menu
+      expect(find.text('Checkpoint'), findsOneWidget);
+      expect(find.text('Flag as Confusing'), findsOneWidget);
+
+      // Tap Checkpoint
+      await tester.tap(find.text('Checkpoint'));
+      await tester.pumpAndSettle();
+
+      // Verify Checkpoint dialog opened
+      expect(find.text('Study Checkpoint'), findsOneWidget);
+      expect(find.text('HOW MUCH COMPLETED (%)'), findsOneWidget);
+      expect(find.text('PRACTICE & REFLECTION NOTES'), findsOneWidget);
     });
   });
 }

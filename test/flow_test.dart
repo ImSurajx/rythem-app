@@ -128,8 +128,10 @@ void main() {
       expect(find.text('First Beat Title'), findsOneWidget);
       expect(find.text('Second Beat Title'), findsOneWidget);
 
-      // Tap checkbox to toggle
-      await tester.tap(find.byIcon(Icons.help_outline_rounded).first);
+      // Tap three-dot action menu to access Flag
+      await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flag as Confusing'));
       await tester.pumpAndSettle();
 
       // Confusing beat dialog opened

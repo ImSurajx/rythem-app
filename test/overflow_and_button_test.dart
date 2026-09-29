@@ -54,7 +54,7 @@ void main() {
               allRoadmaps: [testRoadmap],
               chapters: [testChapterLong],
               allBeats: [testBeatLong],
-              delayedBeatIds: const {'b_long'},
+              activeFocusBeatByRoadmap: {testRoadmap.id: testBeatLong.id},
               pacingBudget: null,
               chaptersByRoadmap: {
                 testRoadmap.id: [testChapterLong],
