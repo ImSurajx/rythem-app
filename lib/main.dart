@@ -1556,104 +1556,165 @@ class _DesignSystemShowcaseScreenState
               height: 1.35,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          // Status Tile with Live Snapshot Indicator
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
               color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: themeColors.glassBorder),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Last Backup',
-                  style: TextStyle(
-                    color: themeColors.textTertiary,
-                    fontSize: 11,
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.shield_outlined,
+                    size: 18,
+                    color: Color(0xFF10B981),
                   ),
                 ),
-                Text(
-                  _latestAutoBackup != null
-                      ? '${_latestAutoBackup!.relativeTimeDescription} (${_latestAutoBackup!.formattedSize})'
-                      : 'Not run today',
-                  style: TextStyle(
-                    color: themeColors.textPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.015),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: themeColors.glassBorder.withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.folder_outlined, size: 13, color: themeColors.textTertiary),
-                const SizedBox(width: 6),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    _backupLocationDescription,
-                    style: TextStyle(
-                      color: themeColors.textTertiary,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _latestAutoBackup != null
+                            ? 'Snapshot: ${_latestAutoBackup!.relativeTimeDescription}'
+                            : 'No snapshots created yet',
+                        style: TextStyle(
+                          color: themeColors.textPrimary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _latestAutoBackup != null
+                            ? '${_latestAutoBackup!.formattedSize} • ${_latestAutoBackup!.roadmapsCount} tracks • $_backupLocationDescription'
+                            : _backupLocationDescription,
+                        style: TextStyle(
+                          color: themeColors.textTertiary,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: GlassButton(
-                  onPressed: _isPerformingAutoBackup ? null : _handleManualAutoBackup,
-                  icon: Icons.sync_rounded,
-                  label: _isPerformingAutoBackup ? 'Backing up...' : 'Back Up Now',
-                  variant: GlassButtonVariant.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: GlassButton(
-                  onPressed: _handleRestoreAutoBackup,
-                  icon: Icons.history_rounded,
-                  label: 'Snapshots (${AutoBackupManager.maxRetainedDailySnapshots}d)',
-                  variant: GlassButtonVariant.secondary,
-                ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          // Primary Action: Back Up Now
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              onPressed: _isPerformingAutoBackup ? null : _handleManualAutoBackup,
+              icon: Icons.bolt_rounded,
+              label: _isPerformingAutoBackup ? 'Creating Snapshot...' : 'Back Up Database Now',
+              variant: GlassButtonVariant.primary,
+              height: 44,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          // Interactive Snapshot History Tile
+          InkWell(
+            onTap: _handleRestoreAutoBackup,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.025) : Colors.black.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: themeColors.glassBorder.withOpacity(0.7)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.history_rounded, size: 18, color: themeColors.actionPrimary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Restore Rolling Snapshot',
+                          style: TextStyle(
+                            color: themeColors.textPrimary,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'View & restore from ${AutoBackupManager.maxRetainedDailySnapshots}-day automatic device snapshots',
+                          style: TextStyle(
+                            color: themeColors.textTertiary,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'History',
+                          style: TextStyle(
+                            color: themeColors.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 10,
+                          color: themeColors.textTertiary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Streamlined File Operations Row
           Row(
             children: [
               Expanded(
                 child: GlassButton(
                   onPressed: _handleExportBackup,
-                  icon: Icons.file_upload_outlined,
+                  icon: Icons.upload_file_rounded,
                   label: 'Export JSON',
                   variant: GlassButtonVariant.secondary,
+                  height: 38,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: GlassButton(
                   onPressed: _handleImportBackup,
-                  icon: Icons.file_download_outlined,
+                  icon: Icons.file_download_rounded,
                   label: 'Restore File',
                   variant: GlassButtonVariant.secondary,
+                  height: 38,
                 ),
               ),
             ],

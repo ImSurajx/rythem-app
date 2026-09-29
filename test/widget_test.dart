@@ -145,7 +145,8 @@ void main() {
     expect(find.text('ON-DEVICE AI'), findsOneWidget);
     expect(find.text('DATA BACKUP & RESTORE'), findsOneWidget);
     expect(find.text('Backup & Recovery'), findsOneWidget);
-    expect(find.text('Back Up Now'), findsOneWidget);
+    expect(find.text('Back Up Database Now'), findsOneWidget);
+    expect(find.text('Restore Rolling Snapshot'), findsOneWidget);
 
     for (int i = 0; i < 20; i++) {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));

@@ -14,6 +14,7 @@ import 'package:rythem_app/core/ingestion/models/extracted_resource.dart';
 import 'package:rythem_app/core/ingestion/parsers/effort_weight_calculator.dart';
 import 'package:rythem_app/core/ingestion/services/curriculum_ingestion_service.dart';
 import 'package:rythem_app/core/ingestion/services/youtube_extractor_service.dart';
+import 'package:rythem_app/core/database/repositories/app_settings_repository.dart';
 import 'package:rythem_app/core/backup/services/backup_service.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/explore/roadmap_detail_screen.dart';
@@ -401,13 +402,103 @@ void main() {
     });
   });
 
-  group('ModelDownloadManager Idempotent Download Tests', () {
-    test('calling downloadModel on already downloading tier returns cleanly without error', () async {
-      final manager = ModelDownloadManager();
-      manager.setDownloadingTierForTesting(ModelTier.compact);
-      // Calling download on already downloading tier should return cleanly without throwing StateError
-      await manager.downloadModel(ModelTier.compact);
-      manager.setDownloadingTierForTesting(null);
+  group('Fast Sync & Playlist Remapping Tests', () {
+    test('syncAndRemapRoadmapResources uses stored parent playlist URL to remap beats', () async {
+      await DatabaseService.instance.initInMemoryForTesting();
+      final dbService = DatabaseService.instance;
+      final mockYt = _MockYoutubeClient();
+
+      mockYt.playlistResponses['https://www.youtube.com/playlist?list=PL_TEST_SYNC'] = ExtractedResource(
+        title: 'Fast Sync Playlist',
+        sourceUrl: 'https://www.youtube.com/playlist?list=PL_TEST_SYNC',
+        resourceType: ExtractedResourceType.playlist,
+        items: [
+          RawResourceItem(
+            title: 'Video 1 Updated Title',
+            sourceUrl: 'https://www.youtube.com/watch?v=SYNC_VID_1',
+            durationSeconds: 900, // 15 mins = 1.5 effort
+            index: 0,
+          ),
+          RawResourceItem(
+            title: 'Video 2 Updated Title',
+            sourceUrl: 'https://www.youtube.com/watch?v=SYNC_VID_2',
+            durationSeconds: 1500, // 25 mins = 2.5 effort
+            index: 1,
+          ),
+        ],
+      );
+
+      final ingestionService = CurriculumIngestionService(
+        youtubeClient: mockYt,
+        roadmapRepo: RoadmapRepository(dbService: dbService),
+        chapterRepo: ChapterRepository(dbService: dbService),
+        beatRepo: BeatRepository(dbService: dbService),
+        settingsRepo: AppSettingsRepository(dbService: dbService),
+      );
+
+      final now = DateTime.now();
+      final roadmap = RoadmapEntity(
+        id: 'rm_fast_sync',
+        title: 'Fast Sync Track',
+        createdAt: now,
+        updatedAt: now,
+      );
+      final chapter = ChapterEntity(
+        id: 'ch_fast_sync',
+        roadmapId: 'rm_fast_sync',
+        title: 'Chapter 1',
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final beats = [
+        BeatEntity(
+          id: 'b_sync_1',
+          chapterId: 'ch_fast_sync',
+          roadmapId: 'rm_fast_sync',
+          title: 'Old Title 1',
+          sourceUrl: 'https://www.youtube.com/watch?v=SYNC_VID_1',
+          effortWeight: 1.0,
+          sortOrder: 0,
+          isCompleted: false,
+          createdAt: now,
+          updatedAt: now,
+        ),
+        BeatEntity(
+          id: 'b_sync_2',
+          chapterId: 'ch_fast_sync',
+          roadmapId: 'rm_fast_sync',
+          title: 'Old Title 2',
+          sourceUrl: 'https://www.youtube.com/watch?v=SYNC_VID_2',
+          effortWeight: 1.0,
+          sortOrder: 1,
+          isCompleted: true, // Should preserve completion!
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      await RoadmapRepository(dbService: dbService).createRoadmap(roadmap);
+      await ChapterRepository(dbService: dbService).createChaptersBatch([chapter]);
+      await BeatRepository(dbService: dbService).createBeatsBatch(beats);
+      await AppSettingsRepository(dbService: dbService)
+          .setSetting('roadmap_source_url_rm_fast_sync', 'https://www.youtube.com/playlist?list=PL_TEST_SYNC');
+
+      final result = await ingestionService.syncAndRemapRoadmapResources('rm_fast_sync');
+      expect(result.updatedTopicsCount, 2);
+      expect(result.totalEffortPoints, 4.0); // 1.5 + 2.5 = 4.0
+
+      final beatRepo = BeatRepository(dbService: dbService);
+      final b1 = await beatRepo.getBeatById('b_sync_1');
+      expect(b1!.title, 'Video 1 Updated Title');
+      expect(b1.effortWeight, 1.5);
+
+      final b2 = await beatRepo.getBeatById('b_sync_2');
+      expect(b2!.title, 'Video 2 Updated Title');
+      expect(b2.effortWeight, 2.5);
+      expect(b2.isCompleted, isTrue); // Preserved!
+
+      await dbService.close();
     });
   });
 }

@@ -19,6 +19,7 @@ class CurriculumIngestionService {
   final ChapterRepository _chapterRepo;
   final BeatRepository _beatRepo;
   final LocalInferenceService _inferenceService;
+  final AppSettingsRepository _settingsRepo;
 
   CurriculumIngestionService({
     IYoutubeClient? youtubeClient,
@@ -27,12 +28,14 @@ class CurriculumIngestionService {
     ChapterRepository? chapterRepo,
     BeatRepository? beatRepo,
     LocalInferenceService? inferenceService,
+    AppSettingsRepository? settingsRepo,
   })  : _youtubeClient = youtubeClient ?? YoutubeExtractorService(),
         _matcherService = matcherService ?? SyllabusMatcherService(),
         _roadmapRepo = roadmapRepo ?? RoadmapRepository(),
         _chapterRepo = chapterRepo ?? ChapterRepository(),
         _beatRepo = beatRepo ?? BeatRepository(),
-        _inferenceService = inferenceService ?? LocalInferenceService();
+        _inferenceService = inferenceService ?? LocalInferenceService(),
+        _settingsRepo = settingsRepo ?? AppSettingsRepository();
 
   /// Ingests a curriculum from a YouTube URL (playlist or single video).
   /// 
@@ -59,7 +62,7 @@ class CurriculumIngestionService {
         );
       }
 
-      return await ingestExtractedResource(
+      final result = await ingestExtractedResource(
         extracted: extracted,
         customRoadmapTitle: customRoadmapTitle,
         customDescription: customDescription,
@@ -68,6 +71,10 @@ class CurriculumIngestionService {
         isPrimary: isPrimary,
         syllabus: syllabus,
       );
+      try {
+        await _settingsRepo.setSetting('roadmap_source_url_${result.roadmapId}', url.trim());
+      } catch (_) {}
+      return result;
     } catch (e) {
       debugPrint('Ingestion failed for URL $url: $e');
       rethrow;
@@ -470,6 +477,11 @@ class CurriculumIngestionService {
     await _beatRepo.deleteBeatsByChapterId(chapterId);
     await _beatRepo.createBeatsBatch(combinedBeats);
 
+    try {
+      await _settingsRepo.setSetting('roadmap_source_url_$roadmapId', cleanUrl);
+      await _settingsRepo.setSetting('chapter_source_url_$chapterId', cleanUrl);
+    } catch (_) {}
+
     DatabaseEventBus.instance.emit(DatabaseEvent(
       type: DatabaseEventType.roadmapUpdated,
       roadmapId: roadmapId,
@@ -599,6 +611,26 @@ class CurriculumIngestionService {
     final playlistUrls = <String>{};
     final standaloneVideoBeats = <BeatEntity>[];
 
+    // Check stored parent resource URL
+    try {
+      final storedResourceUrl = await _settingsRepo.getSetting('roadmap_source_url_$roadmapId');
+      if (storedResourceUrl != null && storedResourceUrl.isNotEmpty) {
+        final pId = YoutubeExtractorService.parsePlaylistId(storedResourceUrl);
+        if (pId != null) {
+          playlistUrls.add('https://www.youtube.com/playlist?list=$pId');
+        }
+      }
+      for (final ch in chapters) {
+        final chUrl = await _settingsRepo.getSetting('chapter_source_url_${ch.id}');
+        if (chUrl != null && chUrl.isNotEmpty) {
+          final pId = YoutubeExtractorService.parsePlaylistId(chUrl);
+          if (pId != null) {
+            playlistUrls.add('https://www.youtube.com/playlist?list=$pId');
+          }
+        }
+      }
+    } catch (_) {}
+
     for (final beat in beats) {
       final url = beat.sourceUrl?.trim();
       if (url == null || url.isEmpty) continue;
@@ -616,12 +648,12 @@ class CurriculumIngestionService {
     final updatedBeatMap = <String, BeatEntity>{};
     final newBeats = <BeatEntity>[];
 
-    // 2. Sync from Playlist URLs with timeout
+    // 2. Sync from Playlist URLs with timeout (Single request maps all beats in seconds)
     for (final pUrl in playlistUrls) {
       try {
         final extracted = await _youtubeClient
             .extractPlaylist(pUrl)
-            .timeout(const Duration(seconds: 10));
+            .timeout(const Duration(seconds: 12));
         if (extracted.items.isEmpty) continue;
 
         for (int i = 0; i < extracted.items.length; i++) {
@@ -679,57 +711,61 @@ class CurriculumIngestionService {
       }
     }
 
-    // 3. Sync standalone videos with bounded concurrency and timeout
+    // 3. Sync standalone videos: only query YouTube for beats missing valid effort weights
     final remainingStandalone = standaloneVideoBeats
         .where((b) => !updatedBeatMap.containsKey(b.id))
         .toList();
 
-    const batchSize = 4;
-    for (int i = 0; i < remainingStandalone.length; i += batchSize) {
-      final batch = remainingStandalone.sublist(
-        i,
-        i + batchSize > remainingStandalone.length
-            ? remainingStandalone.length
-            : i + batchSize,
-      );
+    final needsExtraction = remainingStandalone
+        .where((b) => b.effortWeight <= 0.0 || b.title.isEmpty)
+        .toList();
 
-      await Future.wait(
-        batch.map((beat) async {
-          try {
-            final extracted = await _youtubeClient
-                .extractVideo(beat.sourceUrl!)
-                .timeout(const Duration(seconds: 5));
-            if (extracted.items.isNotEmpty) {
-              final effort = EffortWeightCalculator.calculate(
-                  extracted.items.first.durationSeconds);
-              final updated = beat.copyWith(
-                effortWeight: effort,
-                updatedAt: DateTime.now(),
-              );
-              updatedBeatMap[beat.id] = updated;
-              updatedCount++;
+    if (needsExtraction.isNotEmpty) {
+      const batchSize = 6;
+      for (int i = 0; i < needsExtraction.length; i += batchSize) {
+        final batch = needsExtraction.sublist(
+          i,
+          i + batchSize > needsExtraction.length
+              ? needsExtraction.length
+              : i + batchSize,
+        );
+
+        await Future.wait(
+          batch.map((beat) async {
+            try {
+              final extracted = await _youtubeClient
+                  .extractVideo(beat.sourceUrl!)
+                  .timeout(const Duration(seconds: 3));
+              if (extracted.items.isNotEmpty) {
+                final effort = EffortWeightCalculator.calculate(
+                    extracted.items.first.durationSeconds);
+                final updated = beat.copyWith(
+                  effortWeight: effort,
+                  updatedAt: DateTime.now(),
+                );
+                updatedBeatMap[beat.id] = updated;
+                updatedCount++;
+              }
+            } catch (_) {
+              // Gracefully keep existing or normalized effort on network error/timeout
             }
-          } catch (_) {
-            // Gracefully keep existing or normalized effort on network error/timeout
-          }
-        }),
-      );
+          }),
+        );
+      }
     }
 
-    // 4. Ensure all remaining beats have valid 10-minute effort points
+    // 4. Ensure all beats in the roadmap have valid 10-minute effort points
     for (final beat in beats) {
-      if (!updatedBeatMap.containsKey(beat.id)) {
-        final currentEffort = beat.effortWeight;
-        final normalized = currentEffort <= 0
-            ? 1.0
-            : double.parse(currentEffort.clamp(0.1, 50.0).toStringAsFixed(1));
-        if (normalized != currentEffort) {
-          updatedBeatMap[beat.id] = beat.copyWith(
-            effortWeight: normalized,
-            updatedAt: DateTime.now(),
-          );
-          updatedCount++;
-        }
+      final currentEffort = updatedBeatMap[beat.id]?.effortWeight ?? beat.effortWeight;
+      final normalized = currentEffort <= 0
+          ? 1.0
+          : double.parse(currentEffort.clamp(0.1, 50.0).toStringAsFixed(1));
+      if (!updatedBeatMap.containsKey(beat.id) && normalized != beat.effortWeight) {
+        updatedBeatMap[beat.id] = beat.copyWith(
+          effortWeight: normalized,
+          updatedAt: DateTime.now(),
+        );
+        updatedCount++;
       }
     }
 

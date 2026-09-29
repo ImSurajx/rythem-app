@@ -136,7 +136,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     try {
       final result = await _ingestionService
           .syncAndRemapRoadmapResources(_currentRoadmap.id)
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 45));
       await _reloadFromDb();
       DatabaseEventBus.instance.emit(DatabaseEvent(
         type: DatabaseEventType.roadmapUpdated,

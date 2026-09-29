@@ -116,28 +116,31 @@ class AutoBackupManager {
       return dirs;
     }
 
+    // 1. Guaranteed app documents directory (Always exists, always readable/writable without permissions)
+    try {
+      final docDir = await getApplicationDocumentsDirectory();
+      dirs.add(Directory('${docDir.path}/Rythem/Backups'));
+    } catch (_) {}
+
+    // 2. Android external app files directory (Safe and visible under Android/data)
     if (Platform.isAndroid) {
-      dirs.add(Directory('/storage/emulated/0/Documents/Rythem/Backups'));
-      dirs.add(Directory('/storage/emulated/0/Download/Rythem/Backups'));
       try {
         final ext = await getExternalStorageDirectory();
         if (ext != null) {
           dirs.add(Directory('${ext.path}/Rythem/Backups'));
         }
       } catch (_) {}
-    }
 
-    try {
-      final docDir = await getApplicationDocumentsDirectory();
-      dirs.add(Directory('${docDir.path}/Rythem/Backups'));
-    } catch (_) {}
+      // 3. User-visible public directories (if accessible)
+      dirs.add(Directory('/storage/emulated/0/Documents/Rythem/Backups'));
+      dirs.add(Directory('/storage/emulated/0/Download/Rythem/Backups'));
+    }
 
     return dirs;
   }
 
-  /// Resolves the most resilient and user-visible storage directory available on the host OS.
-  /// Prioritizes user-visible public storage (`Documents/Rythem/Backups`) on Android so users
-  /// can find it in their file manager and it survives app data clearing.
+  /// Resolves the most resilient and guaranteed storage directory available on the host OS.
+  /// Prioritizes app documents directory so backups are 100% reliable and never blocked by scoped storage permissions.
   Future<Directory> getResilientBackupDirectory() async {
     if (_overrideDir != null) {
       if (!_overrideDir.existsSync()) {
@@ -146,32 +149,7 @@ class AutoBackupManager {
       return _overrideDir;
     }
 
-    if (Platform.isAndroid) {
-      // 1. Primary: Public Documents directory (visible in Files / My Files under Documents)
-      final publicDoc = Directory('/storage/emulated/0/Documents/Rythem/Backups');
-      if (_canWriteTo(publicDoc)) {
-        return publicDoc;
-      }
-
-      // 2. Secondary: Public Download directory (visible in Files under Downloads)
-      final publicDownload = Directory('/storage/emulated/0/Download/Rythem/Backups');
-      if (_canWriteTo(publicDownload)) {
-        return publicDownload;
-      }
-
-      // 3. Tertiary: External storage directory (visible on PC / file browsers under Android/data)
-      try {
-        final extDir = await getExternalStorageDirectory();
-        if (extDir != null) {
-          final extBackup = Directory('${extDir.path}/Rythem/Backups');
-          if (_canWriteTo(extBackup)) {
-            return extBackup;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // Default fallback (macOS, iOS, or Android sandbox fallback)
+    // 1. Guaranteed primary app documents directory
     Directory baseDir;
     try {
       baseDir = await getApplicationDocumentsDirectory();
@@ -186,19 +164,7 @@ class AutoBackupManager {
     return backupDir;
   }
 
-  bool _canWriteTo(Directory dir) {
-    try {
-      if (!dir.existsSync()) {
-        dir.createSync(recursive: true);
-      }
-      final testFile = File('${dir.path}/.write_probe');
-      testFile.writeAsStringSync('ok');
-      testFile.deleteSync();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+
 
   /// Checks if today's backup has already run. If not (or if [force] is true),
   /// executes an atomic export, saves latest + daily snapshot, and prunes old files.
@@ -279,19 +245,23 @@ class AutoBackupManager {
     try {
       final dirs = await getCandidateBackupDirectories();
       for (final dir in dirs) {
-        if (!dir.existsSync()) continue;
-        final files = dir.listSync().whereType<File>().toList();
-        for (final file in files) {
-          final name = p.basename(file.path);
-          if ((name.startsWith('rythem_autobackup_') || name.startsWith('rythem_backup_')) &&
-              name.endsWith('.json')) {
-            if (seenNames.contains(name)) continue;
-            final info = await parseSnapshotFile(file);
-            if (info != null) {
-              seenNames.add(name);
-              results.add(info);
+        try {
+          if (!dir.existsSync()) continue;
+          final files = dir.listSync().whereType<File>().toList();
+          for (final file in files) {
+            final name = p.basename(file.path);
+            if ((name.startsWith('rythem_autobackup_') || name.startsWith('rythem_backup_')) &&
+                name.endsWith('.json')) {
+              if (seenNames.contains(name)) continue;
+              final info = await parseSnapshotFile(file);
+              if (info != null) {
+                seenNames.add(name);
+                results.add(info);
+              }
             }
           }
+        } catch (dirError) {
+          debugPrint('AutoBackupManager: Skipping inaccessible candidate backup dir ${dir.path}: $dirError');
         }
       }
 
@@ -336,7 +306,13 @@ class AutoBackupManager {
 
   /// Restores database state atomically from a snapshot file.
   Future<Map<String, int>> restoreSnapshot(File snapshotFile) async {
+    if (!snapshotFile.existsSync()) {
+      throw FileSystemException('Snapshot file not found: ${snapshotFile.path}');
+    }
     final content = await snapshotFile.readAsString();
+    if (content.trim().isEmpty) {
+      throw const FormatException('Snapshot file is empty');
+    }
     return await _backupService.importBackupJson(content);
   }
 
