@@ -9,6 +9,7 @@ import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import '../../core/navigation/smooth_page_route.dart';
+import '../../core/theme/animation_config.dart';
 import '../flow/checkpoint_dialog.dart';
 import 'new_track_modal.dart';
 import 'roadmap_detail_screen.dart';
@@ -446,7 +447,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     onDelete: widget.onDeleteRoadmap != null
                         ? () => _confirmDeleteRoadmap(context, roadmap)
                         : null,
-                  );
+                  ).smoothEntrance(key: ValueKey('rm_${roadmap.id}'), index: index);
                 },
               ),
           ] else ...[
@@ -696,7 +697,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
               final item = filteredNotes[index];
-              return _buildNoteCard(item, themeColors, isDark);
+              return _buildNoteCard(item, themeColors, isDark)
+                  .smoothEntrance(key: ValueKey('note_${item.beat.id}'), index: index);
             },
           ),
       ],

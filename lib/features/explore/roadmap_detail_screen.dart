@@ -21,6 +21,7 @@ import 'package:rythem_app/features/flow/session_detail_screen.dart';
 import '../../core/navigation/smooth_page_route.dart';
 import '../../core/ingestion/services/curriculum_ingestion_service.dart';
 import 'widgets/chapter_accordion.dart';
+import '../../core/theme/animation_config.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
 /// - Opened from Explore or Metrics
@@ -1234,6 +1235,12 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           onFlagBeat: (beat) {
                             ConfusingBeatDialog.show(context, beat: beat);
                           },
+                        ).smoothEntrance(
+                          key: ValueKey('ch_${chapter.id}'),
+                          index: i,
+                          stepMs: 30,
+                          durationMs: 220,
+                          slideBeginY: 0.04,
                         );
                       }),
                   ],

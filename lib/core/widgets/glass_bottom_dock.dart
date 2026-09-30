@@ -157,19 +157,26 @@ class _DockButton extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                item.icon,
-                size: 20,
-                color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                item.label,
-                style: RythemTypography.labelSmall.copyWith(
-                  fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              AnimatedScale(
+                scale: isSelected ? 1.1 : 1.0,
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutBack,
+                child: Icon(
+                  item.icon,
+                  size: 20,
                   color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
                 ),
+              ),
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                style: RythemTypography.labelSmall.copyWith(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                ),
+                child: Text(item.label),
               ),
             ],
           ),

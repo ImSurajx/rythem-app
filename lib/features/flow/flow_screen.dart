@@ -21,6 +21,7 @@ import 'checkpoint_dialog.dart';
 import 'session_detail_screen.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/navigation/smooth_page_route.dart';
+import '../../core/theme/animation_config.dart';
 
 /// Flow Screen (Home - opened most often) adhering to `docs/design.md` §2 & user flow:
 /// - Today's date & streak indicator
@@ -848,33 +849,46 @@ class _TrackTodoListCard extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              BeatTile(
-                                beat: currentBeat,
-                                themeColors: themeColors,
-                                isDark: isDark,
-                                useActionMenu: true,
-                                progressPercent: beatProgressMap[currentBeat.id] ?? 0,
-                                onCheckpoint: () {
-                                  CheckpointDialog.show(
-                                    context,
-                                    beat: currentBeat,
-                                    initialPercent: beatProgressMap[currentBeat.id] ?? 0,
-                                    initialNotes: beatNotesMap[currentBeat.id] ?? '',
-                                    onSaveCheckpoint: (percentage, notes) {
-                                      onSaveCheckpoint?.call(currentBeat, percentage, notes);
-                                    },
-                                  );
-                                },
-                                onToggle: (val) => onBeatToggled(currentBeat, val),
-                                onOpenResource: () => ResourceLauncher.openResource(
-                                  context,
-                                  url: currentBeat.sourceUrl,
-                                  title: currentBeat.title,
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (isDark ? const Color(0xFF10B981) : const Color(0xFF059669))
+                                          .withOpacity(0.14),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
                                 ),
-                                onFlag: () {
-                                  ConfusingBeatDialog.show(context, beat: currentBeat);
-                                },
-                              ),
+                                child: BeatTile(
+                                  beat: currentBeat,
+                                  themeColors: themeColors,
+                                  isDark: isDark,
+                                  useActionMenu: true,
+                                  progressPercent: beatProgressMap[currentBeat.id] ?? 0,
+                                  onCheckpoint: () {
+                                    CheckpointDialog.show(
+                                      context,
+                                      beat: currentBeat,
+                                      initialPercent: beatProgressMap[currentBeat.id] ?? 0,
+                                      initialNotes: beatNotesMap[currentBeat.id] ?? '',
+                                      onSaveCheckpoint: (percentage, notes) {
+                                        onSaveCheckpoint?.call(currentBeat, percentage, notes);
+                                      },
+                                    );
+                                  },
+                                  onToggle: (val) => onBeatToggled(currentBeat, val),
+                                  onOpenResource: () => ResourceLauncher.openResource(
+                                    context,
+                                    url: currentBeat.sourceUrl,
+                                    title: currentBeat.title,
+                                  ),
+                                  onFlag: () {
+                                    ConfusingBeatDialog.show(context, beat: currentBeat);
+                                  },
+                                ),
+                              ).activeFocusAmbientGlow(isDark: isDark),
                               const SizedBox(height: 6),
                             ],
                           );
