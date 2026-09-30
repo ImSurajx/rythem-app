@@ -25,6 +25,7 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   sqflite_common_ffi: ^2.4.3
   sqlite3: ^3.6.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -38,3 +39,11 @@ hooks:
       source:
         linux: system
         default: sqlite3
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: false
+  image_path: "assets/icons/logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0c0c0b"
+  adaptive_icon_foreground: "assets/icons/logo.png"

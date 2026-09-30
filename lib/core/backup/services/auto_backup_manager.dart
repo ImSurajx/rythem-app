@@ -116,31 +116,29 @@ class AutoBackupManager {
       return dirs;
     }
 
-    // 1. Guaranteed app documents directory (Always exists, always readable/writable without permissions)
-    try {
-      final docDir = await getApplicationDocumentsDirectory();
-      dirs.add(Directory('${docDir.path}/Rythem/Backups'));
-    } catch (_) {}
-
-    // 2. Android external app files directory (Safe and visible under Android/data)
     if (Platform.isAndroid) {
+      dirs.add(Directory('/storage/emulated/0/Documents/Rythem/Backups'));
+      dirs.add(Directory('/storage/emulated/0/Download/Rythem/Backups'));
       try {
         final ext = await getExternalStorageDirectory();
         if (ext != null) {
           dirs.add(Directory('${ext.path}/Rythem/Backups'));
         }
       } catch (_) {}
-
-      // 3. User-visible public directories (if accessible)
-      dirs.add(Directory('/storage/emulated/0/Documents/Rythem/Backups'));
-      dirs.add(Directory('/storage/emulated/0/Download/Rythem/Backups'));
     }
+
+    // App documents directory (fallback or desktop/sandbox)
+    try {
+      final docDir = await getApplicationDocumentsDirectory();
+      dirs.add(Directory('${docDir.path}/Rythem/Backups'));
+    } catch (_) {}
 
     return dirs;
   }
 
-  /// Resolves the most resilient and guaranteed storage directory available on the host OS.
-  /// Prioritizes app documents directory so backups are 100% reliable and never blocked by scoped storage permissions.
+  /// Resolves the most resilient and user-accessible storage directory available on the host OS.
+  /// Prioritizes user-visible public storage (`Documents/Rythem/Backups`) on Android so users
+  /// can find it in their file manager and it survives app data clearing.
   Future<Directory> getResilientBackupDirectory() async {
     if (_overrideDir != null) {
       if (!_overrideDir.existsSync()) {
@@ -149,7 +147,34 @@ class AutoBackupManager {
       return _overrideDir;
     }
 
-    // 1. Guaranteed primary app documents directory
+    if (Platform.isAndroid) {
+      // 1. Primary: Public Documents directory (visible in Files / My Files under Documents)
+      final publicDoc = Directory('/storage/emulated/0/Documents/Rythem/Backups');
+      if (_canWriteTo(publicDoc)) {
+        _migrateExistingBackupsIfNeeded(publicDoc);
+        return publicDoc;
+      }
+
+      // 2. Secondary: Public Download directory (visible in Files under Downloads)
+      final publicDownload = Directory('/storage/emulated/0/Download/Rythem/Backups');
+      if (_canWriteTo(publicDownload)) {
+        _migrateExistingBackupsIfNeeded(publicDownload);
+        return publicDownload;
+      }
+
+      // 3. Tertiary: External storage directory (visible on PC / file browsers under Android/data)
+      try {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) {
+          final extBackup = Directory('${extDir.path}/Rythem/Backups');
+          if (_canWriteTo(extBackup)) {
+            return extBackup;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Default fallback (macOS, Linux, iOS, or Android internal sandbox)
     Directory baseDir;
     try {
       baseDir = await getApplicationDocumentsDirectory();
@@ -162,6 +187,39 @@ class AutoBackupManager {
       await backupDir.create(recursive: true);
     }
     return backupDir;
+  }
+
+  bool _canWriteTo(Directory dir) {
+    try {
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+      final testFile = File('${dir.path}/.write_probe');
+      testFile.writeAsStringSync('ok');
+      testFile.deleteSync();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _migrateExistingBackupsIfNeeded(Directory targetDir) {
+    try {
+      getApplicationDocumentsDirectory().then((docDir) {
+        final oldDir = Directory('${docDir.path}/Rythem/Backups');
+        if (oldDir.existsSync()) {
+          final files = oldDir.listSync().whereType<File>();
+          for (final f in files) {
+            final targetFile = File('${targetDir.path}/${p.basename(f.path)}');
+            if (!targetFile.existsSync()) {
+              try {
+                f.copySync(targetFile.path);
+              } catch (_) {}
+            }
+          }
+        }
+      }).catchError((_) {});
+    } catch (_) {}
   }
 
 

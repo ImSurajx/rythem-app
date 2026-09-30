@@ -1294,19 +1294,18 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
     final startStr = _formatDate(monday);
     final endStr = _formatDate(sunday);
 
-    if (widget.beatLogRepo != null) {
-      try {
-        final activity = await widget.beatLogRepo!.getActivityForDateRange(startStr, endStr);
-        if (mounted) {
-          setState(() {
-            _weekActivity = activity;
-          });
-        }
-        return;
-      } catch (_) {}
-    }
+    final repo = widget.beatLogRepo ?? BeatLogRepository();
+    try {
+      final activity = await repo.getActivityForDateRange(startStr, endStr);
+      if (mounted) {
+        setState(() {
+          _weekActivity = activity;
+        });
+      }
+      return;
+    } catch (_) {}
 
-    // Fallback if beatLogRepo is not provided
+    // Fallback if database query fails
     final fallbackMap = <String, double>{};
     for (final b in widget.allBeats) {
       if (b.isCompleted && b.completedAt != null) {
@@ -1561,9 +1560,11 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                             padding: const EdgeInsets.symmetric(horizontal: 2.0),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
                                   _weekDaysLabels[i],
+                                  textAlign: TextAlign.center,
                                   style: RythemTypography.labelSmall.copyWith(
                                     color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
                                     fontSize: 10,
@@ -1572,6 +1573,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                 ),
                                 const SizedBox(height: 5),
                                 Container(
+                                  width: double.infinity,
                                   height: 54,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
@@ -1601,9 +1603,11 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       Text(
                                         '${dayDate.day}',
+                                        textAlign: TextAlign.center,
                                         style: RythemTypography.bodySmall.copyWith(
                                           color: isCompleted
                                               ? (widget.isDark ? Colors.white : Colors.teal.shade900)
@@ -1617,7 +1621,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                       if (completedOnDay > 0)
                                         Container(
                                           constraints: const BoxConstraints(minWidth: 16),
-                                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1.5),
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
                                           decoration: BoxDecoration(
                                             color: widget.isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
                                             borderRadius: BorderRadius.circular(6),
