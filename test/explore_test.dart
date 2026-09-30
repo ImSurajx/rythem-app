@@ -347,6 +347,48 @@ void main() {
 
       expect(openedRoadmap?.id, 'rm_1');
     });
+
+    testWidgets('ExploreScreen switches to Flag Notes section and displays flagged reflections', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: ExploreScreen(
+              roadmaps: [testRoadmap1],
+              chaptersByRoadmap: {'rm_1': [testChapter1, testChapter2]},
+              beatsByRoadmap: {'rm_1': testBeats},
+              beatNotesMap: const {'b2': 'Need to revisit Paxos vs Raft consensus trade-offs.'},
+              beatProgressMap: const {'b2': 80},
+              onBeatToggled: (_, __) async {},
+              onCreateTrack: ({required title, required category, startDate, required targetDate, resourceUrl, syllabusText}) async {},
+            ),
+          ),
+        ),
+      );
+
+      // Verify segmented switch is present
+      expect(find.text('Trackers (1)'), findsOneWidget);
+      expect(find.text('Flag Notes (1)'), findsOneWidget);
+
+      // Switch to Flag Notes
+      await tester.tap(find.text('Flag Notes (1)'));
+      await tester.pumpAndSettle();
+
+      // Verify Flag Notes view header & search bar
+      expect(find.text('Flag Notes'), findsWidgets);
+      expect(find.text('Leader Election Dynamics'), findsOneWidget);
+      expect(find.text('Need to revisit Paxos vs Raft consensus trade-offs.'), findsOneWidget);
+      expect(find.text('⚡ 80%'), findsOneWidget);
+
+      // Test searching notes
+      await tester.enterText(find.byType(TextField).first, 'Paxos');
+      await tester.pumpAndSettle();
+      expect(find.text('Leader Election Dynamics'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, 'Nonexistent Query');
+      await tester.pumpAndSettle();
+      expect(find.text('No notes match "Nonexistent Query"'), findsOneWidget);
+    });
   });
 }
 
