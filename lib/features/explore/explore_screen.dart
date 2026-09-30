@@ -68,27 +68,51 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Future<void> _confirmDeleteRoadmap(BuildContext context, RoadmapEntity roadmap) async {
     HapticFeedback.mediumImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeColors = isDark ? RythemColors.dark : RythemColors.light;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
+        backgroundColor: isDark
             ? const Color(0xFF1E1E1E)
             : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Tracker', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text(
+          'Delete Tracker',
+          style: RythemTypography.titleMedium.copyWith(
+            color: themeColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
         content: Text(
           'Are you sure you want to delete "${roadmap.title}"? All chapters, beats, and progress will be permanently removed.',
-          style: const TextStyle(fontSize: 13),
+          style: RythemTypography.bodyMedium.copyWith(
+            color: themeColors.textSecondary,
+            fontSize: 13,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: RythemTypography.button.copyWith(
+                color: themeColors.textTertiary,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Delete',
+              style: RythemTypography.button.copyWith(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

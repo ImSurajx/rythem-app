@@ -608,20 +608,42 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
             ? const Color(0xFF1E1E1E)
             : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Delete Tracker', style: RythemTypography.titleMedium.copyWith(fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text(
+          'Delete Tracker',
+          style: RythemTypography.titleMedium.copyWith(
+            color: themeColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
         content: Text(
           'Are you sure you want to delete "${_currentRoadmap.title}"? All chapters, beats, and progress will be permanently removed.',
-          style: RythemTypography.bodyMedium.copyWith(fontSize: 13),
+          style: RythemTypography.bodyMedium.copyWith(
+            color: themeColors.textSecondary,
+            fontSize: 13,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: RythemTypography.button.copyWith(color: themeColors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: RythemTypography.button.copyWith(
+                color: themeColors.textTertiary,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: Text('Delete', style: RythemTypography.button.copyWith(color: Colors.redAccent, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Delete',
+              style: RythemTypography.button.copyWith(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -1025,22 +1047,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                       ),
                                     ],
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Attach Resource Action Button (Primary Action)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GlassButton(
-                                  label: 'Attach Resource',
-                                  icon: Icons.link_rounded,
-                                  height: 48,
-                                  variant: GlassButtonVariant.primary,
-                                  onPressed: _showAttachResourceDialog,
                                 ),
                               ),
                             ],
