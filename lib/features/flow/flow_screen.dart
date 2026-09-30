@@ -1665,6 +1665,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                               child: Container(
                                                 width: 17,
                                                 height: 17,
+                                                padding: const EdgeInsets.all(2.0),
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
                                                   color: completedOnDay >= 3.0
@@ -1689,7 +1690,7 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                                     effortText,
                                                     style: const TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: 8.5,
+                                                      fontSize: 7.0,
                                                       fontWeight: FontWeight.w800,
                                                       height: 1.0,
                                                     ),

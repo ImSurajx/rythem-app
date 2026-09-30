@@ -203,26 +203,43 @@ class AutoBackupManager {
     }
   }
 
+  Future<Directory> _getSafeFallbackDirectory() async {
+    Directory baseDir;
+    try {
+      baseDir = await getApplicationDocumentsDirectory();
+    } catch (_) {
+      baseDir = Directory.current;
+    }
+    final dir = Directory('${baseDir.path}/Rythem/Backups');
+    if (!dir.existsSync()) {
+      try {
+        dir.createSync(recursive: true);
+      } catch (_) {}
+    }
+    return dir;
+  }
+
   void _migrateExistingBackupsIfNeeded(Directory targetDir) {
     try {
-      getApplicationDocumentsDirectory().then((docDir) {
-        final oldDir = Directory('${docDir.path}/Rythem/Backups');
-        if (oldDir.existsSync()) {
-          final files = oldDir.listSync().whereType<File>();
-          for (final f in files) {
-            final targetFile = File('${targetDir.path}/${p.basename(f.path)}');
-            if (!targetFile.existsSync()) {
-              try {
-                f.copySync(targetFile.path);
-              } catch (_) {}
+      getCandidateBackupDirectories().then((dirs) {
+        for (final dir in dirs) {
+          if (dir.path == targetDir.path) continue;
+          if (!dir.existsSync()) continue;
+          try {
+            final files = dir.listSync().whereType<File>();
+            for (final f in files) {
+              final targetFile = File('${targetDir.path}/${p.basename(f.path)}');
+              if (!targetFile.existsSync()) {
+                try {
+                  f.copySync(targetFile.path);
+                } catch (_) {}
+              }
             }
-          }
+          } catch (_) {}
         }
       }).catchError((_) {});
     } catch (_) {}
   }
-
-
 
   /// Creates an explicit manual on-demand backup with a timestamped filename
   /// in the resilient backup directory (e.g. Documents/Rythem/Backups),
@@ -235,24 +252,50 @@ class AutoBackupManager {
       final fileName = 'rythem_backup_${dateStr}_$timeStr.json';
 
       final jsonPayload = await _backupService.exportBackupJson();
-      final backupDir = await getResilientBackupDirectory();
+      Directory backupDir;
+      try {
+        backupDir = await getResilientBackupDirectory();
+      } catch (_) {
+        backupDir = await _getSafeFallbackDirectory();
+      }
 
-      // 1. Write the explicit timestamped manual backup file
-      final manualFile = File('${backupDir.path}/$fileName');
-      await manualFile.writeAsString(jsonPayload);
+      if (!backupDir.existsSync()) {
+        try {
+          await backupDir.create(recursive: true);
+        } catch (_) {
+          backupDir = await _getSafeFallbackDirectory();
+        }
+      }
+
+      // 1. Write the explicit timestamped manual backup file (with safe fallback)
+      File manualFile = File('${backupDir.path}/$fileName');
+      try {
+        await manualFile.writeAsString(jsonPayload);
+      } catch (writeErr) {
+        debugPrint('AutoBackupManager: Primary backup write failed ($writeErr), falling back to safe local storage');
+        backupDir = await _getSafeFallbackDirectory();
+        manualFile = File('${backupDir.path}/$fileName');
+        await manualFile.writeAsString(jsonPayload);
+      }
 
       // 2. Also update latest pointer
-      final latestFile = File('${backupDir.path}/$latestBackupFileName');
-      await latestFile.writeAsString(jsonPayload);
+      try {
+        final latestFile = File('${backupDir.path}/$latestBackupFileName');
+        await latestFile.writeAsString(jsonPayload);
+      } catch (_) {}
 
       // 3. Update today's auto snapshot as well
-      final todayStr = dateStr;
-      final snapshotName = 'rythem_autobackup_$todayStr.json';
-      final snapshotFile = File('${backupDir.path}/$snapshotName');
-      await snapshotFile.writeAsString(jsonPayload);
+      try {
+        final todayStr = dateStr;
+        final snapshotName = 'rythem_autobackup_$todayStr.json';
+        final snapshotFile = File('${backupDir.path}/$snapshotName');
+        await snapshotFile.writeAsString(jsonPayload);
+      } catch (_) {}
 
       // 4. Update last backup date in settings
-      await _settingsRepo.setSetting(_prefLastAutoBackupDateKey, todayStr);
+      try {
+        await _settingsRepo.setSetting(_prefLastAutoBackupDateKey, dateStr);
+      } catch (_) {}
 
       return await parseSnapshotFile(manualFile);
     } catch (e) {
@@ -280,19 +323,43 @@ class AutoBackupManager {
 
     try {
       final jsonPayload = await _backupService.exportBackupJson();
-      final backupDir = await getResilientBackupDirectory();
+      Directory backupDir;
+      try {
+        backupDir = await getResilientBackupDirectory();
+      } catch (_) {
+        backupDir = await _getSafeFallbackDirectory();
+      }
 
-      // 1. Write latest pointer backup
-      final latestFile = File('${backupDir.path}/$latestBackupFileName');
-      await latestFile.writeAsString(jsonPayload);
+      if (!backupDir.existsSync()) {
+        try {
+          await backupDir.create(recursive: true);
+        } catch (_) {
+          backupDir = await _getSafeFallbackDirectory();
+        }
+      }
+
+      // 1. Write latest pointer backup (with safe fallback)
+      File latestFile = File('${backupDir.path}/$latestBackupFileName');
+      try {
+        await latestFile.writeAsString(jsonPayload);
+      } catch (writeErr) {
+        debugPrint('AutoBackupManager: Daily backup primary write failed ($writeErr), falling back');
+        backupDir = await _getSafeFallbackDirectory();
+        latestFile = File('${backupDir.path}/$latestBackupFileName');
+        await latestFile.writeAsString(jsonPayload);
+      }
 
       // 2. Write today's rolling snapshot
-      final snapshotName = 'rythem_autobackup_$todayStr.json';
-      final snapshotFile = File('${backupDir.path}/$snapshotName');
-      await snapshotFile.writeAsString(jsonPayload);
+      try {
+        final snapshotName = 'rythem_autobackup_$todayStr.json';
+        final snapshotFile = File('${backupDir.path}/$snapshotName');
+        await snapshotFile.writeAsString(jsonPayload);
+      } catch (_) {}
 
       // 3. Mark last backup date in settings
-      await _settingsRepo.setSetting(_prefLastAutoBackupDateKey, todayStr);
+      try {
+        await _settingsRepo.setSetting(_prefLastAutoBackupDateKey, todayStr);
+      } catch (_) {}
 
       // 4. Prune snapshots older than maxRetainedDailySnapshots
       await pruneOldSnapshots(keepCount: maxRetainedDailySnapshots);

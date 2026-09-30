@@ -17,8 +17,10 @@ import 'features/explore/explore_screen.dart';
 import 'features/explore/roadmap_detail_screen.dart';
 import 'features/metrics/metrics_screen.dart';
 import 'features/onboarding/onboarding_wizard_screen.dart';
+import 'dart:io';
 import 'core/backup/services/backup_service.dart';
 import 'core/backup/services/auto_backup_manager.dart';
+import 'core/backup/services/storage_permission_service.dart';
 import 'core/navigation/smooth_page_route.dart';
 
 void main() async {
@@ -140,6 +142,7 @@ class _DesignSystemShowcaseScreenState
   String _backupLocationDescription = 'Documents > Rythem > Backups';
   bool _isPerformingAutoBackup = false;
   bool _hasCheckedDisasterRecovery = false;
+  bool _hasStoragePermission = true;
 
   late final _ingestionService = CurriculumIngestionService(
     roadmapRepo: _roadmapRepo,
@@ -530,6 +533,7 @@ class _DesignSystemShowcaseScreenState
     final allRoadmaps = await _roadmapRepo.getActiveRoadmaps();
     final latestBackup = await _autoBackupManager.getLatestAutoBackup();
     final backupLocation = await _autoBackupManager.getStorageLocationDescription();
+    final hasStoragePerm = await StoragePermissionService.hasStoragePermission();
     if (allRoadmaps.isEmpty) {
       final db = await DatabaseService.instance.database;
       try {
@@ -549,6 +553,7 @@ class _DesignSystemShowcaseScreenState
           _pacingBudget = null;
           _latestAutoBackup = latestBackup;
           _backupLocationDescription = backupLocation;
+          _hasStoragePermission = hasStoragePerm;
         });
       }
       return;
@@ -685,6 +690,7 @@ class _DesignSystemShowcaseScreenState
         _beatNotesMap = beatNotesMap;
         _latestAutoBackup = latestBackup;
         _backupLocationDescription = backupLocation;
+        _hasStoragePermission = hasStoragePerm;
       });
     }
     unawaited(_autoBackupManager.checkAndPerformDailyBackup());
@@ -1625,6 +1631,54 @@ class _DesignSystemShowcaseScreenState
               height: 44,
             ),
           ),
+          if (!_hasStoragePermission && Platform.isAndroid) ...[
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () async {
+                await StoragePermissionService.requestStoragePermission();
+                final has = await StoragePermissionService.hasStoragePermission();
+                if (mounted) {
+                  setState(() => _hasStoragePermission = has);
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(isDark ? 0.15 : 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.folder_shared_outlined, size: 16, color: Color(0xFFF59E0B)),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Allow All Files access to store in Documents',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFF59E0B),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'ALLOW',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFF59E0B)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           // Interactive Snapshot History Tile
           InkWell(
@@ -1744,6 +1798,15 @@ class _DesignSystemShowcaseScreenState
     setState(() => _isPerformingAutoBackup = true);
     HapticFeedback.mediumImpact();
     try {
+      if (Platform.isAndroid) {
+        final hasPerm = await StoragePermissionService.hasStoragePermission();
+        if (!hasPerm) {
+          await StoragePermissionService.requestStoragePermission();
+          final updated = await StoragePermissionService.hasStoragePermission();
+          if (mounted) setState(() => _hasStoragePermission = updated);
+        }
+      }
+
       final info = await _autoBackupManager.createManualBackup();
       final location = await _autoBackupManager.getStorageLocationDescription();
       if (mounted) {
@@ -1761,7 +1824,7 @@ class _DesignSystemShowcaseScreenState
     } catch (e) {
       if (mounted) {
         setState(() => _isPerformingAutoBackup = false);
-        _showToast('Backup failed: $e');
+        _showToast('Backup error: $e');
       }
     }
   }
