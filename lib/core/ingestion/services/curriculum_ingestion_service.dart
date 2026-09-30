@@ -743,50 +743,58 @@ class CurriculumIngestionService {
       }
     }
 
-    // 3. Sync standalone videos: fetch actual durations for remaining standalone beats
+    // 3. Sync standalone videos: group by video ID to extract once and map all chapter beats efficiently
     final remainingStandalone = standaloneVideoBeats
         .where((b) => !updatedBeatMap.containsKey(b.id))
         .toList();
 
     if (remainingStandalone.isNotEmpty) {
-      const batchSize = 4;
-      for (int i = 0; i < remainingStandalone.length; i += batchSize) {
-        final batch = remainingStandalone.sublist(
-          i,
-          i + batchSize > remainingStandalone.length
-              ? remainingStandalone.length
-              : i + batchSize,
-        );
+      final beatsByVideoId = <String, List<BeatEntity>>{};
+      for (final beat in remainingStandalone) {
+        final vId = YoutubeExtractorService.parseVideoId(beat.sourceUrl ?? '');
+        if (vId != null) {
+          beatsByVideoId.putIfAbsent(vId, () => []).add(beat);
+        }
+      }
 
-        await Future.wait(
-          batch.map((beat) async {
-            try {
-              final extracted = await _youtubeClient
-                  .extractVideo(beat.sourceUrl!)
-                  .timeout(const Duration(seconds: 4));
-              if (extracted.items.isNotEmpty) {
-                RawResourceItem itemToUse = extracted.items.first;
-                if (beat.timestampSeconds != null && extracted.items.length > 1) {
-                  final match = extracted.items.where((it) =>
-                      it.timestampSeconds != null &&
-                      (it.timestampSeconds! - beat.timestampSeconds!).abs() < 5).firstOrNull;
-                  if (match != null) {
-                    itemToUse = match;
-                  }
+      for (final entry in beatsByVideoId.entries) {
+        final videoBeats = entry.value;
+        final sampleUrl = videoBeats.first.sourceUrl ?? 'https://www.youtube.com/watch?v=${entry.key}';
+        try {
+          final extracted = await _youtubeClient
+              .extractVideo(sampleUrl)
+              .timeout(const Duration(seconds: 12));
+
+          if (extracted.items.isNotEmpty) {
+            for (final beat in videoBeats) {
+              RawResourceItem itemToUse = extracted.items.first;
+              if (beat.timestampSeconds != null && extracted.items.length > 1) {
+                final match = extracted.items.where((it) =>
+                    it.timestampSeconds != null &&
+                    (it.timestampSeconds! - beat.timestampSeconds!).abs() < 5).firstOrNull;
+                if (match != null) {
+                  itemToUse = match;
                 }
-                final effort = EffortWeightCalculator.calculate(itemToUse.durationSeconds);
-                final updated = beat.copyWith(
-                  effortWeight: effort,
-                  updatedAt: DateTime.now(),
-                );
-                updatedBeatMap[beat.id] = updated;
-                updatedCount++;
+              } else if (extracted.items.length > 1) {
+                final match = extracted.items.where((it) =>
+                    it.title.trim().toLowerCase() == beat.title.trim().toLowerCase()).firstOrNull;
+                if (match != null) {
+                  itemToUse = match;
+                }
               }
-            } catch (e) {
-              debugPrint('Notice: Standalone video sync fell back for ${beat.sourceUrl}: $e');
+
+              final effort = EffortWeightCalculator.calculate(itemToUse.durationSeconds);
+              final updated = beat.copyWith(
+                effortWeight: effort,
+                updatedAt: DateTime.now(),
+              );
+              updatedBeatMap[beat.id] = updated;
+              updatedCount++;
             }
-          }),
-        );
+          }
+        } catch (e) {
+          debugPrint('Notice: Standalone video sync fell back for ${entry.key}: $e');
+        }
       }
     }
 
