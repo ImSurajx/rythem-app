@@ -134,7 +134,8 @@ void main() {
       expect(find.text('Linear Algebra & Tensors'), findsOneWidget);
       expect(find.text('ENGINEERING'), findsOneWidget);
       expect(find.text('MATHEMATICS'), findsOneWidget);
-      expect(find.text('1 of 3 beats'), findsOneWidget);
+      expect(find.text('1.0 of 3.5 pts'), findsOneWidget);
+      expect(find.text(' • 1/3 topics'), findsOneWidget);
     });
 
     testWidgets('filters roadmap cards in real time via search field', (tester) async {
@@ -338,9 +339,10 @@ void main() {
         ),
       );
 
-      // Verify card shows 1 of 3 beats (33%)
-      expect(find.text('1 of 3 beats'), findsOneWidget);
-      expect(find.text('33%'), findsOneWidget);
+      // Verify card shows effort points (1.0 of 3.5 pts) and 28%
+      expect(find.text('1.0 of 3.5 pts'), findsOneWidget);
+      expect(find.text(' • 1/3 topics'), findsOneWidget);
+      expect(find.text('28%'), findsOneWidget);
 
       // Tap card
       await tester.tap(find.text('Distributed Systems Architecture'));

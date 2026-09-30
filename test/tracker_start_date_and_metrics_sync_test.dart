@@ -329,7 +329,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('1'), findsWidgets);
+      expect(find.text('1⚡'), findsWidgets);
 
       // Simulate roadmap deletion: clear fake repo activity and emit DatabaseEvent
       fakeRepo.fakeMonthActivity = {};

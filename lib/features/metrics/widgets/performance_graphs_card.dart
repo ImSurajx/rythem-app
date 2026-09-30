@@ -311,61 +311,71 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
               } catch (_) {}
               const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
               final dayLabel = parsed != null ? weekDays[parsed.weekday - 1] : '?';
+              final effortStr = day.effort > 0
+                  ? '${day.effort.toStringAsFixed(day.effort.truncateToDouble() == day.effort ? 0 : 1)}⚡'
+                  : '';
 
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        day.count > 0 ? '${day.count}' : '',
-                        style: RythemTypography.labelSmall.copyWith(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                  child: Tooltip(
+                    message: day.count > 0
+                        ? '${day.effort.toStringAsFixed(1)} pts • ${day.count} topic${day.count == 1 ? '' : 's'}'
+                        : 'No activity',
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          effortStr,
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 9.0,
+                            fontWeight: FontWeight.w700,
+                            color: isToday
+                                ? (widget.isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                                : widget.themeColors.textTertiary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        height: barHeight,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(7),
-                          color: isToday
-                              ? (day.count > 0
-                                  ? (widget.isDark ? Colors.white : Colors.black)
-                                  : (widget.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08)))
-                              : (day.count > 0
-                                  ? (widget.isDark ? Colors.white.withOpacity(0.35) : Colors.black.withOpacity(0.35))
-                                  : (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))),
-                          border: isToday
-                              ? Border.all(
-                                  color: widget.isDark ? Colors.white70 : Colors.black87,
-                                  width: 1.2,
-                                )
-                              : null,
-                          boxShadow: isToday && day.count > 0
-                              ? [
-                                  BoxShadow(
-                                    color: widget.isDark ? Colors.white24 : Colors.black12,
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
+                        const SizedBox(height: 6),
+                        Container(
+                          height: barHeight,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(7),
+                            color: isToday
+                                ? (day.count > 0
+                                    ? (widget.isDark ? Colors.white : Colors.black)
+                                    : (widget.isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08)))
+                                : (day.count > 0
+                                    ? (widget.isDark ? Colors.white.withOpacity(0.35) : Colors.black.withOpacity(0.35))
+                                    : (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06))),
+                            border: isToday
+                                ? Border.all(
+                                    color: widget.isDark ? Colors.white70 : Colors.black87,
+                                    width: 1.2,
+                                  )
+                                : null,
+                            boxShadow: isToday && day.count > 0
+                                ? [
+                                    BoxShadow(
+                                      color: widget.isDark ? Colors.white24 : Colors.black12,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        dayLabel,
-                        style: RythemTypography.labelSmall.copyWith(
-                          fontSize: 10,
-                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                          color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                        const SizedBox(height: 8),
+                        Text(
+                          dayLabel,
+                          style: RythemTypography.labelSmall.copyWith(
+                            fontSize: 10,
+                            fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                            color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

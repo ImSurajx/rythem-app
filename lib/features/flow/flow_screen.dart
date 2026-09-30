@@ -142,92 +142,44 @@ class _FlowScreenState extends State<FlowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Date & Active Track Switcher
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  formattedDate,
-                  overflow: TextOverflow.ellipsis,
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (roadmaps.length > 1)
-                    GestureDetector(
-                      onTap: widget.onSwitchRoadmap,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.swap_horiz, size: 14, color: themeColors.textSecondary),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Tracks (${roadmaps.length})',
-                              style: RythemTypography.labelSmall.copyWith(
-                                fontSize: 10,
-                                color: themeColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+          // Header: Date
+          Text(
+            formattedDate.toUpperCase(),
+            overflow: TextOverflow.ellipsis,
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textTertiary,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
-
-          // Title & Streak
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Welcome Greeting & Track Summary
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.activeRoadmap?.title ?? 'Daily Flow',
-                      style: RythemTypography.headlineMedium.copyWith(
-                        color: themeColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${roadmaps.length} active track${roadmaps.length == 1 ? '' : 's'}',
-                      style: RythemTypography.bodySmall.copyWith(
-                        color: themeColors.textTertiary,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
+              Text(
+                () {
+                  final hour = DateTime.now().hour;
+                  if (hour < 12) return 'Good morning';
+                  if (hour < 17) return 'Good afternoon';
+                  return 'Good evening';
+                }(),
+                style: RythemTypography.headlineMedium.copyWith(
+                  color: themeColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${roadmaps.length} active track${roadmaps.length == 1 ? '' : 's'} • Daily Flow',
+                style: RythemTypography.bodySmall.copyWith(
+                  color: themeColors.textTertiary,
+                  fontSize: 11.5,
                 ),
               ),
             ],

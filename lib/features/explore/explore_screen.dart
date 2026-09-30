@@ -11,6 +11,7 @@ import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import '../../core/navigation/smooth_page_route.dart';
 import '../../core/theme/animation_config.dart';
 import '../flow/checkpoint_dialog.dart';
+import '../flow/confusing_beat_dialog.dart';
 import 'new_track_modal.dart';
 import 'roadmap_detail_screen.dart';
 import '../../core/widgets/smooth_dialog.dart';
@@ -434,13 +435,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   final beats = widget.beatsByRoadmap[roadmap.id] ?? [];
                   final completedBeats = beats.where((b) => b.isCompleted).length;
                   final totalBeats = beats.length;
-                  final progressRatio =
-                      totalBeats > 0 ? (completedBeats / totalBeats) : 0.0;
+                  final totalEffort = beats.fold<double>(0.0, (acc, b) => acc + b.effortWeight);
+                  final completedEffort = beats.where((b) => b.isCompleted).fold<double>(0.0, (acc, b) => acc + b.effortWeight);
+                  final progressRatio = totalEffort > 0
+                      ? (completedEffort / totalEffort)
+                      : (totalBeats > 0 ? (completedBeats / totalBeats) : 0.0);
 
                   return _RoadmapExploreCard(
                     roadmap: roadmap,
                     completedBeats: completedBeats,
                     totalBeats: totalBeats,
+                    completedEffort: completedEffort,
+                    totalEffort: totalEffort,
                     progressRatio: progressRatio,
                     themeColors: themeColors,
                     isDark: isDark,
@@ -932,20 +938,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
           // Row 4: Action Footer (Edit Note, Open in Track, Toggle Check)
           Row(
             children: [
-              // Edit Note Button
+              // Edit Note / Flag Button
               GestureDetector(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  CheckpointDialog.show(
-                    context,
-                    beat: item.beat,
-                    initialPercent: item.progress,
-                    initialNotes: item.notes,
-                    onSaveCheckpoint: (pct, notes) {
-                      widget.onSaveCheckpoint?.call(item.beat, pct, notes);
-                      if (mounted) setState(() {});
-                    },
-                  );
+                  if (item.progress > 0) {
+                    CheckpointDialog.show(
+                      context,
+                      beat: item.beat,
+                      initialPercent: item.progress,
+                      initialNotes: item.notes,
+                      onSaveCheckpoint: (pct, notes) {
+                        widget.onSaveCheckpoint?.call(item.beat, pct, notes);
+                        if (mounted) setState(() {});
+                      },
+                    );
+                  } else {
+                    ConfusingBeatDialog.show(
+                      context,
+                      beat: item.beat,
+                      initialNote: item.notes,
+                      onFlagSaved: (savedNote) {
+                        widget.onSaveCheckpoint?.call(item.beat, 0, savedNote);
+                        if (mounted) setState(() {});
+                      },
+                    );
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -957,10 +975,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.edit_outlined, size: 13, color: themeColors.textSecondary),
+                      Icon(
+                        item.progress > 0 ? Icons.tune_rounded : Icons.flag_outlined,
+                        size: 13,
+                        color: themeColors.textSecondary,
+                      ),
                       const SizedBox(width: 5),
                       Text(
-                        'Edit Note',
+                        item.progress > 0 ? 'Edit Checkpoint' : 'Edit Flag',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: themeColors.textSecondary),
                       ),
                     ],
@@ -1033,6 +1055,8 @@ class _RoadmapExploreCard extends StatelessWidget {
   final RoadmapEntity roadmap;
   final int completedBeats;
   final int totalBeats;
+  final double completedEffort;
+  final double totalEffort;
   final double progressRatio;
   final RythemColorTokens themeColors;
   final bool isDark;
@@ -1043,6 +1067,8 @@ class _RoadmapExploreCard extends StatelessWidget {
     required this.roadmap,
     required this.completedBeats,
     required this.totalBeats,
+    required this.completedEffort,
+    required this.totalEffort,
     required this.progressRatio,
     required this.themeColors,
     required this.isDark,
@@ -1128,16 +1154,35 @@ class _RoadmapExploreCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Progress Bar & Beat Ratio (e.g. "7 of 21")
+            // Progress Bar & Effort Points (e.g. "⚡ 12.5 of 35.0 pts • 7/21 topics")
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '$completedBeats of $totalBeats beats',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textSecondary,
-                    fontSize: 11.5,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.bolt_rounded,
+                      size: 13,
+                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts',
+                      style: RythemTypography.bodySmall.copyWith(
+                        color: themeColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    Text(
+                      ' • $completedBeats/$totalBeats topics',
+                      style: RythemTypography.bodySmall.copyWith(
+                        color: themeColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   '${(progressRatio * 100).toInt()}%',
