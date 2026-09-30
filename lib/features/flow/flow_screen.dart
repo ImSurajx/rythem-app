@@ -1592,130 +1592,138 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  _weekDaysLabels[i],
-                                  textAlign: TextAlign.center,
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
-                                    fontSize: 10,
-                                    fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
-                                      color: tileColor,
-                                      border: Border.all(
-                                        color: borderColor,
-                                        width: isToday ? 1.4 : (completedOnDay >= 3.0 ? 1.2 : (completedOnDay > 0 ? 1.0 : 0.6)),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final boxSize = constraints.maxWidth.clamp(34.0, 44.0);
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      _weekDaysLabels[i],
+                                      textAlign: TextAlign.center,
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: isToday ? widget.themeColors.textPrimary : widget.themeColors.textTertiary,
+                                        fontSize: 10,
+                                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
                                       ),
-                                      boxShadow: completedOnDay >= 3.0
-                                          ? [
-                                              BoxShadow(
-                                                color: _emeraldAccent.withOpacity(widget.isDark ? 0.35 : 0.25),
-                                                blurRadius: 6,
-                                                spreadRadius: 0.5,
-                                              ),
-                                            ]
-                                          : (completedOnDay > 0
-                                              ? [
-                                                  BoxShadow(
-                                                    color: _emeraldAccent.withOpacity(widget.isDark ? 0.20 : 0.12),
-                                                    blurRadius: 4,
-                                                    spreadRadius: 0.2,
-                                                  ),
-                                                ]
-                                              : null),
                                     ),
-                                    child: Stack(
-                                      children: [
-                                        // Centered Day Number in square
-                                        Center(
-                                          child: Text(
-                                            '${dayDate.day}',
-                                            textAlign: TextAlign.center,
-                                            style: RythemTypography.bodySmall.copyWith(
-                                              color: textColor,
-                                              fontSize: 12,
-                                              fontWeight: isCompleted || isToday ? FontWeight.w800 : FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-
-                                        // Top-right fixed circle badge for effort points
-                                        if (completedOnDay > 0)
-                                          Positioned(
-                                            top: 2,
-                                            right: 2,
-                                            child: Container(
-                                              width: 16,
-                                              height: 16,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: widget.isDark
-                                                    ? (completedOnDay >= 3.0 ? Colors.black87 : const Color(0xFF6366F1))
-                                                    : (completedOnDay >= 3.0 ? Colors.white : const Color(0xFF4F46E5)),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.black.withOpacity(0.18),
-                                                    blurRadius: 2,
-                                                    offset: const Offset(0, 1),
-                                                  ),
-                                                ],
-                                                border: Border.all(
-                                                  color: widget.isDark ? Colors.white24 : Colors.black12,
-                                                  width: 0.6,
-                                                ),
+                                    const SizedBox(height: 5),
+                                    SizedBox(
+                                      width: boxSize,
+                                      height: boxSize,
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          // 1:1 Square Day Box with rounded corners and border
+                                          Container(
+                                            width: boxSize,
+                                            height: boxSize,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(10),
+                                              color: tileColor,
+                                              border: Border.all(
+                                                color: borderColor,
+                                                width: isToday ? 1.4 : (completedOnDay >= 3.0 ? 1.2 : (completedOnDay > 0 ? 1.0 : 0.6)),
                                               ),
-                                              alignment: Alignment.center,
-                                              padding: const EdgeInsets.all(1.5),
-                                              child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text(
-                                                  effortText,
-                                                  style: TextStyle(
-                                                    color: widget.isDark
-                                                        ? (completedOnDay >= 3.0 ? _emeraldAccent : Colors.white)
-                                                        : (completedOnDay >= 3.0 ? Colors.teal.shade900 : Colors.white),
-                                                    fontSize: 7.5,
-                                                    fontWeight: FontWeight.w800,
-                                                    height: 1.0,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ),
+                                              boxShadow: completedOnDay >= 3.0
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: _emeraldAccent.withOpacity(widget.isDark ? 0.35 : 0.25),
+                                                        blurRadius: 6,
+                                                        spreadRadius: 0.5,
+                                                      ),
+                                                    ]
+                                                  : (completedOnDay > 0
+                                                      ? [
+                                                          BoxShadow(
+                                                            color: _emeraldAccent.withOpacity(widget.isDark ? 0.20 : 0.12),
+                                                            blurRadius: 4,
+                                                            spreadRadius: 0.2,
+                                                          ),
+                                                        ]
+                                                      : null),
                                             ),
-                                          ),
-
-                                        // Subtle bottom indicator dot for today
-                                        if (isToday)
-                                          Positioned(
-                                            bottom: 3,
-                                            left: 0,
-                                            right: 0,
                                             child: Center(
-                                              child: Container(
-                                                width: 3,
-                                                height: 3,
-                                                decoration: BoxDecoration(
-                                                  color: completedOnDay > 0
-                                                      ? (completedOnDay >= 3.0 ? (widget.isDark ? Colors.black : Colors.white) : _emeraldAccent)
-                                                      : (widget.isDark ? Colors.white70 : Colors.black87),
-                                                  shape: BoxShape.circle,
+                                              child: Text(
+                                                '${dayDate.day}',
+                                                textAlign: TextAlign.center,
+                                                style: RythemTypography.bodySmall.copyWith(
+                                                  color: textColor,
+                                                  fontSize: 12,
+                                                  fontWeight: isCompleted || isToday ? FontWeight.w800 : FontWeight.w500,
                                                 ),
                                               ),
                                             ),
                                           ),
-                                      ],
+
+                                          // Floating Top-right effort points badge
+                                          if (completedOnDay > 0)
+                                            Positioned(
+                                              top: -4,
+                                              right: -4,
+                                              child: Container(
+                                                width: 17,
+                                                height: 17,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: completedOnDay >= 3.0
+                                                      ? (widget.isDark ? const Color(0xFF10B981) : const Color(0xFF047857))
+                                                      : (widget.isDark ? const Color(0xFF0D9488) : const Color(0xFF059669)),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black.withOpacity(widget.isDark ? 0.45 : 0.2),
+                                                      blurRadius: 3,
+                                                      offset: const Offset(0, 1),
+                                                    ),
+                                                  ],
+                                                  border: Border.all(
+                                                    color: widget.isDark ? const Color(0xFF181A20) : Colors.white,
+                                                    width: 1.5,
+                                                  ),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                    effortText,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 8.5,
+                                                      fontWeight: FontWeight.w800,
+                                                      height: 1.0,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                          // Subtle bottom indicator dot for today
+                                          if (isToday)
+                                            Positioned(
+                                              bottom: 3,
+                                              left: 0,
+                                              right: 0,
+                                              child: Center(
+                                                child: Container(
+                                                  width: 3.5,
+                                                  height: 3.5,
+                                                  decoration: BoxDecoration(
+                                                    color: completedOnDay > 0
+                                                        ? (completedOnDay >= 3.0 ? (widget.isDark ? Colors.black : Colors.white) : _emeraldAccent)
+                                                        : (widget.isDark ? Colors.white70 : Colors.black87),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                              ],
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         );

@@ -224,6 +224,43 @@ class AutoBackupManager {
 
 
 
+  /// Creates an explicit manual on-demand backup with a timestamped filename
+  /// in the resilient backup directory (e.g. Documents/Rythem/Backups),
+  /// and updates the rolling snapshot pointers.
+  Future<BackupSnapshotInfo?> createManualBackup() async {
+    try {
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final timeStr = '${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
+      final fileName = 'rythem_backup_${dateStr}_$timeStr.json';
+
+      final jsonPayload = await _backupService.exportBackupJson();
+      final backupDir = await getResilientBackupDirectory();
+
+      // 1. Write the explicit timestamped manual backup file
+      final manualFile = File('${backupDir.path}/$fileName');
+      await manualFile.writeAsString(jsonPayload);
+
+      // 2. Also update latest pointer
+      final latestFile = File('${backupDir.path}/$latestBackupFileName');
+      await latestFile.writeAsString(jsonPayload);
+
+      // 3. Update today's auto snapshot as well
+      final todayStr = dateStr;
+      final snapshotName = 'rythem_autobackup_$todayStr.json';
+      final snapshotFile = File('${backupDir.path}/$snapshotName');
+      await snapshotFile.writeAsString(jsonPayload);
+
+      // 4. Update last backup date in settings
+      await _settingsRepo.setSetting(_prefLastAutoBackupDateKey, todayStr);
+
+      return await parseSnapshotFile(manualFile);
+    } catch (e) {
+      debugPrint('AutoBackupManager: Manual backup failed: $e');
+      rethrow;
+    }
+  }
+
   /// Checks if today's backup has already run. If not (or if [force] is true),
   /// executes an atomic export, saves latest + daily snapshot, and prunes old files.
   Future<BackupSnapshotInfo?> checkAndPerformDailyBackup({

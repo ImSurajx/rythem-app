@@ -1744,7 +1744,7 @@ class _DesignSystemShowcaseScreenState
     setState(() => _isPerformingAutoBackup = true);
     HapticFeedback.mediumImpact();
     try {
-      final info = await _autoBackupManager.checkAndPerformDailyBackup(force: true);
+      final info = await _autoBackupManager.createManualBackup();
       final location = await _autoBackupManager.getStorageLocationDescription();
       if (mounted) {
         setState(() {
@@ -1753,7 +1753,7 @@ class _DesignSystemShowcaseScreenState
           _isPerformingAutoBackup = false;
         });
         if (info != null) {
-          _showToast('Backup saved to $location (${info.formattedSize})');
+          _showToast('Backup saved: ${info.fileName} (${info.formattedSize})');
         } else {
           _showToast('Backup completed');
         }
