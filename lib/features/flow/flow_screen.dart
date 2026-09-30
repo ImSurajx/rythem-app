@@ -1555,6 +1555,40 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                         final completedOnDay = _weekActivity[dayStr] ?? 0;
                         final isCompleted = completedOnDay > 0;
 
+                        // Synchronized heat-intensity color scheme matching FullMonthStreakCalendar
+                        Color tileColor;
+                        if (completedOnDay >= 5.0) {
+                          tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.85) : Colors.teal.shade700;
+                        } else if (completedOnDay >= 3.0) {
+                          tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.55) : Colors.teal.shade500;
+                        } else if (completedOnDay >= 1.0) {
+                          tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.28) : Colors.teal.shade200;
+                        } else if (completedOnDay > 0) {
+                          tileColor = widget.isDark ? _emeraldAccent.withOpacity(0.18) : Colors.teal.shade100;
+                        } else {
+                          tileColor = isToday
+                              ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
+                              : (widget.isDark ? Colors.white.withOpacity(0.035) : Colors.black.withOpacity(0.025));
+                        }
+
+                        final textColor = completedOnDay >= 3.0
+                            ? (widget.isDark ? Colors.black : Colors.white)
+                            : (isToday
+                                ? widget.themeColors.textPrimary
+                                : (completedOnDay > 0
+                                    ? (widget.isDark ? Colors.white : Colors.teal.shade900)
+                                    : (isPastOrToday ? widget.themeColors.textSecondary : widget.themeColors.textTertiary)));
+
+                        final borderColor = isToday
+                            ? (widget.isDark ? Colors.white : Colors.black87)
+                            : (completedOnDay >= 3.0
+                                ? (widget.isDark ? _emeraldAccent : Colors.teal.shade700)
+                                : (completedOnDay > 0
+                                    ? (widget.isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
+                                    : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))));
+
+                        final effortText = completedOnDay.toStringAsFixed(completedOnDay.truncateToDouble() == completedOnDay ? 0 : 1);
+
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2.0),
@@ -1573,75 +1607,114 @@ class _FlowStreakCalendarState extends State<_FlowStreakCalendar> {
                                 ),
                                 const SizedBox(height: 5),
                                 Container(
-                                  width: double.infinity,
-                                  height: 54,
+                                  height: 48,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    color: isCompleted
-                                        ? (widget.isDark ? _emeraldAccent.withOpacity(0.22) : Colors.teal.shade50)
-                                        : (isToday
-                                            ? (widget.isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04))
-                                            : (widget.isDark ? Colors.white.withOpacity(0.035) : Colors.black.withOpacity(0.025))),
-                                    border: Border.all(
-                                      color: isToday
-                                          ? (widget.isDark ? Colors.white : Colors.black87)
-                                          : (isCompleted
-                                              ? (widget.isDark ? _emeraldAccent.withOpacity(0.65) : Colors.teal.shade500)
-                                              : (widget.isDark ? widget.themeColors.glassBorder : const Color(0x10000000))),
-                                      width: isToday ? 1.4 : (isCompleted ? 1.0 : 0.6),
-                                    ),
-                                    boxShadow: isCompleted
-                                        ? [
-                                            BoxShadow(
-                                              color: _emeraldAccent.withOpacity(widget.isDark ? 0.22 : 0.12),
-                                              blurRadius: 6,
-                                              spreadRadius: 0.5,
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        '${dayDate.day}',
-                                        textAlign: TextAlign.center,
-                                        style: RythemTypography.bodySmall.copyWith(
-                                          color: isCompleted
-                                              ? (widget.isDark ? Colors.white : Colors.teal.shade900)
-                                              : (isToday
-                                                  ? widget.themeColors.textPrimary
-                                                  : (isPastOrToday ? widget.themeColors.textSecondary : widget.themeColors.textTertiary)),
-                                          fontSize: 11.5,
-                                          fontWeight: isCompleted || isToday ? FontWeight.w700 : FontWeight.w500,
-                                        ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      color: tileColor,
+                                      border: Border.all(
+                                        color: borderColor,
+                                        width: isToday ? 1.4 : (completedOnDay >= 3.0 ? 1.2 : (completedOnDay > 0 ? 1.0 : 0.6)),
                                       ),
-                                      if (completedOnDay > 0)
-                                        Container(
-                                          constraints: const BoxConstraints(minWidth: 16),
-                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: widget.isDark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
+                                      boxShadow: completedOnDay >= 3.0
+                                          ? [
+                                              BoxShadow(
+                                                color: _emeraldAccent.withOpacity(widget.isDark ? 0.35 : 0.25),
+                                                blurRadius: 6,
+                                                spreadRadius: 0.5,
+                                              ),
+                                            ]
+                                          : (completedOnDay > 0
+                                              ? [
+                                                  BoxShadow(
+                                                    color: _emeraldAccent.withOpacity(widget.isDark ? 0.20 : 0.12),
+                                                    blurRadius: 4,
+                                                    spreadRadius: 0.2,
+                                                  ),
+                                                ]
+                                              : null),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        // Centered Day Number in square
+                                        Center(
                                           child: Text(
-                                            completedOnDay.toStringAsFixed(completedOnDay.truncateToDouble() == completedOnDay ? 0 : 1),
-                                            style: RythemTypography.labelSmall.copyWith(
-                                              color: Colors.white,
-                                              fontSize: 8.5,
-                                              fontWeight: FontWeight.w700,
-                                              height: 1.1,
-                                            ),
+                                            '${dayDate.day}',
                                             textAlign: TextAlign.center,
+                                            style: RythemTypography.bodySmall.copyWith(
+                                              color: textColor,
+                                              fontSize: 12,
+                                              fontWeight: isCompleted || isToday ? FontWeight.w800 : FontWeight.w500,
+                                            ),
                                           ),
-                                        )
-                                      else
-                                        const SizedBox(height: 12),
-                                    ],
+                                        ),
+
+                                        // Top-right fixed circle badge for effort points
+                                        if (completedOnDay > 0)
+                                          Positioned(
+                                            top: 2,
+                                            right: 2,
+                                            child: Container(
+                                              width: 16,
+                                              height: 16,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: widget.isDark
+                                                    ? (completedOnDay >= 3.0 ? Colors.black87 : const Color(0xFF6366F1))
+                                                    : (completedOnDay >= 3.0 ? Colors.white : const Color(0xFF4F46E5)),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.18),
+                                                    blurRadius: 2,
+                                                    offset: const Offset(0, 1),
+                                                  ),
+                                                ],
+                                                border: Border.all(
+                                                  color: widget.isDark ? Colors.white24 : Colors.black12,
+                                                  width: 0.6,
+                                                ),
+                                              ),
+                                              alignment: Alignment.center,
+                                              padding: const EdgeInsets.all(1.5),
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  effortText,
+                                                  style: TextStyle(
+                                                    color: widget.isDark
+                                                        ? (completedOnDay >= 3.0 ? _emeraldAccent : Colors.white)
+                                                        : (completedOnDay >= 3.0 ? Colors.teal.shade900 : Colors.white),
+                                                    fontSize: 7.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    height: 1.0,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                        // Subtle bottom indicator dot for today
+                                        if (isToday)
+                                          Positioned(
+                                            bottom: 3,
+                                            left: 0,
+                                            right: 0,
+                                            child: Center(
+                                              child: Container(
+                                                width: 3,
+                                                height: 3,
+                                                decoration: BoxDecoration(
+                                                  color: completedOnDay > 0
+                                                      ? (completedOnDay >= 3.0 ? (widget.isDark ? Colors.black : Colors.white) : _emeraldAccent)
+                                                      : (widget.isDark ? Colors.white70 : Colors.black87),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           ),
