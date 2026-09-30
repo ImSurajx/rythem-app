@@ -93,7 +93,7 @@ class TimestampParser {
               ? totalVideoDurationSeconds
               : current.startSeconds + 600); // 10 min default fallback
 
-      final duration = (nextStart - current.startSeconds).clamp(60, 86400);
+      final duration = (nextStart - current.startSeconds).clamp(1, 86400);
 
       segments.add(ParsedTimestampSegment(
         title: current.title,

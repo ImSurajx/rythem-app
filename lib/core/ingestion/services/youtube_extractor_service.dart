@@ -661,9 +661,49 @@ class YoutubeExtractorService implements IYoutubeClient {
     }
   }
 
+  /// Lightweight fetch of total video length in seconds from YouTube player endpoint.
+  Future<int?> _fetchVideoLengthSeconds(String videoId) async {
+    try {
+      final resp = await _httpClient.post(
+        Uri.parse('https://www.youtube.com/youtubei/v1/player?prettyPrint=false'),
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'X-YouTube-Client-Name': '1',
+          'X-YouTube-Client-Version': '2.20231201.00.00',
+        },
+        body: jsonEncode({
+          'context': {
+            'client': {
+              'clientName': 'WEB',
+              'clientVersion': '2.20231201.00.00',
+              'hl': 'en',
+              'gl': 'US',
+            },
+          },
+          'videoId': videoId,
+        }),
+      );
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final vd = data['videoDetails'] as Map<String, dynamic>?;
+        if (vd != null) {
+          final len = int.tryParse(vd['lengthSeconds']?.toString() ?? '');
+          if (len != null && len > 0) return len;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Extracts single video with native YouTube chapters via Innertube Next endpoint.
   /// Seamlessly parses macroMarkersListItemRenderer, chapterRenderer, and full description timestamps.
-  Future<ExtractedResource?> _extractVideoViaInnertubeNext(String videoId) async {
+  Future<ExtractedResource?> _extractVideoViaInnertubeNext(
+    String videoId, {
+    int? totalVideoDurationSeconds,
+  }) async {
     try {
       final resp = await _httpClient.post(
         Uri.parse('https://www.youtube.com/youtubei/v1/next?prettyPrint=false'),
@@ -695,6 +735,7 @@ class YoutubeExtractorService implements IYoutubeClient {
       String author = 'YouTube Creator';
       final videoUrl = 'https://www.youtube.com/watch?v=$videoId';
       final defaultThumbnail = 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
+      int? detectedDurationSeconds = totalVideoDurationSeconds;
 
       final seenStarts = <int>{};
       final rawMarkers = <({String title, int startSeconds, int? durationSeconds, String? thumbnail})>[];
@@ -702,6 +743,15 @@ class YoutubeExtractorService implements IYoutubeClient {
 
       void walkNodes(dynamic node) {
         if (node is Map<String, dynamic>) {
+          if (node.containsKey('lengthSeconds')) {
+            final l = int.tryParse(node['lengthSeconds'].toString());
+            if (l != null && l > 0) detectedDurationSeconds ??= l;
+          }
+          if (node.containsKey('approxDurationMs')) {
+            final ms = int.tryParse(node['approxDurationMs'].toString());
+            if (ms != null && ms > 0) detectedDurationSeconds ??= ms ~/ 1000;
+          }
+
           if (node.containsKey('videoPrimaryInfoRenderer')) {
             final vpir = node['videoPrimaryInfoRenderer'] as Map<String, dynamic>;
             final tObj = vpir['title'] as Map<String, dynamic>?;
@@ -826,6 +876,11 @@ class YoutubeExtractorService implements IYoutubeClient {
 
       walkNodes(data);
 
+      // If duration is unknown and chapters or timestamps were found, fetch exact video length
+      if (detectedDurationSeconds == null && (rawMarkers.length >= 2 || descriptionLines.isNotEmpty)) {
+        detectedDurationSeconds = await _fetchVideoLengthSeconds(videoId);
+      }
+
       // Sort markers chronologically
       rawMarkers.sort((a, b) => a.startSeconds.compareTo(b.startSeconds));
 
@@ -834,10 +889,21 @@ class YoutubeExtractorService implements IYoutubeClient {
         final items = <RawResourceItem>[];
         for (int i = 0; i < rawMarkers.length; i++) {
           final m = rawMarkers[i];
-          final nextStart = (i + 1 < rawMarkers.length)
-              ? rawMarkers[i + 1].startSeconds
-              : m.startSeconds + (m.durationSeconds ?? 600);
-          final duration = m.durationSeconds ?? (nextStart - m.startSeconds).clamp(60, 86400);
+          final int duration;
+          if (i + 1 < rawMarkers.length) {
+            // intermediate chapter: next chapter timestamp - current chapter timestamp
+            duration = (rawMarkers[i + 1].startSeconds - m.startSeconds).clamp(1, 86400);
+          } else {
+            // last chapter: video length - current chapter timestamp
+            final totalSec = detectedDurationSeconds;
+            if (totalSec != null && totalSec > m.startSeconds) {
+              duration = (totalSec - m.startSeconds).clamp(1, 86400);
+            } else if (m.durationSeconds != null && m.durationSeconds! > 0) {
+              duration = m.durationSeconds!;
+            } else {
+              duration = 600;
+            }
+          }
           final deepLink = '$videoUrl&t=${m.startSeconds}s';
 
           items.add(RawResourceItem(
@@ -863,7 +929,10 @@ class YoutubeExtractorService implements IYoutubeClient {
       // Case B: No native markers, but description in next endpoint has timestamps
       if (descriptionLines.isNotEmpty) {
         final fullDesc = descriptionLines.join('\n');
-        final tsSegments = TimestampParser.parseDescription(fullDesc);
+        final tsSegments = TimestampParser.parseDescription(
+          fullDesc,
+          totalVideoDurationSeconds: detectedDurationSeconds ?? 0,
+        );
         if (tsSegments.length >= 2) {
           final items = <RawResourceItem>[];
           for (int i = 0; i < tsSegments.length; i++) {

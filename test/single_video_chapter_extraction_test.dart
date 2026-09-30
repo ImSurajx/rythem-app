@@ -112,6 +112,64 @@ Check out this cool part at 05:23!
       }
     });
 
+    test('calculates exact chapter effort points: (next - current)/10 and (videoLength - current)/10', () {
+      // 50 minute video (3000 seconds)
+      // Chapter 1: 00:00 (0m) -> 10:00 (10m) = 10m -> 1.0 pt
+      // Chapter 2: 10:00 (10m) -> 24:00 (24m) = 14m -> 1.4 pt
+      // Chapter 3: 24:00 (24m) -> 35:00 (35m) = 11m -> 1.1 pt
+      // Chapter 4: 35:00 (35m) -> end 50:00 (50m) = 15m -> 1.5 pt
+      const description = '''
+00:00 Chapter 1: Intro
+10:00 Chapter 2: Deep Dive
+24:00 Chapter 3: Implementation
+35:00 Chapter 4: Conclusion
+''';
+
+      const totalVideoLengthSeconds = 50 * 60; // 3000 seconds
+      final segments = TimestampParser.parseDescription(
+        description,
+        totalVideoDurationSeconds: totalVideoLengthSeconds,
+      );
+
+      expect(segments.length, 4);
+
+      // Chapter 1: 10 - 0 = 10 min -> 1.0 effort point
+      expect(segments[0].durationSeconds, 600);
+      expect(EffortWeightCalculator.calculate(segments[0].durationSeconds), 1.0);
+
+      // Chapter 2: 24 - 10 = 14 min -> 1.4 effort points
+      expect(segments[1].durationSeconds, 14 * 60);
+      expect(EffortWeightCalculator.calculate(segments[1].durationSeconds), 1.4);
+
+      // Chapter 3: 35 - 24 = 11 min -> 1.1 effort points
+      expect(segments[2].durationSeconds, 11 * 60);
+      expect(EffortWeightCalculator.calculate(segments[2].durationSeconds), 1.1);
+
+      // Chapter 4 (last): 50 - 35 = 15 min -> 1.5 effort points
+      expect(segments[3].durationSeconds, 15 * 60);
+      expect(EffortWeightCalculator.calculate(segments[3].durationSeconds), 1.5);
+
+      // Test ChapterClusterer enforces exact chapter deltas into beats
+      final rawItems = List.generate(segments.length, (i) {
+        return RawResourceItem(
+          title: segments[i].title,
+          sourceUrl: 'https://www.youtube.com/watch?v=test&t=${segments[i].startSeconds}s',
+          timestampSeconds: segments[i].startSeconds,
+          durationSeconds: segments[i].durationSeconds,
+          index: i,
+        );
+      });
+
+      final chapters = ChapterClusterer.cluster(rawItems, roadmapTitle: 'Test Course');
+      final allBeats = chapters.expand((c) => c.beats).toList();
+
+      expect(allBeats.length, 4);
+      expect(allBeats[0].effortWeight, 1.0);
+      expect(allBeats[1].effortWeight, 1.4);
+      expect(allBeats[2].effortWeight, 1.1);
+      expect(allBeats[3].effortWeight, 1.5);
+    });
+
     test('extractVideo falls back gracefully to singleVideo if no chapters exist', () async {
       final extractor = YoutubeExtractorService();
       try {

@@ -577,7 +577,17 @@ class CurriculumIngestionService {
       try {
         final extracted = await _youtubeClient.extractVideo(cleanUrl);
         if (extracted.items.isNotEmpty) {
-          effort = EffortWeightCalculator.calculate(extracted.items.first.durationSeconds);
+          RawResourceItem itemToUse = extracted.items.first;
+          final targetTs = timestamp ?? beat.timestampSeconds;
+          if (targetTs != null && extracted.items.length > 1) {
+            final match = extracted.items.where((it) =>
+                it.timestampSeconds != null &&
+                (it.timestampSeconds! - targetTs).abs() < 5).firstOrNull;
+            if (match != null) {
+              itemToUse = match;
+            }
+          }
+          effort = EffortWeightCalculator.calculate(itemToUse.durationSeconds);
         }
       } catch (_) {}
     }
@@ -755,8 +765,16 @@ class CurriculumIngestionService {
                   .extractVideo(beat.sourceUrl!)
                   .timeout(const Duration(seconds: 4));
               if (extracted.items.isNotEmpty) {
-                final effort = EffortWeightCalculator.calculate(
-                    extracted.items.first.durationSeconds);
+                RawResourceItem itemToUse = extracted.items.first;
+                if (beat.timestampSeconds != null && extracted.items.length > 1) {
+                  final match = extracted.items.where((it) =>
+                      it.timestampSeconds != null &&
+                      (it.timestampSeconds! - beat.timestampSeconds!).abs() < 5).firstOrNull;
+                  if (match != null) {
+                    itemToUse = match;
+                  }
+                }
+                final effort = EffortWeightCalculator.calculate(itemToUse.durationSeconds);
                 final updated = beat.copyWith(
                   effortWeight: effort,
                   updatedAt: DateTime.now(),

@@ -20,16 +20,30 @@ class ChapterClusterer {
       return [];
     }
 
+    // Check if items represent sequential chapters of a single video
+    final isSequentialChapterVideo = items.length >= 2 &&
+        items.every((it) => it.timestampSeconds != null) &&
+        _isStrictlyAscending(items.map((it) => it.timestampSeconds!).toList());
+
     // 1. Convert all items to ExtractedBeat with effort weights
     final allBeats = <ExtractedBeat>[];
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-      final weight = EffortWeightCalculator.calculate(item.durationSeconds);
+      int duration = item.durationSeconds;
+      if (isSequentialChapterVideo && i + 1 < items.length) {
+        // Enforce: next chapter timestamp - current chapter timestamp
+        final nextTs = items[i + 1].timestampSeconds!;
+        final currentTs = item.timestampSeconds!;
+        if (nextTs > currentTs) {
+          duration = nextTs - currentTs;
+        }
+      }
+      final weight = EffortWeightCalculator.calculate(duration);
       allBeats.add(ExtractedBeat(
         title: item.title,
         sourceUrl: item.sourceUrl,
         timestampSeconds: item.timestampSeconds,
-        durationSeconds: item.durationSeconds,
+        durationSeconds: duration,
         effortWeight: weight,
         sortOrder: i,
         thumbnailUrl: item.thumbnailUrl,
@@ -37,6 +51,13 @@ class ChapterClusterer {
     }
 
     return clusterBeats(allBeats, roadmapTitle: roadmapTitle);
+  }
+
+  static bool _isStrictlyAscending(List<int> values) {
+    for (int i = 0; i < values.length - 1; i++) {
+      if (values[i + 1] <= values[i]) return false;
+    }
+    return true;
   }
 
   /// Clusters pre-constructed ExtractedBeat items directly, preserving metadata
