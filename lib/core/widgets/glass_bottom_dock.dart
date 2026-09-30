@@ -129,7 +129,7 @@ class _DockButton extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 320),
         curve: Curves.easeOutCubic,
         margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
@@ -158,8 +158,8 @@ class _DockButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedScale(
-                scale: isSelected ? 1.1 : 1.0,
-                duration: const Duration(milliseconds: 240),
+                scale: isSelected ? 1.08 : 1.0,
+                duration: const Duration(milliseconds: 320),
                 curve: Curves.easeOutBack,
                 child: Icon(
                   item.icon,
@@ -169,7 +169,7 @@ class _DockButton extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOutCubic,
                 style: RythemTypography.labelSmall.copyWith(
                   fontSize: 10,

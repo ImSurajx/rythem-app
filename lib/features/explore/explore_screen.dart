@@ -13,6 +13,7 @@ import '../../core/theme/animation_config.dart';
 import '../flow/checkpoint_dialog.dart';
 import 'new_track_modal.dart';
 import 'roadmap_detail_screen.dart';
+import '../../core/widgets/smooth_dialog.dart';
 
 enum ExploreTabSection { trackers, flagNotes }
 
@@ -123,7 +124,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     HapticFeedback.mediumImpact();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeColors = isDark ? RythemColors.dark : RythemColors.light;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showSmoothDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark

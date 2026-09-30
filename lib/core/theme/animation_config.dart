@@ -32,9 +32,9 @@ extension SmoothEntranceExtension on Widget {
   Widget smoothEntrance({
     Key? key,
     int index = 0,
-    int stepMs = 25,
-    int durationMs = 240,
-    double slideBeginY = 0.05,
+    int stepMs = 35,
+    int durationMs = 380,
+    double slideBeginY = 0.04,
   }) {
     if (AppAnimations.isTest) return this;
     return animate(key: key)

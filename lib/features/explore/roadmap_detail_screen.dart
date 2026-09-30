@@ -24,6 +24,7 @@ import '../../core/navigation/smooth_page_route.dart';
 import '../../core/ingestion/services/curriculum_ingestion_service.dart';
 import 'widgets/chapter_accordion.dart';
 import '../../core/theme/animation_config.dart';
+import '../../core/widgets/smooth_dialog.dart';
 
 /// Roadmap Detail Screen per `docs/design.md` §5:
 /// - Opened from Explore or Metrics
@@ -675,7 +676,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     HapticFeedback.mediumImpact();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeColors = isDark ? RythemColors.dark : RythemColors.light;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showSmoothDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark

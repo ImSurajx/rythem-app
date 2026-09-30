@@ -7,6 +7,7 @@ import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
+import 'package:rythem_app/core/widgets/smooth_dialog.dart';
 
 /// Modal to create a new curriculum track adhering to `docs/design.md` §4
 class NewTrackModal extends StatefulWidget {
@@ -147,7 +148,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
 
   void _showAddCustomCategoryDialog() {
     final catController = TextEditingController();
-    showDialog(
+    showSmoothDialog(
       context: context,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;

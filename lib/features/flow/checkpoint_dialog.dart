@@ -5,6 +5,7 @@ import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
+import 'package:rythem_app/core/widgets/smooth_dialog.dart';
 
 /// Modal dialog to record a percentage checkpoint and practice reflections for an active topic.
 class CheckpointDialog extends StatefulWidget {
@@ -28,7 +29,7 @@ class CheckpointDialog extends StatefulWidget {
     String? initialNotes,
     required void Function(int percentage, String notes) onSaveCheckpoint,
   }) {
-    return showDialog<void>(
+    return showSmoothDialog<void>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.6),
       builder: (ctx) => CheckpointDialog(

@@ -7,3 +7,5 @@ export 'fade_indexed_stack.dart';
 export 'glass_error_dialog.dart';
 export 'glass_toast.dart';
 export 'markdown_content_view.dart';
+export 'animated_indexed_stack.dart';
+export 'smooth_dialog.dart';

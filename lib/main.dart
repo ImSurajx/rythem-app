@@ -103,6 +103,11 @@ class _RythemAppState extends State<RythemApp> {
     return MaterialApp(
       title: 'Rythem',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+      ),
       theme: RythemTheme.lightTheme,
       darkTheme: RythemTheme.darkTheme,
       themeMode: _themeMode,
@@ -898,9 +903,9 @@ class _DesignSystemShowcaseScreenState
         ),
         child: Stack(
           children: [
-            // Persistent 4-Tab Immediate Stack with zero lag & preserved scroll states
+            // Persistent 4-Tab Smooth Animated Stack with zero lag & preserved scroll states
             Positioned.fill(
-              child: IndexedStack(
+              child: AnimatedIndexedStack(
                 index: _currentTabIndex,
                 children: [
                   _buildFlowTab(),
@@ -1984,7 +1989,7 @@ class _DesignSystemShowcaseScreenState
     );
 
     if (selected != null && mounted) {
-      final confirmed = await showDialog<bool>(
+      final confirmed = await showSmoothDialog<bool>(
         context: context,
         builder: (ctx) {
           final theme = Theme.of(ctx);
@@ -2047,7 +2052,7 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _showDisasterRecoveryDialog(BackupSnapshotInfo snapshot) async {
     if (!mounted) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showSmoothDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -2152,7 +2157,7 @@ class _DesignSystemShowcaseScreenState
   }
 
   Future<void> _handleImportBackup() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showSmoothDialog<bool>(
       context: context,
       builder: (ctx) {
         final theme = Theme.of(ctx);

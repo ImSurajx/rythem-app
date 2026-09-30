@@ -7,6 +7,7 @@ import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
+import 'package:rythem_app/core/widgets/smooth_dialog.dart';
 
 /// Non-punitive dialog to flag confusion or an obstacle on a beat per `docs/design.md` §2.
 /// Allows the user to record friction without penalty, guilt, or breaking streaks.
@@ -31,7 +32,7 @@ class ConfusingBeatDialog extends StatefulWidget {
     ValueChanged<String>? onFlagSaved,
     LocalInferenceService? inferenceService,
   }) {
-    return showDialog<void>(
+    return showSmoothDialog<void>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.6),
       builder: (ctx) => ConfusingBeatDialog(
