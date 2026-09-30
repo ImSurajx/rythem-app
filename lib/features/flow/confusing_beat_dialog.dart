@@ -6,7 +6,6 @@ import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
-import 'package:rythem_app/core/widgets/glass_toast.dart';
 import 'package:rythem_app/core/widgets/smooth_dialog.dart';
 
 /// Non-punitive dialog to flag confusion or an obstacle on a beat per `docs/design.md` §2.
@@ -194,11 +193,6 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                             final note = _noteController.text.trim();
                             widget.onFlagSaved?.call(note.isEmpty ? 'Flagged as confusing' : note);
                             Navigator.of(context).pop();
-                            showGlassToast(
-                              context,
-                              'Flag saved. Flow continues uninterrupted.',
-                              icon: Icons.flag_rounded,
-                            );
                           },
                         ),
                       ],

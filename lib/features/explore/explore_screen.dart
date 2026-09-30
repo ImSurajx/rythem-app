@@ -46,6 +46,7 @@ class ExploreScreen extends StatefulWidget {
   final Map<String, int> beatProgressMap;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
+  final void Function(BeatEntity beat, String note)? onSaveFlag;
   final Future<void> Function({
     required String title,
     required String category,
@@ -70,6 +71,7 @@ class ExploreScreen extends StatefulWidget {
     this.beatProgressMap = const {},
     required this.onBeatToggled,
     this.onSaveCheckpoint,
+    this.onSaveFlag,
     required this.onCreateTrack,
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
@@ -194,6 +196,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
           roadmap: roadmap,
           chapters: chapters,
           beats: beats,
+          beatNotesMap: widget.beatNotesMap,
+          beatProgressMap: widget.beatProgressMap,
+          onSaveCheckpoint: widget.onSaveCheckpoint,
+          onSaveFlag: widget.onSaveFlag,
           onBeatToggled: widget.onBeatToggled,
           onArchiveRoadmap: widget.onArchiveRoadmap,
           onRestoreRoadmap: widget.onRestoreRoadmap,
@@ -959,7 +965,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       beat: item.beat,
                       initialNote: item.notes,
                       onFlagSaved: (savedNote) {
-                        widget.onSaveCheckpoint?.call(item.beat, 0, savedNote);
+                        if (widget.onSaveFlag != null) {
+                          widget.onSaveFlag!(item.beat, savedNote);
+                        } else {
+                          widget.onSaveCheckpoint?.call(item.beat, 0, savedNote);
+                        }
                         if (mounted) setState(() {});
                       },
                     );

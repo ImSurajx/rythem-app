@@ -55,6 +55,7 @@ class FlowScreen extends StatefulWidget {
   final Map<String, int> beatProgressMap;
   final Map<String, String> beatNotesMap;
   final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
+  final void Function(BeatEntity beat, String note)? onSaveFlag;
 
   const FlowScreen({
     super.key,
@@ -82,6 +83,7 @@ class FlowScreen extends StatefulWidget {
     this.beatProgressMap = const {},
     this.beatNotesMap = const {},
     this.onSaveCheckpoint,
+    this.onSaveFlag,
   });
 
   @override
@@ -356,6 +358,7 @@ class _FlowScreenState extends State<FlowScreen> {
                 beatProgressMap: widget.beatProgressMap,
                 beatNotesMap: widget.beatNotesMap,
                 onSaveCheckpoint: widget.onSaveCheckpoint,
+                onSaveFlag: widget.onSaveFlag,
                 onBeatToggled: widget.onBeatToggled,
                 onOpenFocusSession: (beat) => _openFocusSession(context, rm, rmChapters, rmBeats, beat),
                 onStartEarly: widget.onStartEarly,
@@ -452,6 +455,7 @@ class _TrackTodoListCard extends StatelessWidget {
   final Map<String, int> beatProgressMap;
   final Map<String, String> beatNotesMap;
   final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
+  final void Function(BeatEntity beat, String note)? onSaveFlag;
   final Future<void> Function(RoadmapEntity roadmap)? onStartEarly;
 
   const _TrackTodoListCard({
@@ -470,6 +474,7 @@ class _TrackTodoListCard extends StatelessWidget {
     this.beatProgressMap = const {},
     this.beatNotesMap = const {},
     this.onSaveCheckpoint,
+    this.onSaveFlag,
     this.onStartEarly,
   });
 
@@ -758,11 +763,15 @@ class _TrackTodoListCard extends StatelessWidget {
                                     beat: beat,
                                     initialNote: beatNotesMap[beat.id] ?? '',
                                     onFlagSaved: (note) {
-                                      onSaveCheckpoint?.call(
-                                        beat,
-                                        beatProgressMap[beat.id] ?? 0,
-                                        note,
-                                      );
+                                      if (onSaveFlag != null) {
+                                        onSaveFlag!(beat, note);
+                                      } else {
+                                        onSaveCheckpoint?.call(
+                                          beat,
+                                          beatProgressMap[beat.id] ?? 0,
+                                          note,
+                                        );
+                                      }
                                     },
                                   );
                                 },
@@ -853,11 +862,15 @@ class _TrackTodoListCard extends StatelessWidget {
                                       beat: currentBeat,
                                       initialNote: beatNotesMap[currentBeat.id] ?? '',
                                       onFlagSaved: (note) {
-                                        onSaveCheckpoint?.call(
-                                          currentBeat,
-                                          beatProgressMap[currentBeat.id] ?? 0,
-                                          note,
-                                        );
+                                        if (onSaveFlag != null) {
+                                          onSaveFlag!(currentBeat, note);
+                                        } else {
+                                          onSaveCheckpoint?.call(
+                                            currentBeat,
+                                            beatProgressMap[currentBeat.id] ?? 0,
+                                            note,
+                                          );
+                                        }
                                       },
                                     );
                                   },

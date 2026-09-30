@@ -456,8 +456,47 @@ class _DesignSystemShowcaseScreenState
           icon: Icons.bookmark_added_rounded,
           accentColor: const Color(0xFF3B82F6),
         );
-      } else {
+      } else if (clamped > 0) {
         _showToast('Checkpoint saved: $clamped%');
+      } else {
+        _showToast('Checkpoint cleared');
+      }
+    }
+  }
+
+  Future<void> _handleSaveBeatFlag(BeatEntity beat, String note) async {
+    HapticFeedback.lightImpact();
+    final updatedNotes = Map<String, String>.from(_beatNotesMap);
+    final isRemoving = note.trim().isEmpty;
+    if (!isRemoving) {
+      updatedNotes[beat.id] = note.trim();
+    } else {
+      updatedNotes.remove(beat.id);
+    }
+
+    await _appSettingsRepo.setSetting('active_focus_notes_by_beat', jsonEncode(updatedNotes));
+    DatabaseEventBus.instance.emit(
+      DatabaseEvent(type: DatabaseEventType.beatToggled, entityId: beat.id),
+    );
+
+    if (mounted) {
+      setState(() {
+        _beatNotesMap = updatedNotes;
+      });
+      if (isRemoving) {
+        showGlassToast(
+          context,
+          'Flag removed',
+          icon: Icons.outlined_flag_rounded,
+          accentColor: const Color(0xFF94A3B8),
+        );
+      } else {
+        showGlassToast(
+          context,
+          'Flag saved! 🚩',
+          icon: Icons.flag_rounded,
+          accentColor: const Color(0xFFF59E0B),
+        );
       }
     }
   }
@@ -988,6 +1027,7 @@ class _DesignSystemShowcaseScreenState
       beatProgressMap: _beatProgressMap,
       beatNotesMap: _beatNotesMap,
       onSaveCheckpoint: _handleSaveBeatProgress,
+      onSaveFlag: _handleSaveBeatFlag,
       onExploreTracks: () => setState(() => _currentTabIndex = 1),
       onOpenRoadmapDetail: _openRoadmapDetail,
       onStartEarly: _handleStartRoadmapEarly,
@@ -1009,6 +1049,7 @@ class _DesignSystemShowcaseScreenState
           beatNotesMap: _beatNotesMap,
           beatProgressMap: _beatProgressMap,
           onSaveCheckpoint: _handleSaveBeatProgress,
+          onSaveFlag: _handleSaveBeatFlag,
           onBeatToggled: _setBeatCompletion,
           onArchiveRoadmap: _handleArchiveRoadmap,
           onRestoreRoadmap: _handleRestoreRoadmap,
@@ -1179,6 +1220,7 @@ class _DesignSystemShowcaseScreenState
       beatProgressMap: _beatProgressMap,
       onBeatToggled: _setBeatCompletion,
       onSaveCheckpoint: _handleSaveBeatProgress,
+      onSaveFlag: _handleSaveBeatFlag,
       onOpenRoadmapDetail: _openRoadmapDetail,
       onCreateTrack: _handleCreateTrack,
       onArchiveRoadmap: _handleArchiveRoadmap,

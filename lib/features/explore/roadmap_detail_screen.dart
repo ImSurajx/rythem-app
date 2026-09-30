@@ -42,6 +42,7 @@ class RoadmapDetailScreen extends StatefulWidget {
   final Map<String, String> beatNotesMap;
   final Map<String, int> beatProgressMap;
   final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
+  final void Function(BeatEntity beat, String note)? onSaveFlag;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
@@ -57,6 +58,7 @@ class RoadmapDetailScreen extends StatefulWidget {
     this.beatNotesMap = const {},
     this.beatProgressMap = const {},
     this.onSaveCheckpoint,
+    this.onSaveFlag,
     required this.onBeatToggled,
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
@@ -83,7 +85,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   bool _isAttaching = false;
   bool _isSyncing = false;
   Map<String, String> _beatNotes = {};
-  Map<String, int> _beatProgress = {};
 
   @override
   void initState() {
@@ -92,7 +93,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     _currentChapters = List.from(widget.chapters);
     _currentBeats = List.from(widget.beats);
     _beatNotes = Map.from(widget.beatNotesMap);
-    _beatProgress = Map.from(widget.beatProgressMap);
 
     _eventSub = DatabaseEventBus.instance.stream.listen((_) {
       _reloadFromDb();
@@ -109,7 +109,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   Future<void> _loadNotesFromDb() async {
     try {
       final notesStr = await _appSettingsRepo.getSetting('active_focus_notes_by_beat');
-      final progressStr = await _appSettingsRepo.getSetting('active_focus_progress_by_beat');
       if (notesStr != null && notesStr.isNotEmpty) {
         final decoded = jsonDecode(notesStr);
         if (decoded is Map) {
@@ -120,23 +119,12 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
           }
         }
       }
-      if (progressStr != null && progressStr.isNotEmpty) {
-        final decoded = jsonDecode(progressStr);
-        if (decoded is Map) {
-          if (mounted) {
-            setState(() {
-              _beatProgress = decoded.map((k, v) => MapEntry(k.toString(), int.tryParse(v.toString()) ?? 0));
-            });
-          }
-        }
-      }
     } catch (_) {}
   }
 
   Future<void> _handleFlagBeat(BeatEntity beat, String note) async {
-    final progress = _beatProgress[beat.id] ?? 0;
-    if (widget.onSaveCheckpoint != null) {
-      widget.onSaveCheckpoint!(beat, progress, note);
+    if (widget.onSaveFlag != null) {
+      widget.onSaveFlag!(beat, note);
     } else {
       final currentNotes = Map<String, String>.from(_beatNotes);
       if (note.isNotEmpty) {
@@ -148,6 +136,14 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       DatabaseEventBus.instance.emit(
         DatabaseEvent(type: DatabaseEventType.beatToggled, entityId: beat.id),
       );
+      if (mounted) {
+        showGlassToast(
+          context,
+          note.isNotEmpty ? 'Flag saved! 🚩' : 'Flag removed',
+          icon: note.isNotEmpty ? Icons.flag_rounded : Icons.outlined_flag_rounded,
+          accentColor: const Color(0xFFF59E0B),
+        );
+      }
     }
     if (mounted) {
       setState(() {
