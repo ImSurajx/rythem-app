@@ -8,6 +8,7 @@ import 'package:rythem_app/features/explore/explore_screen.dart';
 import 'package:rythem_app/features/explore/new_track_modal.dart';
 import 'package:rythem_app/features/explore/roadmap_detail_screen.dart';
 import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
+import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -388,6 +389,47 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'Nonexistent Query');
       await tester.pumpAndSettle();
       expect(find.text('No notes match "Nonexistent Query"'), findsOneWidget);
+    });
+
+    testWidgets('ConfusingBeatDialog saves note via onFlagSaved and pre-populates initialNote', (tester) async {
+      String? savedNote;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  ConfusingBeatDialog.show(
+                    context,
+                    beat: testBeats.first,
+                    initialNote: 'Initial reflection note',
+                    onFlagSaved: (note) => savedNote = note,
+                  );
+                },
+                child: const Text('Open Flag Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Flag Dialog'));
+      await tester.pumpAndSettle();
+
+      // Verify header and pre-populated note
+      expect(find.text('FLAG FRICTION / CONFUSION'), findsOneWidget);
+      expect(find.text('Initial reflection note'), findsOneWidget);
+
+      // Edit note text
+      await tester.enterText(find.byType(TextField), 'Updated understanding of consensus');
+      await tester.pumpAndSettle();
+
+      // Tap Save Flag
+      await tester.tap(find.text('Save Flag'));
+      await tester.pumpAndSettle();
+
+      expect(savedNote, 'Updated understanding of consensus');
     });
   });
 }

@@ -1,12 +1,16 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:rythem_app/core/database/database_event_bus.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
+import 'package:rythem_app/core/database/repositories/app_settings_repository.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_progress_bar.dart';
 import 'package:rythem_app/core/widgets/glass_toast.dart';
+import '../../core/theme/animation_config.dart';
 import 'confusing_beat_dialog.dart';
 
 /// Focus Mode screen adhering to `docs/design.md` §3:
@@ -39,12 +43,17 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   late final ScrollController _scrollController;
   String? _activeBeatId;
   bool _isProcessing = false;
+  final _appSettingsRepo = AppSettingsRepository();
+  Map<String, String> _beatNotes = {};
 
   @override
   void initState() {
     super.initState();
     _currentBeats = List.from(widget.beats);
     _scrollController = ScrollController();
+    if (!AppAnimations.isTest) {
+      _loadNotesFromDb();
+    }
 
     // Set initial active beat: either initialBeatId or first incomplete beat
     if (widget.initialBeatId != null &&
@@ -53,6 +62,36 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     } else {
       final firstIncomplete = _currentBeats.where((b) => !b.isCompleted).firstOrNull;
       _activeBeatId = firstIncomplete?.id ?? _currentBeats.firstOrNull?.id;
+    }
+  }
+
+  Future<void> _loadNotesFromDb() async {
+    try {
+      final notesStr = await _appSettingsRepo.getSetting('active_focus_notes_by_beat');
+      if (notesStr != null && notesStr.isNotEmpty) {
+        final decoded = jsonDecode(notesStr);
+        if (decoded is Map && mounted) {
+          setState(() {
+            _beatNotes = decoded.map((k, v) => MapEntry(k.toString(), v.toString()));
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleSaveFlag(BeatEntity beat, String note) async {
+    final updated = Map<String, String>.from(_beatNotes);
+    if (note.isNotEmpty) {
+      updated[beat.id] = note;
+    } else {
+      updated.remove(beat.id);
+    }
+    await _appSettingsRepo.setSetting('active_focus_notes_by_beat', jsonEncode(updated));
+    DatabaseEventBus.instance.emit(
+      DatabaseEvent(type: DatabaseEventType.beatToggled, entityId: beat.id),
+    );
+    if (mounted) {
+      setState(() => _beatNotes = updated);
     }
   }
 
@@ -287,6 +326,8 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                                 ConfusingBeatDialog.show(
                                   context,
                                   beat: beat,
+                                  initialNote: _beatNotes[beat.id] ?? '',
+                                  onFlagSaved: (note) => _handleSaveFlag(beat, note),
                                 );
                               },
                             );

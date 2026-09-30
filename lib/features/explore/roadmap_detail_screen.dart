@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/database_event_bus.dart';
+import 'package:rythem_app/core/database/repositories/app_settings_repository.dart';
 import 'package:rythem_app/core/database/repositories/roadmap_repository.dart';
 import 'package:rythem_app/core/database/repositories/chapter_repository.dart';
 import 'package:rythem_app/core/database/repositories/beat_repository.dart';
@@ -36,6 +38,9 @@ class RoadmapDetailScreen extends StatefulWidget {
   final RoadmapEntity roadmap;
   final List<ChapterEntity> chapters;
   final List<BeatEntity> beats;
+  final Map<String, String> beatNotesMap;
+  final Map<String, int> beatProgressMap;
+  final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final Future<void> Function(RoadmapEntity roadmap)? onArchiveRoadmap;
   final Future<void> Function(RoadmapEntity roadmap)? onRestoreRoadmap;
@@ -48,6 +53,9 @@ class RoadmapDetailScreen extends StatefulWidget {
     required this.roadmap,
     required this.chapters,
     required this.beats,
+    this.beatNotesMap = const {},
+    this.beatProgressMap = const {},
+    this.onSaveCheckpoint,
     required this.onBeatToggled,
     this.onArchiveRoadmap,
     this.onRestoreRoadmap,
@@ -68,10 +76,13 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
   final _roadmapRepo = RoadmapRepository();
   final _chapterRepo = ChapterRepository();
   final _beatRepo = BeatRepository();
+  final _appSettingsRepo = AppSettingsRepository();
   final _ingestionService = CurriculumIngestionService();
   StreamSubscription<DatabaseEvent>? _eventSub;
   bool _isAttaching = false;
   bool _isSyncing = false;
+  Map<String, String> _beatNotes = {};
+  Map<String, int> _beatProgress = {};
 
   @override
   void initState() {
@@ -79,11 +90,73 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     _currentRoadmap = widget.roadmap;
     _currentChapters = List.from(widget.chapters);
     _currentBeats = List.from(widget.beats);
+    _beatNotes = Map.from(widget.beatNotesMap);
+    _beatProgress = Map.from(widget.beatProgressMap);
 
     _eventSub = DatabaseEventBus.instance.stream.listen((_) {
       _reloadFromDb();
+      if (!AppAnimations.isTest) {
+        _loadNotesFromDb();
+      }
     });
     _reloadFromDb();
+    if (!AppAnimations.isTest && _beatNotes.isEmpty) {
+      _loadNotesFromDb();
+    }
+  }
+
+  Future<void> _loadNotesFromDb() async {
+    try {
+      final notesStr = await _appSettingsRepo.getSetting('active_focus_notes_by_beat');
+      final progressStr = await _appSettingsRepo.getSetting('active_focus_progress_by_beat');
+      if (notesStr != null && notesStr.isNotEmpty) {
+        final decoded = jsonDecode(notesStr);
+        if (decoded is Map) {
+          if (mounted) {
+            setState(() {
+              _beatNotes = decoded.map((k, v) => MapEntry(k.toString(), v.toString()));
+            });
+          }
+        }
+      }
+      if (progressStr != null && progressStr.isNotEmpty) {
+        final decoded = jsonDecode(progressStr);
+        if (decoded is Map) {
+          if (mounted) {
+            setState(() {
+              _beatProgress = decoded.map((k, v) => MapEntry(k.toString(), int.tryParse(v.toString()) ?? 0));
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleFlagBeat(BeatEntity beat, String note) async {
+    final progress = _beatProgress[beat.id] ?? 0;
+    if (widget.onSaveCheckpoint != null) {
+      widget.onSaveCheckpoint!(beat, progress, note);
+    } else {
+      final currentNotes = Map<String, String>.from(_beatNotes);
+      if (note.isNotEmpty) {
+        currentNotes[beat.id] = note;
+      } else {
+        currentNotes.remove(beat.id);
+      }
+      await _appSettingsRepo.setSetting('active_focus_notes_by_beat', jsonEncode(currentNotes));
+      DatabaseEventBus.instance.emit(
+        DatabaseEvent(type: DatabaseEventType.beatToggled, entityId: beat.id),
+      );
+    }
+    if (mounted) {
+      setState(() {
+        if (note.isNotEmpty) {
+          _beatNotes[beat.id] = note;
+        } else {
+          _beatNotes.remove(beat.id);
+        }
+      });
+    }
   }
 
   @override
@@ -1233,7 +1306,12 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                             _showAttachResourceDialog(initialChapterId: ch.id);
                           },
                           onFlagBeat: (beat) {
-                            ConfusingBeatDialog.show(context, beat: beat);
+                            ConfusingBeatDialog.show(
+                              context,
+                              beat: beat,
+                              initialNote: _beatNotes[beat.id] ?? '',
+                              onFlagSaved: (note) => _handleFlagBeat(beat, note),
+                            );
                           },
                         ).smoothEntrance(
                           key: ValueKey('ch_${chapter.id}'),

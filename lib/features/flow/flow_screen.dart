@@ -801,7 +801,18 @@ class _TrackTodoListCard extends StatelessWidget {
                                   title: beat.title,
                                 ),
                                 onFlag: () {
-                                  ConfusingBeatDialog.show(context, beat: beat);
+                                  ConfusingBeatDialog.show(
+                                    context,
+                                    beat: beat,
+                                    initialNote: beatNotesMap[beat.id] ?? '',
+                                    onFlagSaved: (note) {
+                                      onSaveCheckpoint?.call(
+                                        beat,
+                                        beatProgressMap[beat.id] ?? 0,
+                                        note,
+                                      );
+                                    },
+                                  );
                                 },
                               ),
                             )),
@@ -885,7 +896,18 @@ class _TrackTodoListCard extends StatelessWidget {
                                     title: currentBeat.title,
                                   ),
                                   onFlag: () {
-                                    ConfusingBeatDialog.show(context, beat: currentBeat);
+                                    ConfusingBeatDialog.show(
+                                      context,
+                                      beat: currentBeat,
+                                      initialNote: beatNotesMap[currentBeat.id] ?? '',
+                                      onFlagSaved: (note) {
+                                        onSaveCheckpoint?.call(
+                                          currentBeat,
+                                          beatProgressMap[currentBeat.id] ?? 0,
+                                          note,
+                                        );
+                                      },
+                                    );
                                   },
                                 ),
                               ).activeFocusAmbientGlow(isDark: isDark),

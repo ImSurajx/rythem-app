@@ -12,12 +12,14 @@ import 'package:rythem_app/core/widgets/glass_toast.dart';
 /// Allows the user to record friction without penalty, guilt, or breaking streaks.
 class ConfusingBeatDialog extends StatefulWidget {
   final BeatEntity beat;
+  final String? initialNote;
   final ValueChanged<String>? onFlagSaved;
   final LocalInferenceService inferenceService;
 
   ConfusingBeatDialog({
     super.key,
     required this.beat,
+    this.initialNote,
     this.onFlagSaved,
     LocalInferenceService? inferenceService,
   }) : inferenceService = inferenceService ?? LocalInferenceService();
@@ -25,6 +27,7 @@ class ConfusingBeatDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required BeatEntity beat,
+    String? initialNote,
     ValueChanged<String>? onFlagSaved,
     LocalInferenceService? inferenceService,
   }) {
@@ -33,6 +36,7 @@ class ConfusingBeatDialog extends StatefulWidget {
       barrierColor: Colors.black.withOpacity(0.6),
       builder: (ctx) => ConfusingBeatDialog(
         beat: beat,
+        initialNote: initialNote,
         onFlagSaved: onFlagSaved,
         inferenceService: inferenceService ?? LocalInferenceService(),
       ),
@@ -48,7 +52,7 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
   @override
   void initState() {
     super.initState();
-    _noteController = TextEditingController();
+    _noteController = TextEditingController(text: widget.initialNote ?? '');
   }
 
   @override
