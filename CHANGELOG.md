@@ -1,132 +1,125 @@
-# Changelog
+# Release
 
-All notable changes to this project will be documented in this file.
+## Rythem v1.0.0-stable
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Welcome to **Rythem v1.0.0-stable** — an ambient, milestone-driven learning operating system and curriculum orchestrator built with a local-first, zero-cloud architecture.
 
-## [1.0.2-pre.1] - 2026-10-01
+---
 
-### Added
+### ✨ Highlights & Core Capabilities
+
 - **Effort Points System (1 Effort Point = 10 Minutes)**:
   - Replaced raw beat counts with meaningful, time-scaled Effort Points throughout the entire application.
   - Standalone video chapter effort calculation: dynamically computes exact chapter effort points using timestamp deltas `(nextChapterTimestamp - currentChapterTimestamp) / 10 min` (or `(videoDuration - currentChapterTimestamp) / 10 min` for the final chapter).
-  - Playlist video duration remapping with fast batch processing and duration normalization.
+  - Multi-playlist video duration remapping with fast batch processing and duration normalization.
   - Proportional effort point allocation for partial checkpoints (25%, 50%, 75%, 100%).
   - 7-day metric performance graphs and calendar tiles display actual daily effort points instead of arbitrary beat counts.
-- **Flag Notes Notebook & Exploration Hub**:
+
+- **Flag Notes & Doubt Tracking Notebook**:
+  - Completely decoupled Flag Notes (doubts, confusion points, conceptual obstacles) from Checkpoints (topic completion percentage: 25%, 50%, 75%, 100%).
   - Dedicated "Flag Notes" notebook tab in Explore with search, tag filters, and inline note previews.
   - One-tap navigation from a flagged note directly into its roadmap and chapter context.
-- **Fluid Motion Design System & Micro-Animations**:
+  - Flag saving and editing uses an independent, dedicated pipeline; saving a flag displays contextual toast notifications ("Flag saved! 🚩" / "Flag removed") without modifying beat progress or clearing checkpoints.
+
+- **Fluid Motion Design System & Liquid Aesthetics**:
   - Smooth page navigation transitions with cross-fading via `SharedAxisTransition` / `PageTransitionSwitcher`.
   - Global iOS/macOS-style `BouncingScrollPhysics` across all screens for silky, responsive scrolling.
   - Interactive frosted glass dialogs with smooth entry and exit scaling/fading (`SmoothDialog`).
   - Integrated `flutter_animate` with test-safe central configuration (`RythemMotion`), floating dock rebounds, and staggered card entrances.
-- **User-Driven Focus Topic Selection**:
-  - Replaced rigid automated queue generation with self-paced topic pulling ("Focus Next" or pull directly into Today's Focus).
-  - Completed topics remain permanently visible in Today's Focus with strike-through styling and instant 1-tap Undo toast protection.
+  - Monochrome liquid frosted glass design system with light and dark themes.
+
+- **Resilient Data Vault & Local Backup**:
+  - Unified Data Vault in Settings combining automated 7-day rolling local snapshots with manual native JSON export/import.
+  - Native Android storage permission bridge with fallback to application documents storage.
+  - Automated database linking, schema migrations, and backward-compatible snapshot discovery.
+
+- **On-Device AI Models (100% Private & Local)**:
+  - Powered by local Small Language Models (Qwen 2.5 0.5B and 1.5B GGUF) for intelligent curriculum clustering and mentor Q&A without cloud dependencies.
+  - Resilient background model download manager with HTTP Range resumption and mutex protection.
+  - Stabilized initial onboarding and restart loop with immediate file verification.
+
 - **Multi-Playlist & Resource Synchronization**:
   - Background resource synchronization engine that auto-refreshes video durations, metadata, and timestamps without freezing or timing out.
+  - Multi-renderer YouTube playlist and video extraction supporting unbounded playlists and mobile share sheet URLs.
   - Preserves source playlist URLs with `list` query parameters on fresh tracker creation.
-- **Comprehensive QA Release Testing Guide**:
-  - Added full end-to-end testing and QA documentation in `docs/release_testing_guide.md`.
 
-### Changed
-- **Decoupled Flags from Progress Checkpoints**:
-  - Completely separated Flag Notes (doubts, confusion points, conceptual obstacles) from Checkpoints (topic completion percentage: 25%, 50%, 75%, 100%).
-  - Flag saving and editing uses an independent, dedicated pipeline; saving a flag displays contextual toast notifications ("Flag saved! 🚩" / "Flag removed") without modifying beat progress or clearing checkpoints.
-- **Modernized Weekly Calendar Day Tiles**:
-  - Sleek rectangular frosted glass day tiles with top-right floating circular effort badges and heat-mapped indicators matching theme accent colors.
-- **Unified Data Vault**:
-  - Merged separate backup cards into a single cohesive Data Vault in Settings, combining automated 7-day rolling local snapshots with manual native JSON export/import.
-- **Flow Header & Tracker Navigation**:
-  - Fixed greeting/welcome header on the Flow screen with a horizontal scrollbar for effortless tracker switching, eliminating clutter.
-- **App Version Metadata**:
-  - Updated app version across settings, metadata footer, and build configs to `v1.0.2`.
-
-### Removed
-- **Todo Suggestion System**: Completely stripped automatic daily topic suggestion mechanism, sequential queue walker (`walkQueueToFillBudget`), `daily_missions` database table, repository, and auto-pull study-ahead logic.
-- **Revision Suggestion Engine**: Completely removed spaced repetition forgetting curve suggestion service (`RevisionService`, `RevisionItem`), `DailyRevisionBoard` UI component, and local AI revision candidate ranking.
-- **Backlog Manager & Lag Recalibration**: Removed backlog debt calculation, shortfall streak detection (`detectShortfallTrend`, `isSustainedLag`), `_SustainedLagRecalibrationBanner`, and `BacklogDecisionSheet`.
-- **Target Beat & Quota System**: Removed rigid weekly study rhythm calibration (22 beats/wk, 34 beats/wk, 8 beats/wk) and daily intensity quotas from Onboarding and Settings; streamlined onboarding to 3 self-paced steps.
-
-### Fixed
-- **Model Auto-Download Onboarding & Restart Loop**: Fixed race condition during initial setup where leaving the AI model selection step triggered duplicate concurrent download streams, corrupting file state and forcing a re-download on first app reopen. Added immediate mutex locking, already-downloaded fast-path checks, and deduplicated startup resume triggers.
-- **Checkpoint 0% Toast on Flag Save**: Fixed bug where editing or adding a flag note triggered an erroneous "Checkpoint saved: 0%" toast and wiped beat progress.
-- **Flag Note Edit Dialog Navigation**: Fixed bug where tapping "Edit Notes" on a flagged beat opened the checkpoint percentage picker instead of the flag note editor.
-- **Standalone Video Chapter Effort Calculation**: Fixed calculation for single videos where effort points were previously miscalculated; now accurately computes duration deltas between consecutive chapter timestamps.
-- **Tracker Effort Points Display**: Fixed main Explore screen tracker cards to show actual total effort points rather than raw beat counts.
-- **UI Overflow Protection**: Prevented `RenderFlex` overflows across long chapter titles, video resources, and model download banners.
-
-## [1.0.1] - 2026-09-19
-
-### Added
-- **WhatsApp-Style Resilient Local Daily Auto-Backup**:
-  - Ambient on-device backup system that automatically captures daily snapshots to resilient local device storage (`Documents/Rythem/Backups/`).
-  - Automatic rolling snapshot rotation: preserves `rythem_autobackup_latest.json` alongside 7 daily rolling snapshots (`rythem_autobackup_YYYY-MM-DD.json`), automatically pruning older backups.
-  - **Disaster Recovery UX**: If the active SQLite database is wiped or app data is cleared, Rythem detects existing local backups on launch and prompts with a 1-tap "Restore Previous Data?" dialog.
-  - **Dual-Mode Coexistence**: Both ambient automated backups and manual native file picker export/import coexist seamlessly in the Settings tab.
-  - **Public User-Accessible Storage**: Backups save to user-visible `Documents/Rythem/Backups` on Android so users can easily find them in file managers (e.g. Files by Google, Samsung My Files).
-  - **Storage Permissions**: Added `MANAGE_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` in AndroidManifest for reliable filesystem persistence.
-  - **Compact Snapshot Display**: Snapshot list renders clean titles (`Latest Snapshot`, `2026-09-19`) with overflow-proof flex layouts preventing `RenderFlex overflow`.
-- **Mentor-First On-Device AI Alignment & Topic Subtraction**:
-  - Enforced the core pedagogical invariant: *"We subtract topics from the mentor's resource, not resources from the mentor."*
-  - Preserves the mentor's exact 0..N-1 video chapters without deleting, dropping, or reordering any videos.
-  - Matching syllabus topics are satisfied and subtracted as the mentor's course progresses; enrichment videos are labeled as `isMentorExtra: true`.
-  - Uncovered syllabus gaps cleanly group at the bottom as residual gaps for Resource 2 to fill.
-  - Pure-Dart morphological English stemmer for inflectional suffixes (plurals, gerunds, verb forms).
-  - Compound clause deconstruction with distributed head nouns (e.g. *"List, Dictionary & Set Comprehensions"* expands into 3 distinct concepts).
-  - Expanded CS and programming ontology covering OOP, Control Flow, Error Handling, File I/O, Environments, REST APIs, Git, Testing, and Typing.
-- **Single-Video Course Chapter Extraction**:
-  - Live description timestamp parser that converts long single-video crash courses (e.g., 6-10 hour courses) into structured chapters and beats using description timestamps (`00:00`, `01:23:45`).
-- **Start Date Preservation & Historical Metrics Sync**:
-  - Added persistent `startDate` field to `RoadmapEntity` (SQLite Schema v2).
-  - Editing target dates or track parameters preserves original start dates and historical beat completions.
-
-### Fixed
-- **Flow To-Do Architecture Overhaul & Persistent Daily Missions**:
-  - Replaced fragile JSON settings cache with a dedicated SQLite `daily_missions` table with `ON DELETE CASCADE` foreign-key protection.
-  - Fixed cross-chapter interleaving: beats from Chapter 1 are strictly exhausted before Chapter 2 beats are queued.
-  - Fixed premature task disappearance and premature Evening Unlock: completed tasks stay visible with strikethrough all day without erasing pending tasks.
-  - Optimistic instant checkbox toggles with debounced sequential SQLite write queuing to prevent race conditions during rapid tapping.
-- **Flow Streak Bug & Calendar Synchronization**:
-  - Fixed artificial 3-day default streak clamp (`_currentStreak = streak >= 3 ? streak : 3`); streak accurately reflects real completion logs from day 0.
-  - Unified data pipeline between Flow Screen and Metrics Screen using identical 7-day activity records.
-  - Horizontally scrollable calendar in Flow Screen accurately highlights active study days.
-- **Settings UI & Tab Version**:
-  - Updated app version footer to `v1.0.1`.
-  - Displayed explicit storage path location chip (`📁 Documents > Rythem > Backups`) in the backup settings card.
+- **User-Driven Focus & Pacing**:
+  - Pure-math dynamic pacing redistribution without guilt or rigid hour countdowns.
+  - Replaced rigid automated queue generation with self-paced topic pulling ("Focus Next" or pull directly into Today's Focus).
+  - Completed topics remain permanently visible in Today's Focus with strike-through styling and instant 1-tap Undo protection.
+  - Modern rectangular frosted glass day tiles with top-right floating circular effort badges and heat-mapped indicators matching theme accent colors.
 
 ---
 
-## [1.0.0] - 2026-09-16
+### 📝 Commit History
 
-### Initial Production Release
-
-#### Learning Operating System & Pacing Engine
-- **"Beats Over Clocks" Core Philosophy**: Milestone-driven learning framework that eliminates toxic overdue banners and arbitrary timers.
-- **Dynamic Pacing Dilution**: Mathematical engine that redistributes remaining effort across user calendar windows when days are missed.
-- **Evening Unlock**: Psychological rest confirmation activated upon completing daily mission quotas.
-- **Configurable Study Rhythm**: 7-day custom study intensity schedules (Default, Accelerated, Gentle).
-
-#### Curriculum Ingestion & Alignment
-- **YouTube Playlist Extraction**: Recursive batch extraction supporting extensive playlists (100+ to 230+ videos) with chunked chapter clustering.
-- **Syllabus Outline Parsing**: Markdown syllabus ingestion with semantic matching and "Mentor Extra" alignment indicators.
-- **Resource Linking**: Direct one-tap linking of videos, timestamps, and documentation to individual beats or entire chapters.
-
-#### Offline-First Local Intelligence
-- **Private On-Device AI Mentorship**: Direct support for Compact Mentor (Qwen 2.5 0.5B) and Balanced Mentor (Qwen 2.5 1.5B) via GGUF local inference.
-- **Automatic Background Downloading**: Seamless model selection during onboarding with automatic background downloads and graceful heuristic fallbacks.
-- **Pedagogical Concept Explanations**: Instant on-device explanations for confusing beats and shortfall root cause analysis.
-- **On-Demand Revision System**: Spaced repetition engine with forgetting curve calculations, active recall prompts, and prerequisite linking.
-
-#### Performance & Fluid Glass Design System
-- **60/120 FPS Rendering**: State preservation across tabs with `FadeIndexedStack` and isolated repaint boundaries for frosted glass surfaces.
-- **Frosted Liquid Glass Aesthetic**: Ambient glassmorphism with dynamic specular highlights, custom blur shaders, and dark/light theme support.
-- **Haptic Tactility**: Selection haptics on checkboxes, accordions, and navigation controls.
-
-#### Data Reliability & Disaster Recovery
-- **Embedded SQLite Architecture**: High-performance local database with foreign key cascade protection and transactional integrity.
-- **In-Flight Synchronization Protection**: Debounced real-time event pipeline ensuring Flow (Todo) and Explore (Tracker) never drop concurrent task completions.
-- **Full Backup & Restore**: Comprehensive export and restoration of all user roadmaps, chapters, beats, daily activity logs, and settings.
-- **Clean State**: Production-ready initialization with no hardcoded sample roadmaps or dummy seed records.
+- `abf70f6` fix(ai): eliminate onboarding double-download race and stabilize restart loop
+- `27498f4` fix(flags): decouple flag notes from checkpoints and fix status toast
+- `088ae99` fix(sync): optimize single-video chapter sync to group by videoId and remap effort points
+- `c85e1c6` fix(ingestion): calculate exact chapter effort points for single video resources
+- `27f67ad` fix(ui): greeting header, flag note edit dialog, tracker effort points, and 7-day metric effort units
+- `f207b96` docs: add comprehensive end-to-end QA release testing guide
+- `39bef89` feat(ui): smooth navigation cross-fade, global bouncing scroll physics, and dialog animations
+- `ea92d78` fix(flow): connect ConfusingBeatDialog to persistent notes storage and prefill initial note
+- `de4c273` feat(motion): integrate flutter_animate with central test-safe config, dock rebound, and staggered entrances
+- `fc4b298` feat(explore): introduce Flag Notes notebook section with search, filters, and checkpoint management
+- `b75c4d2` fix(backup): add native Android storage permission bridge, universal resilient backup fallback, and padding to effort badge
+- `177bdac` feat: float effort badge on top-right of square day tile & add manual backup creation
+- `b43bd3c` feat(flow): redesign weekly calendar day tile with top-right effort circle and synced heat colors
+- `54da8cb` fix(icon): perfectly center icon ring with equal padding and remove double inset
+- `b72e1b9` fix(explore): remove big attach button and fix delete tracker dialog text color
+- `8c270d8` fix(ui, backup, icon): expand weekly calendar cells, link database, save backups to Documents, add Android adaptive icon
+- `45fc50e` style(flow): match mark flag icon color and icon with checkbox
+- `6283df8` fix(ui): modern rectangle boxes for weekly calendar and liquid glass styling for attach dialog
+- `5456311` fix(metrics): replace beat counts with actual effort point values across calendars and performance graphs
+- `4ed9b73` feat: complete UI transition to effort presentation and multi-playlist automatic sync
+- `72c274c` feat(ingestion): persist playlist url and list param on fresh tracker creation
+- `f1b9f7a` fix(sync): ensure accurate duration extraction, remap standalone beats, and prompt for sync url
+- `759fd58` fix(lint): clean up unused imports and add const constructors in tests
+- `55dcb10` fix(sync-vault): fix sync timeout with fast playlist remapping, redesign backup into unified Data Vault, and stabilize snapshot storage
+- `3643b4b` fix(sync-backup): resolve sync freeze, add effort UI badge, auto-normalize backup effort, and fix snapshot discovery
+- `564ea8b` feat(effort): implement 10-min effort calculation, resource sync engine, and icon-only buttons
+- `d8d86c3` feat(flow): add percentage checkpoints with proportional effort points and action menu
+- `f11b8d4` fix: prevent download banner overflow and apply bold tracker-matched current focus header
+- `60d42ba` feat: icon-only current focus with return button, and resilient background model downloading
+- `86bd7c5` feat: append active topic at bottom, move return to tracker below, and balance margins
+- `c091d0e` feat: show full description on focus card click and enhance tracker title with icon
+- `538c8c5` feat: implement Today's Focus pull-ahead with multi-state progress cycle, undo toast, and bold styling
+- `2ea8680` feat: strip todo suggestion system, backlog debt, and revision services
+- `8f188fa` feat: strip target beat and study quota system from onboarding and settings
+- `9a356ea` fix: support background and app closure download resumption for offline AI models
+- `22cb200` fix: resolve model download failure from asset not found by re-uploading weights to release
+- `3bba2a2` fix(ci): automate on-device AI model mirroring to release tag
+- `aa3c34f` feat(ai): bundle offline on-device AI models in release assets and add download manager
+- `3589b25` fix(pacing): recalculate daily pacing dynamically using real target dates
+- `b0e1e69` feat(explore): show exact item counts on tracker cards and add search filter
+- `5ec49b3` feat(explore): add dynamic topic search with auto-highlight and accordion expansion
+- `09c13d7` feat(explore): add collapsible chapters, search filtering, and clean roadmap cards
+- `e94e5e7` feat(flow): add manual syllabus alignment confirmation prompt for ambiguous topic matches
+- `010d8a5` feat(explore): tap to play beats in YouTube and open attached learning materials
+- `e5d0d8f` feat(flow): show active tracker name with color dot and streamline explore cards
+- `6a4760b` fix: mobile YouTube extraction resilience and URL sanitization
+- `2d53473` fix: playlist extraction multi-renderer support and zero-drop chapter division
+- `3369b65` feat: add storage syllabus import, custom categories, system theme default, and unbounded playlist extraction
+- `cc6740f` fix(ci): update release step to overwrite existing APK asset via gh release upload --clobber
+- `160fa87` fix(ci): update release step to use GitHub CLI and configure Node compatibility
+- `830632b` feat: enhance tracker UI, syllabus import, mentor sequence priority, and unbounded topics
+- `d6cc176` feat(explore): implement explore screen, new track modal, and roadmap detail accordions
+- `b4bd85d` feat(ui): round navigation dock and render full todo checklist across tracks
+- `d2503e0` feat(flow): implement flow screen, session detail focus mode, and persistent bottom dock
+- `05ef3ff` feat(ui): display daily pacing budget pill in hero card and add active status badge
+- `880f666` feat(ui): add interactive on-device pacing simulation and today's queue showcase
+- `2ba0d36` feat(pacing): implement pure-math pacing engine, queue walker, and backlog dilution
+- `02e9a04` fix(ingestion): support modern YouTube playlist extraction and enhance tracker UI
+- `02c1940` feat(ui): add interactive 3-condition ingestion test harness and custom YouTube importer
+- `e4316de` feat(ingestion): implement curriculum ingestion engine, chapter clustering, and syllabus matcher
+- `d8353f9` feat(ui): wire interactive showcase to live SQLite database and bundle offline fonts
+- `a148d62` feat(database): implement on-device SQLite engine, data contracts, and reactive repositories
+- `3510499` feat(assets): integrate official liquid glass pulse logo and Android launcher icons
+- `b2035aa` feat(theme): add Apple Control Center style light frosted glass theme and theme toggle
+- `9bdc440` feat(typography): adopt Poppins font family across liquid glass theme
+- `9dbdd6b` feat(ui): implement monochrome liquid glass design system and interactive showcase
+- `7c2dfab` feat: initialize Flutter project structure, native Android configuration, and CI pipeline
+- `461faba` docs: add system architecture, design specifications, and user flows
+- `ad60469` chore: configure agent rules
+- `860ebdf` chore: initial commit with README and PolyForm Noncommercial License

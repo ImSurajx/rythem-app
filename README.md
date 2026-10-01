@@ -4,7 +4,7 @@
 ### The Local-First Learning Operating System & Milestone Pacing Tracker
 
 [![Release](https://img.shields.io/github/v/release/ImSurajx/rythem-app?color=10B981&label=Release&logo=github)](https://github.com/ImSurajx/rythem-app/releases/latest)
-[![AI Models](https://img.shields.io/badge/AI%20Models-v1.0.1-blueviolet.svg)](https://github.com/ImSurajx/rythem-app/releases/tag/models-v1.0.1)
+[![AI Models](https://img.shields.io/badge/AI%20Models-v1.0.0--stable-blueviolet.svg)](https://github.com/ImSurajx/rythem-app/releases/tag/v1.0.0-stable)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0)

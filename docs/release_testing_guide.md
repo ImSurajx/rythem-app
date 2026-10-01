@@ -1,4 +1,4 @@
-# Rythem App — Comprehensive Release Testing & QA Guide (v1.0.2)
+# Rythem App — Comprehensive Release Testing & QA Guide (v1.0.0-stable)
 
 This guide provides a structured, exhaustive QA testing protocol covering every user journey, feature, edge case, and visual transition in **Rythem**. Follow this guide sequentially or by section to validate the build prior to the stable release.
 
@@ -210,7 +210,7 @@ Verify theme persistence, local inference download lifecycle, and backup export/
 ## Test Suite 7: Smooth Transitions, Motion & Scrolling Overhaul
 
 ### Objective
-Validate the new UI motion improvements requested in v1.0.2.
+Validate the new UI motion improvements in v1.0.0-stable.
 
 - [ ] **7.1 Nav Bar Switching Transition**
   - **Action:** Tap consecutively between `Flow`, `Explore`, `Metrics`, and `Settings` in the bottom glass dock.
