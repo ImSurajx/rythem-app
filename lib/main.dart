@@ -600,6 +600,7 @@ class _DesignSystemShowcaseScreenState
           _hasStoragePermission = hasStoragePerm;
         });
       }
+      await _loadModelStatus();
       return;
     }
 
@@ -1469,7 +1470,7 @@ class _DesignSystemShowcaseScreenState
           // Quiet Version Metadata
           Center(
             child: Text(
-              'Rythem • Local First • v1.0.1',
+              'Rythem • Local First • v1.0.2-pre.1',
               style: RythemTypography.labelSmall.copyWith(
                 color: themeColors.textTertiary.withOpacity(0.6),
                 fontSize: 10.5,

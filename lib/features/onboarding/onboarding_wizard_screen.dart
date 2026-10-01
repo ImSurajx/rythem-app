@@ -39,6 +39,8 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   bool _compactDownloaded = false;
   bool _balancedDownloaded = false;
   bool _isSeeding = false;
+  bool _isCompleting = false;
+  bool _hasTriggeredDownload = false;
 
   @override
   void initState() {
@@ -119,6 +121,12 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
   }
 
   void _startDownload(ModelTier tier) {
+    if (_hasTriggeredDownload &&
+        _modelManager.isDownloading &&
+        _modelManager.downloadingTier == tier) {
+      return;
+    }
+    _hasTriggeredDownload = true;
     HapticFeedback.mediumImpact();
     setState(() => _selectedModelTier = tier);
     _lastDismissedError = null;
@@ -131,10 +139,13 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   bool get _hasAnyModelReadyOrDownloading {
     final isDownloading = _modelManager.isDownloading;
-    return _compactDownloaded || _balancedDownloaded || isDownloading;
+    return _compactDownloaded || _balancedDownloaded || isDownloading || _hasTriggeredDownload;
   }
 
   Future<void> _completeOnboarding() async {
+    if (_isCompleting) return;
+    _isCompleting = true;
+
     // Model download is mandatory
     if (!_hasAnyModelReadyOrDownloading) {
       _startDownload(_selectedModelTier);
@@ -171,13 +182,6 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   void _nextPage() {
     HapticFeedback.lightImpact();
-
-    // If leaving AI model page (index 2), ensure download is triggered
-    if (_currentPage == 2) {
-      if (!_hasAnyModelReadyOrDownloading) {
-        _startDownload(_selectedModelTier);
-      }
-    }
 
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(

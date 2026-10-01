@@ -121,5 +121,66 @@ void main() {
       expect(await manager.isModelDownloaded(ModelTier.compact), isTrue);
       expect(await manager.getPendingDownloadTier(), isNull);
     });
+
+    test('downloadModel returns immediately without network calls if model is already downloaded', () async {
+      final compactInfo = ModelInfo.forTier(ModelTier.compact);
+      final finalFile = File('${tempDir.path}/${compactInfo.filename}');
+      final raf = await finalFile.open(mode: FileMode.write);
+      await raf.truncate(15 * 1024 * 1024);
+      await raf.close();
+
+      int clientCallCount = 0;
+      final mockClient = MockClient((request) async {
+        clientCallCount++;
+        return http.Response('should not be called', 500);
+      });
+
+      final manager = ModelDownloadManager(
+        settingsRepo: settingsRepo,
+        client: mockClient,
+        overrideModelsDir: tempDir.path,
+      );
+
+      expect(await manager.isModelDownloaded(ModelTier.compact), isTrue);
+
+      await manager.downloadModel(ModelTier.compact);
+
+      // Verify no network calls were made and model remains active
+      expect(clientCallCount, equals(0));
+      expect(await manager.getActiveTier(), equals(ModelTier.compact));
+      expect(manager.downloadProgressNotifier.value?.isCompleted, isTrue);
+    });
+
+    test('resumePendingDownload executes safely with mutex guard against concurrent calls', () async {
+      await settingsRepo.setSetting('preferred_model_tier', ModelTier.compact.name);
+
+      final mockData = List<int>.filled(12 * 1024 * 1024, 7);
+      int networkInvocations = 0;
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        networkInvocations++;
+        // Small delay to allow concurrent call to arrive
+        await Future.delayed(const Duration(milliseconds: 50));
+        return http.StreamedResponse(
+          Stream.value(mockData),
+          200,
+          contentLength: mockData.length,
+          headers: {'content-type': 'application/octet-stream'},
+        );
+      });
+
+      final manager = ModelDownloadManager(
+        settingsRepo: settingsRepo,
+        client: mockClient,
+        overrideModelsDir: tempDir.path,
+      );
+
+      // Fire two resumes concurrently
+      final f1 = manager.resumePendingDownload();
+      final f2 = manager.resumePendingDownload();
+      await Future.wait([f1, f2]);
+
+      expect(networkInvocations, equals(1));
+      expect(await manager.isModelDownloaded(ModelTier.compact), isTrue);
+    });
   });
 }

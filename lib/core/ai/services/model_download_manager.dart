@@ -76,6 +76,7 @@ class ModelDownloadManager {
 
   http.Client? _activeDownloadClient;
   ModelTier? _downloadingTier;
+  bool _isResuming = false;
   final ValueNotifier<DownloadProgress?> downloadProgressNotifier =
       ValueNotifier<DownloadProgress?>(null);
 
@@ -253,15 +254,20 @@ class ModelDownloadManager {
   Future<void> resumePendingDownload({
     void Function(DownloadProgress progress)? onProgress,
   }) async {
-    if (_downloadingTier != null) return;
-    final pendingTier = await getPendingDownloadTier();
-    if (pendingTier != null) {
-      try {
-        await downloadModel(pendingTier, onProgress: onProgress);
-      } catch (e) {
-        debugPrint('Notice: Background model resume interrupted: $e');
-        clearDownloadError();
+    if (_downloadingTier != null || _isResuming) return;
+    _isResuming = true;
+    try {
+      final pendingTier = await getPendingDownloadTier();
+      if (pendingTier != null) {
+        try {
+          await downloadModel(pendingTier, onProgress: onProgress);
+        } catch (e) {
+          debugPrint('Notice: Background model resume interrupted: $e');
+          clearDownloadError();
+        }
       }
+    } finally {
+      _isResuming = false;
     }
   }
 
@@ -270,6 +276,27 @@ class ModelDownloadManager {
     void Function(DownloadProgress progress)? onProgress,
   }) async {
     if (tier == ModelTier.fallback) return;
+
+    // Fast-path: Check if the model is ALREADY downloaded and verified (>10MB) on disk.
+    // If so, avoid downloading again, activate immediately, and notify.
+    if (await isModelDownloaded(tier)) {
+      await setActiveTier(tier);
+      await _settingsRepo.setSetting(_prefPreferredModelTierKey, tier.name);
+      await _settingsRepo.removeSetting(_prefPendingTierKey);
+      await _settingsRepo.removeSetting(_prefPendingBytesKey);
+      final size = await getDownloadedSize(tier);
+      final alreadyDone = DownloadProgress(
+        tier: tier,
+        progress: 1.0,
+        receivedBytes: size,
+        totalBytes: size,
+        isCompleted: true,
+      );
+      downloadProgressNotifier.value = alreadyDone;
+      onProgress?.call(alreadyDone);
+      return;
+    }
+
     if (_downloadingTier != null) {
       if (_downloadingTier == tier) {
         // Download for this tier is already actively running in the background; return cleanly
@@ -278,13 +305,18 @@ class ModelDownloadManager {
       throw StateError('Another download is already in progress: $_downloadingTier');
     }
 
+    // Set lock immediately to block concurrent downloads
+    _downloadingTier = tier;
+
     final info = ModelInfo.forTier(tier);
     final finalPath = await getModelFilePath(tier);
-    if (finalPath == null) return;
+    if (finalPath == null) {
+      _downloadingTier = null;
+      return;
+    }
     final partPath = '$finalPath.part';
     final partFile = File(partPath);
 
-    _downloadingTier = tier;
     final downloadClient = _customClient ?? http.Client();
     _activeDownloadClient = downloadClient;
 
@@ -343,6 +375,7 @@ class ModelDownloadManager {
           // Invalidate corrupted partial file and restart
           await partFile.delete();
           existingBytes = 0;
+          _downloadingTier = null;
           return await downloadModel(tier, onProgress: onProgress);
         }
       }

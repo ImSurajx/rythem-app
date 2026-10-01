@@ -5,16 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.2-pre.1] - 2026-09-29
+## [1.0.2-pre.1] - 2026-10-01
+
+### Added
+- **Effort Points System (1 Effort Point = 10 Minutes)**:
+  - Replaced raw beat counts with meaningful, time-scaled Effort Points throughout the entire application.
+  - Standalone video chapter effort calculation: dynamically computes exact chapter effort points using timestamp deltas `(nextChapterTimestamp - currentChapterTimestamp) / 10 min` (or `(videoDuration - currentChapterTimestamp) / 10 min` for the final chapter).
+  - Playlist video duration remapping with fast batch processing and duration normalization.
+  - Proportional effort point allocation for partial checkpoints (25%, 50%, 75%, 100%).
+  - 7-day metric performance graphs and calendar tiles display actual daily effort points instead of arbitrary beat counts.
+- **Flag Notes Notebook & Exploration Hub**:
+  - Dedicated "Flag Notes" notebook tab in Explore with search, tag filters, and inline note previews.
+  - One-tap navigation from a flagged note directly into its roadmap and chapter context.
+- **Fluid Motion Design System & Micro-Animations**:
+  - Smooth page navigation transitions with cross-fading via `SharedAxisTransition` / `PageTransitionSwitcher`.
+  - Global iOS/macOS-style `BouncingScrollPhysics` across all screens for silky, responsive scrolling.
+  - Interactive frosted glass dialogs with smooth entry and exit scaling/fading (`SmoothDialog`).
+  - Integrated `flutter_animate` with test-safe central configuration (`RythemMotion`), floating dock rebounds, and staggered card entrances.
+- **User-Driven Focus Topic Selection**:
+  - Replaced rigid automated queue generation with self-paced topic pulling ("Focus Next" or pull directly into Today's Focus).
+  - Completed topics remain permanently visible in Today's Focus with strike-through styling and instant 1-tap Undo toast protection.
+- **Multi-Playlist & Resource Synchronization**:
+  - Background resource synchronization engine that auto-refreshes video durations, metadata, and timestamps without freezing or timing out.
+  - Preserves source playlist URLs with `list` query parameters on fresh tracker creation.
+- **Comprehensive QA Release Testing Guide**:
+  - Added full end-to-end testing and QA documentation in `docs/release_testing_guide.md`.
 
 ### Changed
-- **Unified Data Backup & Recovery System**: Merged the two separate backup cards into a single cohesive, on-device glass card handling both automated daily snapshots (with 7-day rollback history) and manual JSON export/import.
+- **Decoupled Flags from Progress Checkpoints**:
+  - Completely separated Flag Notes (doubts, confusion points, conceptual obstacles) from Checkpoints (topic completion percentage: 25%, 50%, 75%, 100%).
+  - Flag saving and editing uses an independent, dedicated pipeline; saving a flag displays contextual toast notifications ("Flag saved! 🚩" / "Flag removed") without modifying beat progress or clearing checkpoints.
+- **Modernized Weekly Calendar Day Tiles**:
+  - Sleek rectangular frosted glass day tiles with top-right floating circular effort badges and heat-mapped indicators matching theme accent colors.
+- **Unified Data Vault**:
+  - Merged separate backup cards into a single cohesive Data Vault in Settings, combining automated 7-day rolling local snapshots with manual native JSON export/import.
+- **Flow Header & Tracker Navigation**:
+  - Fixed greeting/welcome header on the Flow screen with a horizontal scrollbar for effortless tracker switching, eliminating clutter.
+- **App Version Metadata**:
+  - Updated app version across settings, metadata footer, and build configs to `v1.0.2`.
 
 ### Removed
 - **Todo Suggestion System**: Completely stripped automatic daily topic suggestion mechanism, sequential queue walker (`walkQueueToFillBudget`), `daily_missions` database table, repository, and auto-pull study-ahead logic.
 - **Revision Suggestion Engine**: Completely removed spaced repetition forgetting curve suggestion service (`RevisionService`, `RevisionItem`), `DailyRevisionBoard` UI component, and local AI revision candidate ranking.
 - **Backlog Manager & Lag Recalibration**: Removed backlog debt calculation, shortfall streak detection (`detectShortfallTrend`, `isSustainedLag`), `_SustainedLagRecalibrationBanner`, and `BacklogDecisionSheet`.
 - **Target Beat & Quota System**: Removed rigid weekly study rhythm calibration (22 beats/wk, 34 beats/wk, 8 beats/wk) and daily intensity quotas from Onboarding and Settings; streamlined onboarding to 3 self-paced steps.
+
+### Fixed
+- **Model Auto-Download Onboarding & Restart Loop**: Fixed race condition during initial setup where leaving the AI model selection step triggered duplicate concurrent download streams, corrupting file state and forcing a re-download on first app reopen. Added immediate mutex locking, already-downloaded fast-path checks, and deduplicated startup resume triggers.
+- **Checkpoint 0% Toast on Flag Save**: Fixed bug where editing or adding a flag note triggered an erroneous "Checkpoint saved: 0%" toast and wiped beat progress.
+- **Flag Note Edit Dialog Navigation**: Fixed bug where tapping "Edit Notes" on a flagged beat opened the checkpoint percentage picker instead of the flag note editor.
+- **Standalone Video Chapter Effort Calculation**: Fixed calculation for single videos where effort points were previously miscalculated; now accurately computes duration deltas between consecutive chapter timestamps.
+- **Tracker Effort Points Display**: Fixed main Explore screen tracker cards to show actual total effort points rather than raw beat counts.
+- **UI Overflow Protection**: Prevented `RenderFlex` overflows across long chapter titles, video resources, and model download banners.
 
 ## [1.0.1] - 2026-09-19
 
