@@ -57,7 +57,7 @@ class FlowScreen extends StatefulWidget {
   final Map<String, String> beatNotesMap;
   final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
   final void Function(BeatEntity beat, String note)? onSaveFlag;
-  final void Function(RoadmapEntity roadmap, String title, double effortWeight, String? sourceUrl)? onCreateCustomTask;
+  final void Function(RoadmapEntity roadmap, String title, double effortWeight, String? sourceUrl, String category)? onCreateCustomTask;
 
   const FlowScreen({
     super.key,
@@ -423,8 +423,8 @@ class _FlowScreenState extends State<FlowScreen> {
     CreateCustomTaskDialog.show(
       context,
       roadmap: roadmap,
-      onTaskCreated: (title, effort, url) {
-        widget.onCreateCustomTask?.call(roadmap, title, effort, url);
+      onTaskCreated: (title, effort, url, category) {
+        widget.onCreateCustomTask?.call(roadmap, title, effort, url, category);
       },
     );
   }

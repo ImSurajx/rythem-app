@@ -11,7 +11,7 @@ import 'package:rythem_app/core/widgets/smooth_dialog.dart';
 /// for a specific roadmap tracker.
 class CreateCustomTaskDialog extends StatefulWidget {
   final RoadmapEntity roadmap;
-  final void Function(String title, double effortWeight, String? sourceUrl) onTaskCreated;
+  final void Function(String title, double effortWeight, String? sourceUrl, String category) onTaskCreated;
 
   const CreateCustomTaskDialog({
     super.key,
@@ -22,7 +22,7 @@ class CreateCustomTaskDialog extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required RoadmapEntity roadmap,
-    required void Function(String title, double effortWeight, String? sourceUrl) onTaskCreated,
+    required void Function(String title, double effortWeight, String? sourceUrl, String category) onTaskCreated,
   }) {
     return showSmoothDialog<void>(
       context: context,
@@ -42,6 +42,15 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _urlController;
   late final TextEditingController _effortController;
+
+  String _selectedCategory = 'Revision';
+  final List<String> _presetCategories = [
+    'Revision',
+    'Practice',
+    'Deep Dive',
+    'Side Project',
+    'General',
+  ];
 
   double _selectedEffort = 1.0;
   final List<double> _presetEfforts = [0.5, 1.0, 1.5, 2.0, 3.0];
@@ -99,6 +108,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
       title,
       finalEffort,
       url.isNotEmpty ? url : null,
+      _selectedCategory,
     );
   }
 
@@ -198,6 +208,87 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                         ],
                       ),
                       const SizedBox(height: 18),
+
+                      // Category Selector
+                      Text(
+                        'CATEGORY',
+                        style: RythemTypography.labelSmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: _presetCategories.map((cat) {
+                            final isSelected = _selectedCategory == cat;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: InkWell(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  setState(() => _selectedCategory = cat);
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? (isDark
+                                            ? const Color(0xFFF59E0B).withOpacity(0.2)
+                                            : const Color(0xFFD97706).withOpacity(0.12))
+                                        : (isDark
+                                            ? Colors.white.withOpacity(0.04)
+                                            : Colors.black.withOpacity(0.03)),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                                          : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
+                                      width: isSelected ? 1.2 : 0.8,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        cat == 'Revision'
+                                            ? Icons.repeat_rounded
+                                            : cat == 'Practice'
+                                                ? Icons.code_rounded
+                                                : cat == 'Deep Dive'
+                                                    ? Icons.menu_book_rounded
+                                                    : cat == 'Side Project'
+                                                        ? Icons.rocket_launch_rounded
+                                                        : Icons.task_alt_rounded,
+                                        size: 11,
+                                        color: isSelected
+                                            ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                                            : themeColors.textSecondary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        cat,
+                                        style: RythemTypography.labelSmall.copyWith(
+                                          color: isSelected
+                                              ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                                              : themeColors.textSecondary,
+                                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
                       // Input 1: Task Title
                       Text(

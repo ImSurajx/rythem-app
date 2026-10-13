@@ -5,6 +5,7 @@ import 'package:rythem_app/core/database/database.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/flow/flow_screen.dart';
 import 'package:rythem_app/features/flow/create_custom_task_dialog.dart';
+import 'package:rythem_app/core/update/app_update_manager.dart';
 
 void main() {
   sqfliteFfiInit();
@@ -285,6 +286,7 @@ void main() {
       String? createdTitle;
       double? createdEffort;
       String? createdUrl;
+      String? createdCategory;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -296,10 +298,11 @@ void main() {
                   CreateCustomTaskDialog.show(
                     context,
                     roadmap: testRoadmap,
-                    onTaskCreated: (title, effort, url) {
+                    onTaskCreated: (title, effort, url, category) {
                       createdTitle = title;
                       createdEffort = effort;
                       createdUrl = url;
+                      createdCategory = category;
                     },
                   );
                 },
@@ -315,8 +318,13 @@ void main() {
 
       expect(find.text('Create Custom Task'), findsOneWidget);
       expect(find.text('System Design Track'), findsOneWidget);
+      expect(find.text('CATEGORY'), findsOneWidget);
       expect(find.text('TASK TITLE / TOPIC'), findsOneWidget);
       expect(find.text('EFFORT POINTS'), findsOneWidget);
+
+      // Select category 'Practice'
+      await tester.tap(find.text('Practice'));
+      await tester.pump();
 
       // Select preset effort 0.5 pts
       await tester.tap(find.text('0.5 pts'));
@@ -334,6 +342,7 @@ void main() {
       expect(createdTitle, 'Revise Distributed Caching');
       expect(createdEffort, 0.5);
       expect(createdUrl, isNull);
+      expect(createdCategory, 'Practice');
     });
   });
 
@@ -368,6 +377,7 @@ void main() {
 
       bool pullCalled = false;
       bool customCalled = false;
+      String? customCat;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -383,7 +393,10 @@ void main() {
               onSwitchRoadmap: () {},
               onBeatToggled: (_, __) async {},
               onPullNextTopic: (_) => pullCalled = true,
-              onCreateCustomTask: (_, __, ___, ____) => customCalled = true,
+              onCreateCustomTask: (rm, title, effort, url, category) {
+                customCalled = true;
+                customCat = category;
+              },
             ),
           ),
         ),
@@ -406,6 +419,66 @@ void main() {
       await tester.tap(find.text('Add to Focus 🎯'));
       await tester.pumpAndSettle();
       expect(customCalled, isTrue);
+      expect(customCat, 'Revision'); // default category
+    });
+  });
+
+  group('BeatEntity Category & AppUpdateManager Semver Tests', () {
+    test('BeatEntity parses custom task category correctly', () {
+      final now = DateTime.now();
+      final standardCustomBeat = BeatEntity(
+        id: 'b_custom_1',
+        chapterId: 'ch1',
+        roadmapId: 'rm1',
+        title: 'Leetcode 75',
+        effortWeight: 1.0,
+        sortOrder: 0,
+        isCompleted: false,
+        syllabusTopicId: 'custom:Practice',
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(standardCustomBeat.isCustomTask, isTrue);
+      expect(standardCustomBeat.customTaskCategory, 'Practice');
+
+      final legacyCustomBeat = BeatEntity(
+        id: 'b_custom_2',
+        chapterId: 'ch1',
+        roadmapId: 'rm1',
+        title: 'Legacy Custom Task',
+        effortWeight: 1.0,
+        sortOrder: 1,
+        isCompleted: false,
+        syllabusTopicId: 'custom_task',
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(legacyCustomBeat.isCustomTask, isTrue);
+      expect(legacyCustomBeat.customTaskCategory, 'Revision');
+
+      final curriculumBeat = BeatEntity(
+        id: 'b_normal',
+        chapterId: 'ch1',
+        roadmapId: 'rm1',
+        title: 'Curriculum Beat',
+        effortWeight: 1.0,
+        sortOrder: 2,
+        isCompleted: false,
+        syllabusTopicId: 'topic_graphs_bfs',
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(curriculumBeat.isCustomTask, isFalse);
+    });
+
+    test('AppUpdateManager semver comparison correctly identifies newer versions', () {
+      expect(AppUpdateManager.isNewerVersion('v1.2.0', 'v1.1.0-Stable'), isTrue);
+      expect(AppUpdateManager.isNewerVersion('v2.0.0', 'v1.1.0-Stable'), isTrue);
+      expect(AppUpdateManager.isNewerVersion('v1.1.1', 'v1.1.0-Stable'), isTrue);
+      expect(AppUpdateManager.isNewerVersion('v1.1.0', 'v1.1.0-Stable'), isFalse);
+      expect(AppUpdateManager.isNewerVersion('v1.0.9', 'v1.1.0-Stable'), isFalse);
+      expect(AppUpdateManager.isNewerVersion('1.0.0', '1.1.0'), isFalse);
+      expect(AppUpdateManager.isNewerVersion('invalid', '1.1.0'), isFalse);
     });
   });
 }

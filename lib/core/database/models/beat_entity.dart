@@ -17,7 +17,21 @@ class BeatEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  bool get isCustomTask => syllabusTopicId == 'custom_task';
+  bool get isCustomTask =>
+      syllabusTopicId != null &&
+      (syllabusTopicId == 'custom_task' || syllabusTopicId!.startsWith('custom:'));
+
+  String get customTaskCategory {
+    if (!isCustomTask) return '';
+    if (syllabusTopicId == 'custom_task' || syllabusTopicId == 'custom:') {
+      return 'Revision';
+    }
+    if (syllabusTopicId!.startsWith('custom:')) {
+      final cat = syllabusTopicId!.substring('custom:'.length).trim();
+      return cat.isNotEmpty ? cat : 'Revision';
+    }
+    return syllabusTopicId!;
+  }
 
   const BeatEntity({
     required this.id,

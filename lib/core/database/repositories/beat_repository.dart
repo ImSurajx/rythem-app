@@ -259,6 +259,7 @@ class BeatRepository {
     required String title,
     required double effortWeight,
     String? sourceUrl,
+    String category = 'Revision',
     bool isCompleted = false,
   }) async {
     final db = await _db;
@@ -337,7 +338,7 @@ class BeatRepository {
         isCompleted: isCompleted,
         completedAt: isCompleted ? now : null,
         isMentorExtra: true,
-        syllabusTopicId: 'custom_task',
+        syllabusTopicId: 'custom:${category.trim().isEmpty ? 'Revision' : category.trim()}',
         createdAt: now,
         updatedAt: now,
       );

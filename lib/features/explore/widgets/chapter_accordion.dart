@@ -301,11 +301,17 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     }
 
     // 2. Group video beats into contiguous chronological milestones
-    final List<({String title, List<BeatEntity> beats})> milestoneSections = [];
+    final List<({String title, bool isCustom, List<BeatEntity> beats})> milestoneSections = [];
     for (final beat in videoBeats) {
-      final milestoneTitle = beat.syllabusTopicId ?? 'Core Curriculum';
+      final String milestoneTitle;
+      if (beat.isCustomTask) {
+        final cat = beat.customTaskCategory;
+        milestoneTitle = cat.isNotEmpty ? cat : 'Personal Study & Revision';
+      } else {
+        milestoneTitle = beat.syllabusTopicId ?? 'Core Curriculum';
+      }
       if (milestoneSections.isEmpty || milestoneSections.last.title != milestoneTitle) {
-        milestoneSections.add((title: milestoneTitle, beats: [beat]));
+        milestoneSections.add((title: milestoneTitle, isCustom: beat.isCustomTask, beats: [beat]));
       } else {
         milestoneSections.last.beats.add(beat);
       }
@@ -333,10 +339,12 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
       sections.add(
         _TopicGroupSection(
-          title: milestone.title,
+          title: milestone.isCustom ? '⚡ ${milestone.title}' : milestone.title,
           subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length} complete',
-          icon: Icons.menu_book_rounded,
-          accentColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+          icon: milestone.isCustom ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
+          accentColor: milestone.isCustom
+              ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+              : (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
           themeColors: themeColors,
           isDark: isDark,
           children: beats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
@@ -771,7 +779,7 @@ class BeatTile extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 2),
                                 Text(
-                                  'CUSTOM',
+                                  beat.customTaskCategory.toUpperCase(),
                                   style: RythemTypography.labelSmall.copyWith(
                                     fontSize: 8,
                                     fontWeight: FontWeight.w700,

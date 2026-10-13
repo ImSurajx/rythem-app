@@ -1,8 +1,30 @@
 # Release
 
-## Rythem v1.1.0-custom-task
+## Rythem v1.1.0-Stable
 
-Custom Revision & Daily Study Tasks release addressing the rigid curriculum constraint, enabling users to log custom learning and revision sessions without breaking study streaks.
+Stable release featuring categorized custom study tasks, on-device GitHub update checks and streaming installer, padded adaptive launcher icons, and zero-cloud streak protection.
+
+---
+
+### ✨ Highlights & New Capabilities
+
+- **Categorized Custom Study Tasks**:
+  - Learners can now categorize custom learning sessions into structured categories: **Revision**, **Practice & Problems**, **Deep Dive**, **Side Project**, and **General**.
+  - Replaced internal `custom_task` placeholders throughout the curriculum and tracker views with user-friendly milestone headings and `⚡ [CATEGORY]` badges.
+  - Interactive category selector chips in the creation dialog with contextual feedback.
+
+- **Direct In-App Software Updates (GitHub Releases)**:
+  - New "Software Update" card in Settings allowing users to check GitHub releases on-demand.
+  - Streaming APK downloads directly to cache with live progress indicator, received/total MB tracking, and cancel support matching the on-device AI model downloader.
+  - One-tap APK install trigger with fallback to release web browser notes.
+
+- **Refined Adaptive App Icon & Corner Padding**:
+  - Added padding and clearance to `assets/icons/logo.png` ensuring full visibility within circular, squircle, and teardrop Android adaptive launcher masks.
+
+- **Chronological Curriculum Appending & Focus Guard**:
+  - Completed custom tasks append directly after the user's last completed topic, automatically re-indexing subsequent tasks.
+  - One-task focus constraint per roadmap with quick discard support to prevent backlog dumping.
+  - Fully integrated with `beat_logs` to maintain study streaks and pacing budgets.
 
 ---
 
