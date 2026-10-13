@@ -22,6 +22,7 @@ import 'core/backup/services/backup_service.dart';
 import 'core/backup/services/auto_backup_manager.dart';
 import 'core/backup/services/storage_permission_service.dart';
 import 'core/navigation/smooth_page_route.dart';
+import 'core/update/app_update_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -160,6 +161,7 @@ class _DesignSystemShowcaseScreenState
     settingsRepo: _appSettingsRepo,
   );
   final _modelDownloadManager = ModelDownloadManager();
+  final _updateManager = AppUpdateManager.instance;
   late final _localInferenceService = LocalInferenceService(
     downloadManager: _modelDownloadManager,
     roadmapRepo: _roadmapRepo,
@@ -375,6 +377,12 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _handleReturnTopicToTracker(RoadmapEntity roadmap, BeatEntity beat) async {
     HapticFeedback.lightImpact();
+    if (beat.isCustomTask && !beat.isCompleted) {
+      await _beatRepo.deleteBeat(beat.id);
+      _showToast('Discarded custom task "${beat.title}"');
+    } else {
+      _showToast('Returned "${beat.title}" to tracker');
+    }
     final updated = Map<String, String>.from(_activeFocusBeatByRoadmap);
     updated.remove(roadmap.id);
     await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
@@ -382,7 +390,47 @@ class _DesignSystemShowcaseScreenState
       setState(() {
         _activeFocusBeatByRoadmap = updated;
       });
-      _showToast('Returned "${beat.title}" to tracker');
+    }
+  }
+
+  Future<void> _handleCreateCustomTask(
+    RoadmapEntity roadmap,
+    String title,
+    double effortWeight,
+    String? sourceUrl, [
+    String category = 'Revision',
+  ]) async {
+    HapticFeedback.mediumImpact();
+    try {
+      final newBeat = await _beatRepo.insertCustomBeatAfterLastCompleted(
+        roadmapId: roadmap.id,
+        title: title,
+        effortWeight: effortWeight,
+        sourceUrl: sourceUrl,
+        category: category,
+        isCompleted: false,
+      );
+
+      final updated = Map<String, String>.from(_activeFocusBeatByRoadmap);
+      updated[roadmap.id] = newBeat.id;
+      await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
+
+      await _requestDatabaseReload();
+
+      if (mounted) {
+        setState(() {
+          _activeFocusBeatByRoadmap = updated;
+        });
+        showGlassToast(
+          context,
+          '$category task added: "${newBeat.title}" (⚡ ${effortWeight.toStringAsFixed(1)} pts) 🎯',
+          icon: Icons.add_task_rounded,
+          accentColor: const Color(0xFFF59E0B),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error creating custom task: $e');
+      _showToast('Failed to create custom task');
     }
   }
 
@@ -1024,6 +1072,7 @@ class _DesignSystemShowcaseScreenState
       onToggleDelay: _handleToggleBeatDelay,
       activeFocusBeatByRoadmap: _activeFocusBeatByRoadmap,
       onPullNextTopic: _handlePullNextTopic,
+      onCreateCustomTask: _handleCreateCustomTask,
       onReturnToTracker: _handleReturnTopicToTracker,
       beatProgressMap: _beatProgressMap,
       beatNotesMap: _beatNotesMap,
@@ -1467,10 +1516,24 @@ class _DesignSystemShowcaseScreenState
           _buildUnifiedBackupCard(themeColors, isDark),
           const SizedBox(height: 24),
 
+          // 4. Software Update
+          Text(
+            'SOFTWARE UPDATE',
+            style: RythemTypography.labelSmall.copyWith(
+              color: themeColors.textSecondary,
+              letterSpacing: 1.0,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildAppUpdatesCard(themeColors, isDark),
+          const SizedBox(height: 24),
+
           // Quiet Version Metadata
           Center(
             child: Text(
-              'Rythem • Local First • v1.0.0-stable',
+              'Rythem • Local First • ${AppUpdateManager.currentVersion}',
               style: RythemTypography.labelSmall.copyWith(
                 color: themeColors.textTertiary.withOpacity(0.6),
                 fontSize: 10.5,
@@ -1828,6 +1891,366 @@ class _DesignSystemShowcaseScreenState
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAppUpdatesCard(RythemThemeColors themeColors, bool isDark) {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          _updateManager.isCheckingNotifier,
+          _updateManager.updateInfoNotifier,
+          _updateManager.updateProgressNotifier,
+          _updateManager.downloadedApkPathNotifier,
+        ]),
+        builder: (context, _) {
+          final isChecking = _updateManager.isCheckingNotifier.value;
+          final updateInfo = _updateManager.updateInfoNotifier.value;
+          final progress = _updateManager.updateProgressNotifier.value;
+          final downloadedPath = _updateManager.downloadedApkPathNotifier.value;
+          final isDownloading = progress != null && !progress.isCompleted && progress.error == null;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'GitHub Release Channel',
+                        style: RythemTypography.titleSmall.copyWith(
+                          color: themeColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white12 : Colors.black.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          AppUpdateManager.currentVersion,
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isChecking)
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(themeColors.textSecondary),
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: isDownloading
+                          ? null
+                          : () async {
+                              HapticFeedback.lightImpact();
+                              final info = await _updateManager.checkForUpdates();
+                              if (mounted) {
+                                if (info == null) {
+                                  _showToast('Unable to check for updates. Check internet connection.');
+                                } else if (!info.isUpdateAvailable) {
+                                  _showToast('Rythem is up to date (${info.tagName})');
+                                }
+                              }
+                            },
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.refresh_rounded,
+                            size: 14,
+                            color: isDownloading ? themeColors.textTertiary : themeColors.actionPrimary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Check',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isDownloading ? themeColors.textTertiary : themeColors.actionPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Active download progress
+              if (isDownloading) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0x1AFFFFFF) : const Color(0x0E000000),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? themeColors.glassBorderHighlight : const Color(0x24000000),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Downloading update (${updateInfo?.tagName ?? ''})...',
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              color: themeColors.textPrimary,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              _updateManager.cancelDownload();
+                              _showToast('Download cancelled');
+                            },
+                            child: Text(
+                              'Cancel',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress.progress > 0 ? progress.progress : null,
+                          backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                          valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                          minHeight: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${progress.formattedReceived} / ${progress.formattedTotal}',
+                            style: RythemTypography.bodySmall.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 10,
+                            ),
+                          ),
+                          Text(
+                            progress.formattedProgress,
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (downloadedPath != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Update Ready to Install',
+                              style: RythemTypography.labelSmall.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: themeColors.textPrimary,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                            Text(
+                              'APK downloaded successfully.',
+                              style: RythemTypography.bodySmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _updateManager.installDownloadedUpdate(),
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Install',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (updateInfo != null && updateInfo.isUpdateAvailable) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0x1FFFFFFF) : const Color(0x12000000),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF3B82F6),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'New Version Available: ${updateInfo.tagName}',
+                            style: RythemTypography.labelSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: themeColors.textPrimary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (updateInfo.formattedSize.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              '(${updateInfo.formattedSize})',
+                              style: RythemTypography.bodySmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (updateInfo.releaseNotes != null && updateInfo.releaseNotes!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          updateInfo.releaseNotes!.split('\n').firstWhere(
+                            (line) => line.trim().isNotEmpty,
+                            orElse: () => 'Performance improvements and bug fixes.',
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: RythemTypography.bodySmall.copyWith(
+                            color: themeColors.textSecondary,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: () => _updateManager.downloadUpdate(updateInfo),
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white : Colors.black,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.download_rounded,
+                                    size: 13,
+                                    color: isDark ? Colors.black : Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Download & Install',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: isDark ? Colors.black : Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (updateInfo != null && !updateInfo.isUpdateAvailable) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF10B981), size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Rythem is up to date (${updateInfo.tagName})',
+                      style: RythemTypography.bodySmall.copyWith(
+                        color: themeColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                Text(
+                  'Check for official updates, new features, and stability fixes directly from GitHub releases.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }

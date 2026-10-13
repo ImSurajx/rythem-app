@@ -232,4 +232,145 @@ class BeatRepository {
       whereArgs: [chapterId],
     );
   }
+
+  Future<void> deleteBeat(String beatId) async {
+    final db = await _db;
+    final beat = await getBeatById(beatId);
+    if (beat == null) return;
+    await db.delete(
+      DatabaseTables.beats,
+      where: '${BeatColumns.id} = ?',
+      whereArgs: [beatId],
+    );
+    _eventBus.emit(DatabaseEvent(
+      type: DatabaseEventType.beatToggled,
+      entityId: beatId,
+      roadmapId: beat.roadmapId,
+    ));
+  }
+
+  /// Inserts a user-created custom study beat directly into the tracker.
+  /// If completed beats exist in the roadmap, it is inserted immediately after
+  /// the last completed beat in that chapter (shifting subsequent beats).
+  /// If no beats are completed yet, it is inserted at the start of the first chapter.
+  /// If no chapters exist, a default chapter is created.
+  Future<BeatEntity> insertCustomBeatAfterLastCompleted({
+    required String roadmapId,
+    required String title,
+    required double effortWeight,
+    String? sourceUrl,
+    String category = 'Revision',
+    bool isCompleted = false,
+  }) async {
+    final db = await _db;
+    return await db.transaction((txn) async {
+      // 1. Get all beats for roadmap in sequence
+      final beatRows = await txn.rawQuery('''
+        SELECT b.* FROM ${DatabaseTables.beats} b
+        LEFT JOIN ${DatabaseTables.chapters} c ON b.${BeatColumns.chapterId} = c.${ChapterColumns.id}
+        WHERE b.${BeatColumns.roadmapId} = ?
+        ORDER BY COALESCE(c.${ChapterColumns.sortOrder}, 0) ASC, b.${BeatColumns.sortOrder} ASC, b.${BeatColumns.createdAt} ASC
+      ''', [roadmapId]);
+      final existingBeats = beatRows.map(BeatEntity.fromMap).toList();
+
+      final completedBeats = existingBeats.where((b) => b.isCompleted).toList();
+      String targetChapterId;
+      int targetSortOrder;
+
+      if (completedBeats.isNotEmpty) {
+        final lastCompleted = completedBeats.last;
+        targetChapterId = lastCompleted.chapterId;
+        targetSortOrder = lastCompleted.sortOrder + 1;
+
+        // Shift subsequent beats in this chapter
+        await txn.rawUpdate('''
+          UPDATE ${DatabaseTables.beats}
+          SET ${BeatColumns.sortOrder} = ${BeatColumns.sortOrder} + 1
+          WHERE ${BeatColumns.chapterId} = ? AND ${BeatColumns.sortOrder} >= ?
+        ''', [targetChapterId, targetSortOrder]);
+      } else {
+        // Find first chapter
+        final chapterRows = await txn.query(
+          DatabaseTables.chapters,
+          where: '${ChapterColumns.roadmapId} = ?',
+          whereArgs: [roadmapId],
+          orderBy: '${ChapterColumns.sortOrder} ASC',
+          limit: 1,
+        );
+
+        if (chapterRows.isNotEmpty) {
+          targetChapterId = chapterRows.first[ChapterColumns.id] as String;
+          targetSortOrder = 0;
+          await txn.rawUpdate('''
+            UPDATE ${DatabaseTables.beats}
+            SET ${BeatColumns.sortOrder} = ${BeatColumns.sortOrder} + 1
+            WHERE ${BeatColumns.chapterId} = ? AND ${BeatColumns.sortOrder} >= 0
+          ''', [targetChapterId]);
+        } else {
+          // Create default chapter
+          final now = DateTime.now();
+          targetChapterId = 'ch_default_${now.millisecondsSinceEpoch}';
+          targetSortOrder = 0;
+          await txn.insert(
+            DatabaseTables.chapters,
+            {
+              ChapterColumns.id: targetChapterId,
+              ChapterColumns.roadmapId: roadmapId,
+              ChapterColumns.title: 'General',
+              ChapterColumns.sortOrder: 0,
+              ChapterColumns.createdAt: now.toIso8601String(),
+              ChapterColumns.updatedAt: now.toIso8601String(),
+            },
+          );
+        }
+      }
+
+      final now = DateTime.now();
+      final newBeatId = 'beat_custom_${now.millisecondsSinceEpoch}';
+      final newBeat = BeatEntity(
+        id: newBeatId,
+        chapterId: targetChapterId,
+        roadmapId: roadmapId,
+        title: title.trim(),
+        sourceUrl: sourceUrl?.trim().isNotEmpty == true ? sourceUrl!.trim() : null,
+        effortWeight: effortWeight,
+        sortOrder: targetSortOrder,
+        isCompleted: isCompleted,
+        completedAt: isCompleted ? now : null,
+        isMentorExtra: true,
+        syllabusTopicId: 'custom:${category.trim().isEmpty ? 'Revision' : category.trim()}',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await txn.insert(
+        DatabaseTables.beats,
+        newBeat.toMap(),
+      );
+
+      if (isCompleted) {
+        final todayStr = now.toIso8601String().substring(0, 10);
+        await txn.insert(
+          DatabaseTables.beatLogs,
+          {
+            BeatLogColumns.id: '${newBeatId}_${now.millisecondsSinceEpoch}',
+            BeatLogColumns.beatId: newBeatId,
+            BeatLogColumns.roadmapId: roadmapId,
+            BeatLogColumns.completedDate: todayStr,
+            BeatLogColumns.createdAt: now.toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
+      return newBeat;
+    }).then((created) {
+      _eventBus.emit(DatabaseEvent(
+        type: DatabaseEventType.beatCreated,
+        entityId: created.id,
+        roadmapId: roadmapId,
+      ));
+      return created;
+    });
+  }
 }

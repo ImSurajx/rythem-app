@@ -18,6 +18,7 @@ import 'package:rythem_app/core/ai/services/local_inference_service.dart';
 import 'package:rythem_app/core/ai/services/model_download_manager.dart';
 import 'confusing_beat_dialog.dart';
 import 'checkpoint_dialog.dart';
+import 'create_custom_task_dialog.dart';
 import 'session_detail_screen.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/navigation/smooth_page_route.dart';
@@ -56,6 +57,7 @@ class FlowScreen extends StatefulWidget {
   final Map<String, String> beatNotesMap;
   final void Function(BeatEntity beat, int percentage, String notes)? onSaveCheckpoint;
   final void Function(BeatEntity beat, String note)? onSaveFlag;
+  final void Function(RoadmapEntity roadmap, String title, double effortWeight, String? sourceUrl, String category)? onCreateCustomTask;
 
   const FlowScreen({
     super.key,
@@ -84,6 +86,7 @@ class FlowScreen extends StatefulWidget {
     this.beatNotesMap = const {},
     this.onSaveCheckpoint,
     this.onSaveFlag,
+    this.onCreateCustomTask,
   });
 
   @override
@@ -354,6 +357,9 @@ class _FlowScreenState extends State<FlowScreen> {
                 isDark: isDark,
                 activeFocusBeatId: widget.activeFocusBeatByRoadmap[rm.id],
                 onPullNextTopic: widget.onPullNextTopic != null ? () => widget.onPullNextTopic!(rm) : null,
+                onCreateCustomTask: widget.onCreateCustomTask != null
+                    ? () => _openCreateCustomTaskDialog(rm)
+                    : null,
                 onReturnToTracker: widget.onReturnToTracker,
                 beatProgressMap: widget.beatProgressMap,
                 beatNotesMap: widget.beatNotesMap,
@@ -413,6 +419,16 @@ class _FlowScreenState extends State<FlowScreen> {
     );
   }
 
+  void _openCreateCustomTaskDialog(RoadmapEntity roadmap) {
+    CreateCustomTaskDialog.show(
+      context,
+      roadmap: roadmap,
+      onTaskCreated: (title, effort, url, category) {
+        widget.onCreateCustomTask?.call(roadmap, title, effort, url, category);
+      },
+    );
+  }
+
   void _openFocusSession(
     BuildContext context,
     RoadmapEntity roadmap,
@@ -448,6 +464,7 @@ class _TrackTodoListCard extends StatelessWidget {
   final bool isDark;
   final String? activeFocusBeatId;
   final VoidCallback? onPullNextTopic;
+  final VoidCallback? onCreateCustomTask;
   final void Function(RoadmapEntity roadmap, BeatEntity beat)? onReturnToTracker;
   final Future<void> Function(BeatEntity beat, bool isCompleted) onBeatToggled;
   final void Function(BeatEntity beat) onOpenFocusSession;
@@ -467,6 +484,7 @@ class _TrackTodoListCard extends StatelessWidget {
     required this.isDark,
     this.activeFocusBeatId,
     this.onPullNextTopic,
+    this.onCreateCustomTask,
     this.onReturnToTracker,
     required this.onBeatToggled,
     required this.onOpenFocusSession,
@@ -804,16 +822,16 @@ class _TrackTodoListCard extends StatelessWidget {
                                     ),
                                     if (onReturnToTracker != null)
                                       Tooltip(
-                                        message: 'Return to Tracker',
+                                        message: currentBeat.isCustomTask ? 'Discard custom task' : 'Return to Tracker',
                                         child: GestureDetector(
                                           onTap: () => onReturnToTracker!(roadmap, currentBeat),
                                           behavior: HitTestBehavior.opaque,
                                           child: Padding(
                                             padding: const EdgeInsets.all(2),
                                             child: Icon(
-                                              Icons.reply_rounded,
+                                              currentBeat.isCustomTask ? Icons.delete_outline_rounded : Icons.reply_rounded,
                                               size: 15,
-                                              color: themeColors.textTertiary,
+                                              color: currentBeat.isCustomTask ? const Color(0xFFEF4444) : themeColors.textTertiary,
                                             ),
                                           ),
                                         ),
@@ -901,11 +919,50 @@ class _TrackTodoListCard extends StatelessWidget {
 
                       const SizedBox(height: 6),
 
-                      // 4. Pull Next Topic / Locked / All Completed Action Area
-                      if (isAllTrackCompleted)
+                      // 4. Action Area: Locked / Completed / Dual Options (Pull Next + Custom Task)
+                      if (activeBeat != null)
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.lock_outline_rounded,
+                                size: 14,
+                                color: themeColors.textTertiary.withOpacity(0.6),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  (beatProgressMap[activeBeat.id] ?? 0) > 0
+                                      ? 'Current topic at ${beatProgressMap[activeBeat.id]}% • Complete 100% to unlock next'
+                                      : (activeBeat.isCustomTask
+                                          ? 'Custom task in focus • Complete or discard to unlock next'
+                                          : 'Complete current topic to unlock next'),
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textTertiary.withOpacity(0.7),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (isAllTrackCompleted) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                           decoration: BoxDecoration(
                             color: (isDark ? const Color(0xFF10B981) : const Color(0xFF059669)).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -933,82 +990,145 @@ class _TrackTodoListCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                        )
-                      else if (activeBeat != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                              width: 0.8,
+                        ),
+                        if (onCreateCustomTask != null) ...[
+                          const SizedBox(height: 6),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: onCreateCustomTask,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFFF59E0B).withOpacity(0.1) : const Color(0xFFD97706).withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFFF59E0B).withOpacity(0.3) : const Color(0xFFD97706).withOpacity(0.25),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_task_rounded,
+                                      size: 14,
+                                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Add Custom Revision Task',
+                                      style: RythemTypography.button.copyWith(
+                                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.lock_outline_rounded,
-                                size: 14,
-                                color: themeColors.textTertiary.withOpacity(0.6),
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  (beatProgressMap[activeBeat.id] ?? 0) > 0
-                                      ? 'Current topic at ${beatProgressMap[activeBeat.id]}% • Complete 100% to unlock next'
-                                      : 'Complete current topic to unlock next',
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    color: themeColors.textTertiary.withOpacity(0.7),
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 11,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (hasIncompleteBeats)
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: onPullNextTopic,
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.add_rounded,
-                                    size: 16,
-                                    color: themeColors.textPrimary,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Pull Next Topic',
-                                    style: RythemTypography.button.copyWith(
-                                      color: themeColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
+                        ],
+                      ]
+                      else
+                        Row(
+                          children: [
+                            if (hasIncompleteBeats)
+                              Expanded(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: onPullNextTopic,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 15,
+                                            color: themeColors.textPrimary,
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Flexible(
+                                            child: Text(
+                                              'Pull Next Topic',
+                                              style: RythemTypography.button.copyWith(
+                                                color: themeColors.textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11.5,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
+                            if (hasIncompleteBeats && onCreateCustomTask != null)
+                              const SizedBox(width: 8),
+                            if (onCreateCustomTask != null)
+                              Expanded(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: onCreateCustomTask,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFFF59E0B).withOpacity(0.12)
+                                            : const Color(0xFFD97706).withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isDark
+                                              ? const Color(0xFFF59E0B).withOpacity(0.35)
+                                              : const Color(0xFFD97706).withOpacity(0.3),
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_task_rounded,
+                                            size: 15,
+                                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Flexible(
+                                            child: Text(
+                                              'Custom Task',
+                                              style: RythemTypography.button.copyWith(
+                                                color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11.5,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
 
                       const SizedBox(height: 8),
