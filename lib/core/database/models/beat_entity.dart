@@ -17,6 +17,8 @@ class BeatEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  bool get isCustomTask => syllabusTopicId == 'custom_task';
+
   const BeatEntity({
     required this.id,
     required this.chapterId,

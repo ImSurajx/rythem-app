@@ -1,5 +1,33 @@
 # Release
 
+## Rythem v1.1.0-custom-task
+
+Custom Revision & Daily Study Tasks release addressing the rigid curriculum constraint, enabling users to log custom learning and revision sessions without breaking study streaks.
+
+---
+
+### ✨ Highlights & New Capabilities
+
+- **Custom Study & Revision Tasks**:
+  - Learners can now create custom study tasks directly within any tracker (e.g. revision topics, practice sets, article reading) to account for non-linear learning journeys.
+  - Assigned customizable effort points (`⚡ 0.5`, `1.0`, `1.5`, `2.0`, `3.0` pts or custom numeric values) that credit toward daily pacing budgets.
+  - One-task focus constraint per tracker to prevent backlog dumping and preserve ambient focus.
+
+- **Chronological Curriculum Appending**:
+  - When marked as completed, custom tasks are permanently appended into the tracker immediately after the user's last completed topic.
+  - Subsequent topics automatically shift their sort orders, maintaining true chronological learning history.
+  - In the full curriculum view, user-created tasks are distinguished with an amber `⚡ CUSTOM` badge.
+
+- **Dual-Action Tracker Cards**:
+  - Flow screen tracker cards now provide dual frosted glass actions: **`[ 🎯 Pull Next Topic ]`** (sequential curriculum) and **`[ ⚡ Custom Task ]`** (modal creation).
+  - Even if a track is 100% finished, users can continue adding custom revision tasks.
+  - Active custom tasks include a single-tap discard option (`Icons.delete_outline_rounded`) to cancel in-progress custom tasks without polluting the curriculum.
+
+- **Zero-Cloud Streak Protection**:
+  - Completing custom tasks automatically writes activity records into `beat_logs`, advancing and maintaining daily study streaks.
+
+---
+
 ## Rythem v1.0.0-stable
 
 Welcome to **Rythem v1.0.0-stable** — an ambient, milestone-driven learning operating system and curriculum orchestrator built with a local-first, zero-cloud architecture.

@@ -375,6 +375,12 @@ class _DesignSystemShowcaseScreenState
 
   Future<void> _handleReturnTopicToTracker(RoadmapEntity roadmap, BeatEntity beat) async {
     HapticFeedback.lightImpact();
+    if (beat.isCustomTask && !beat.isCompleted) {
+      await _beatRepo.deleteBeat(beat.id);
+      _showToast('Discarded custom task "${beat.title}"');
+    } else {
+      _showToast('Returned "${beat.title}" to tracker');
+    }
     final updated = Map<String, String>.from(_activeFocusBeatByRoadmap);
     updated.remove(roadmap.id);
     await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
@@ -382,7 +388,45 @@ class _DesignSystemShowcaseScreenState
       setState(() {
         _activeFocusBeatByRoadmap = updated;
       });
-      _showToast('Returned "${beat.title}" to tracker');
+    }
+  }
+
+  Future<void> _handleCreateCustomTask(
+    RoadmapEntity roadmap,
+    String title,
+    double effortWeight,
+    String? sourceUrl,
+  ) async {
+    HapticFeedback.mediumImpact();
+    try {
+      final newBeat = await _beatRepo.insertCustomBeatAfterLastCompleted(
+        roadmapId: roadmap.id,
+        title: title,
+        effortWeight: effortWeight,
+        sourceUrl: sourceUrl,
+        isCompleted: false,
+      );
+
+      final updated = Map<String, String>.from(_activeFocusBeatByRoadmap);
+      updated[roadmap.id] = newBeat.id;
+      await _appSettingsRepo.setSetting('active_focus_by_roadmap', jsonEncode(updated));
+
+      await _requestDatabaseReload();
+
+      if (mounted) {
+        setState(() {
+          _activeFocusBeatByRoadmap = updated;
+        });
+        showGlassToast(
+          context,
+          'Custom task added: "${newBeat.title}" (⚡ ${effortWeight.toStringAsFixed(1)} pts) 🎯',
+          icon: Icons.add_task_rounded,
+          accentColor: const Color(0xFFF59E0B),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error creating custom task: $e');
+      _showToast('Failed to create custom task');
     }
   }
 
@@ -1024,6 +1068,7 @@ class _DesignSystemShowcaseScreenState
       onToggleDelay: _handleToggleBeatDelay,
       activeFocusBeatByRoadmap: _activeFocusBeatByRoadmap,
       onPullNextTopic: _handlePullNextTopic,
+      onCreateCustomTask: _handleCreateCustomTask,
       onReturnToTracker: _handleReturnTopicToTracker,
       beatProgressMap: _beatProgressMap,
       beatNotesMap: _beatNotesMap,
