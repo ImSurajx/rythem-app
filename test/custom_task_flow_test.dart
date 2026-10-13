@@ -400,6 +400,12 @@ void main() {
       await tester.tap(find.text('Custom Task'));
       await tester.pumpAndSettle();
       expect(find.text('Create Custom Task'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, 'Flexbox Froggy');
+      await tester.pump();
+      await tester.tap(find.text('Add to Focus 🎯'));
+      await tester.pumpAndSettle();
+      expect(customCalled, isTrue);
     });
   });
 }
