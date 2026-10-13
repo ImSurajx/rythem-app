@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - '1.0.0-stable'
+      - 'feature/**'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -96,18 +97,20 @@ jobs:
               --notes-file CHANGELOG.md
           fi
 
-          # Clean up all old releases and tags, keeping ONLY $TAG_NAME
-          echo "Cleaning up all old releases..."
-          for rel_id in $(gh api repos/ImSurajx/rythem-app/releases --jq '.[] | select(.tag_name != "'"$TAG_NAME"'") | .id'); do
-            echo "Deleting old release ID $rel_id..."
-            gh api --method DELETE "repos/ImSurajx/rythem-app/releases/$rel_id" || true
-          done
+          # Clean up all old releases and tags on master only
+          if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+            echo "Cleaning up all old releases..."
+            for rel_id in $(gh api repos/ImSurajx/rythem-app/releases --jq '.[] | select(.tag_name != "'"$TAG_NAME"'") | .id'); do
+              echo "Deleting old release ID $rel_id..."
+              gh api --method DELETE "repos/ImSurajx/rythem-app/releases/$rel_id" || true
+            done
 
-          echo "Cleaning up old remote tags..."
-          for old_tag in $(gh api repos/ImSurajx/rythem-app/git/refs/tags --jq '.[].ref' | sed 's|refs/tags/||' | grep -v "^${TAG_NAME}$"); do
-            echo "Deleting old tag $old_tag..."
-            gh api --method DELETE "repos/ImSurajx/rythem-app/git/refs/tags/$old_tag" || true
-          done
+            echo "Cleaning up old remote tags..."
+            for old_tag in $(gh api repos/ImSurajx/rythem-app/git/refs/tags --jq '.[].ref' | sed 's|refs/tags/||' | grep -v "^${TAG_NAME}$"); do
+              echo "Deleting old tag $old_tag..."
+              gh api --method DELETE "repos/ImSurajx/rythem-app/git/refs/tags/$old_tag" || true
+            done
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
