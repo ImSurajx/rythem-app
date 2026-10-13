@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - '1.0.0-stable'
+      - 'v1.1.0-Stable'
       - 'feature/**'
     tags:
       - 'v*'
@@ -65,7 +66,7 @@ jobs:
           retention-days: 14
 
       - name: Create or Update GitHub Release
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/1.0.0-stable' || startsWith(github.ref, 'refs/tags/v')
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/1.0.0-stable' || github.ref == 'refs/heads/v1.1.0-Stable' || startsWith(github.ref, 'refs/tags/v')
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
