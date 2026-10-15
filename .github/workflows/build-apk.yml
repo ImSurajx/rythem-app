@@ -85,32 +85,22 @@ jobs:
             gh release download "models-v1.0.0" -D model_dist -p "*.gguf" || true
           fi
 
-          # Create or update the single stable release
+          LATEST_FLAG=""
+          if [[ "$TAG_NAME" == "v1.1.0-Stable" ]] || [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+            LATEST_FLAG="--latest"
+          fi
+
+          # Create or update release
           if gh release view "$TAG_NAME" > /dev/null 2>&1; then
             echo "Release $TAG_NAME exists. Uploading and updating APK and model assets..."
             gh release upload "$TAG_NAME" release_output/rythem.apk model_dist/* --clobber || true
-            gh release edit "$TAG_NAME" --latest --title "Release" --notes-file CHANGELOG.md
+            gh release edit "$TAG_NAME" $LATEST_FLAG --title "Rythem $TAG_NAME" --notes-file CHANGELOG.md
           else
             echo "Release $TAG_NAME does not exist. Creating new release..."
             gh release create "$TAG_NAME" release_output/rythem.apk model_dist/* \
-              --title "Release" \
-              --latest \
+              --title "Rythem $TAG_NAME" \
+              $LATEST_FLAG \
               --notes-file CHANGELOG.md
-          fi
-
-          # Clean up all old releases and tags on master only
-          if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
-            echo "Cleaning up all old releases..."
-            for rel_id in $(gh api repos/ImSurajx/rythem-app/releases --jq '.[] | select(.tag_name != "'"$TAG_NAME"'") | .id'); do
-              echo "Deleting old release ID $rel_id..."
-              gh api --method DELETE "repos/ImSurajx/rythem-app/releases/$rel_id" || true
-            done
-
-            echo "Cleaning up old remote tags..."
-            for old_tag in $(gh api repos/ImSurajx/rythem-app/git/refs/tags --jq '.[].ref' | sed 's|refs/tags/||' | grep -v "^${TAG_NAME}$"); do
-              echo "Deleting old tag $old_tag..."
-              gh api --method DELETE "repos/ImSurajx/rythem-app/git/refs/tags/$old_tag" || true
-            done
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
