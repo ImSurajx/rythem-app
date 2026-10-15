@@ -1,5 +1,34 @@
 # Release
 
+## Rythem v1.1.1-preview
+
+Preview release introducing the default **Open Lab** tracker for independent projects & non-syllabus learning, duration-based effort calculation (10 min = 1 effort point), and dynamically extensible task categories.
+
+---
+
+### ✨ Highlights & Core Capabilities
+
+- **Default "Open Lab" Tracker**:
+  - Auto-seeded ambient tracker (`[ 🧪 OPEN LAB ]`) pre-loaded on first launch for unconstrained learning (open-source contributions, test prep, independent projects).
+  - Keeps daily study streaks active without polluting formal structured curricula.
+  - Streamlined Flow interface with a prominent **`[ ⚡ Log Task / Project ]`** action (omits redundant topic-pulling).
+
+- **Duration-to-Effort Conversion (10 min = 1 point)**:
+  - Direct duration selection via preset chips (`15m`, `30m`, `45m`, `1h`, `1.5h`, `2h`, `3h`) and custom hours entry.
+  - Dynamic real-time calculation badge (e.g. `1.5 hrs • ⚡ 9.0 pts`).
+  - Standardized across custom task creation in both Open Lab and curriculum tracks.
+
+- **Dynamic, User-Defined Task Categories**:
+  - Universal default starter categories (**Revision**, **Practice**, **Reading**, **Project**, **General**) designed for any field of study.
+  - Inline **`+ Add Category`** creation tool allowing learners to define, persist, and reuse personalized categories.
+  - Persisted locally with SQLite and instant in-memory cache.
+
+- **Activity Log with Category Filters & Duration Badges**:
+  - Interactive category filter chips (`All (N)`, `${cat} (N)`) at the top of the Open Lab Activity Log.
+  - Topic cards display readable duration alongside points (`⚡ 6.0 • 1h`).
+
+---
+
 ## Rythem v1.1.0-Stable
 
 Stable release featuring categorized custom study tasks, on-device GitHub update checks with streaming installer, padded adaptive launcher icons, and zero-cloud streak protection.

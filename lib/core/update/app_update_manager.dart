@@ -52,7 +52,7 @@ class AppUpdateInfo {
 }
 
 class AppUpdateManager {
-  static const String currentVersion = 'v1.1.0-Stable';
+  static const String currentVersion = 'v1.1.1-preview';
   static const String _releasesApiUrl = 'https://api.github.com/repos/ImSurajx/rythem-app/releases/latest';
 
   static AppUpdateManager? _instance;

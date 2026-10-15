@@ -85,10 +85,7 @@ jobs:
             gh release download "models-v1.0.0" -D model_dist -p "*.gguf" || true
           fi
 
-          LATEST_FLAG=""
-          if [[ "$TAG_NAME" == "v1.1.0-Stable" ]] || [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
-            LATEST_FLAG="--latest"
-          fi
+          LATEST_FLAG="--latest"
 
           # Create or update release
           if gh release view "$TAG_NAME" > /dev/null 2>&1; then
