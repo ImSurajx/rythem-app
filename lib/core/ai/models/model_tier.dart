@@ -13,6 +13,7 @@ class ModelInfo {
   final String quantization;
   final String filename;
   final String downloadUrl;
+  final String? fallbackDownloadUrl;
   final int sizeBytes;
   final int targetRamMb;
   final double estimatedTokensPerSec;
@@ -26,6 +27,7 @@ class ModelInfo {
     required this.quantization,
     required this.filename,
     required this.downloadUrl,
+    this.fallbackDownloadUrl,
     required this.sizeBytes,
     required this.targetRamMb,
     required this.estimatedTokensPerSec,
@@ -65,6 +67,8 @@ class ModelInfo {
     quantization: 'Q4_K_M',
     filename: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
     downloadUrl:
+        'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    fallbackDownloadUrl:
         'https://github.com/ImSurajx/rythem-app/releases/download/v1.0.0-stable/qwen2.5-0.5b-instruct-q4_k_m.gguf',
     sizeBytes: 491400032, // ~468.6 MB
     targetRamMb: 600,
@@ -81,6 +85,8 @@ class ModelInfo {
     quantization: 'Q4_K_M',
     filename: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
     downloadUrl:
+        'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf',
+    fallbackDownloadUrl:
         'https://github.com/ImSurajx/rythem-app/releases/download/v1.0.0-stable/qwen2.5-1.5b-instruct-q4_k_m.gguf',
     sizeBytes: 1117320736, // ~1,065.6 MB
     targetRamMb: 1350,
