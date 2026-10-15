@@ -271,42 +271,35 @@ class AppUpdateManager {
     updateProgressNotifier.value = null;
   }
 
-  /// Triggers installation or launches download URL.
-  Future<void> installDownloadedUpdate() async {
+  /// Triggers native APK installation.
+  /// Returns 'SUCCESS', 'PERMISSION_REQUESTED', 'FILE_NOT_FOUND', or 'ERROR'.
+  Future<String> installDownloadedUpdate() async {
     final apkPath = downloadedApkPathNotifier.value;
-    if (apkPath != null && await File(apkPath).exists()) {
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        try {
-          final success = await _platformChannel.invokeMethod<bool>(
-            'installApk',
-            {'filePath': apkPath},
-          );
-          if (success == true) return;
-        } catch (e) {
-          debugPrint('Native APK installer error: $e');
-        }
+    if (apkPath == null || !await File(apkPath).exists()) {
+      final info = updateInfoNotifier.value;
+      if (info != null) {
+        await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
       }
+      return 'FILE_NOT_FOUND';
+    }
 
+    if (defaultTargetPlatform == TargetPlatform.android) {
       try {
-        final uri = Uri.file(apkPath);
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (!launched) {
-          final info = updateInfoNotifier.value;
-          if (info != null) {
-            await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
-          }
-        }
-      } catch (_) {
-        final info = updateInfoNotifier.value;
-        if (info != null) {
-          await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
-        }
+        final result = await _platformChannel.invokeMethod<String>(
+          'installApk',
+          {'filePath': apkPath},
+        );
+        return result ?? 'SUCCESS';
+      } catch (e) {
+        debugPrint('Native APK installer error: $e');
+        return 'ERROR: $e';
       }
     } else {
       final info = updateInfoNotifier.value;
       if (info != null) {
         await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
       }
+      return 'UNSUPPORTED_PLATFORM';
     }
   }
 }

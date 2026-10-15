@@ -311,7 +311,8 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     }
 
     for (final beat in sortedBeats) {
-      final isGap = !beat.isCustomTask &&
+      final isGap = !isOpenLabChapter &&
+          !beat.isCustomTask &&
           (beat.id.contains('_gap_') ||
               (beat.sourceUrl == null && beat.syllabusTopicId != null && !beat.isMentorExtra));
       if (isGap) {
@@ -503,7 +504,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       sections.add(
         _TopicGroupSection(
           title: titleText,
-          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length} complete',
+          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length}',
           icon: milestone.isCustom ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
           accentColor: milestone.isCustom
               ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
@@ -516,12 +517,12 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     }
 
     // Render Uncovered Syllabus Gaps at the bottom
-    if (gapBeats.isNotEmpty) {
+    if (gapBeats.isNotEmpty && !isOpenLabChapter) {
       final completed = gapBeats.where((b) => b.isCompleted).length;
       sections.add(
         _TopicGroupSection(
           title: '⚠️ Uncovered Syllabus Gaps',
-          subtitle: '$completed/${gapBeats.length} complete • ${gapBeats.length} gap${gapBeats.length == 1 ? '' : 's'}',
+          subtitle: '$completed/${gapBeats.length} complete',
           icon: Icons.warning_amber_rounded,
           accentColor: const Color(0xFFF59E0B),
           themeColors: themeColors,
@@ -913,13 +914,12 @@ class BeatTile extends StatelessWidget {
                       spacing: 5,
                       runSpacing: 2,
                       children: [
-                        if (!hasResource) ...[
+                        if (!hasResource && !beat.isCustomTask) ...[
                           Text(
-                            'no resource linked yet',
+                            'Unlinked',
                             style: RythemTypography.labelSmall.copyWith(
                               color: themeColors.textTertiary.withOpacity(0.75),
                               fontSize: 9.5,
-                              fontStyle: FontStyle.italic,
                             ),
                           ),
                           const SizedBox(width: 5),

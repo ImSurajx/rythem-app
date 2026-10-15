@@ -2134,7 +2134,7 @@ class _DesignSystemShowcaseScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Update Ready to Install',
+                              'Update Ready',
                               style: RythemTypography.labelSmall.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: themeColors.textPrimary,
@@ -2142,7 +2142,7 @@ class _DesignSystemShowcaseScreenState
                               ),
                             ),
                             Text(
-                              'APK downloaded successfully.',
+                              'Downloaded',
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                                 fontSize: 10,
@@ -2152,7 +2152,23 @@ class _DesignSystemShowcaseScreenState
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => _updateManager.installDownloadedUpdate(),
+                        onTap: () async {
+                          final status = await _updateManager.installDownloadedUpdate();
+                          if (!mounted) return;
+                          if (status == 'PERMISSION_REQUESTED') {
+                            _showToast(
+                              'Allow Unknown Apps in Settings, then tap Install again',
+                              icon: Icons.security_rounded,
+                              accentColor: const Color(0xFFF59E0B),
+                            );
+                          } else if (status == 'SUCCESS') {
+                            _showToast(
+                              'Opening installer...',
+                              icon: Icons.install_mobile_rounded,
+                              accentColor: const Color(0xFF10B981),
+                            );
+                          }
+                        },
                         behavior: HitTestBehavior.opaque,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

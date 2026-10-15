@@ -423,7 +423,7 @@ class _TrackOverviewCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (budget != null)
+                if (budget != null && budget!.daysLeft > 0 && !roadmap.isOpenLab && roadmap.targetCompletionDate != null)
                   Text(
                     '${budget!.daysLeft} days left',
                     style: RythemTypography.labelSmall.copyWith(

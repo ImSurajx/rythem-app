@@ -118,11 +118,18 @@ class MainActivity : FlutterActivity() {
 
     private fun openInstallUnknownAppsSettings() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                data = Uri.parse("package:$packageName")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:$packageName")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+            } catch (_: Exception) {
+                val fallbackIntent = Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(fallbackIntent)
             }
-            startActivity(intent)
         }
     }
 
@@ -136,13 +143,13 @@ class MainActivity : FlutterActivity() {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
                 openInstallUnknownAppsSettings()
-                result.success(false)
+                result.success("PERMISSION_REQUESTED")
                 return
             }
 
             val apkUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 FileProvider.getUriForFile(
-                    this,
+                    applicationContext,
                     "$packageName.fileprovider",
                     file
                 )
@@ -152,11 +159,18 @@ class MainActivity : FlutterActivity() {
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(apkUri, "application/vnd.android.package-archive")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+
+            val resInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            for (resolveInfo in resInfoList) {
+                grantUriPermission(resolveInfo.activityInfo.packageName, apkUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
             startActivity(intent)
-            result.success(true)
+            result.success("SUCCESS")
         } catch (e: Exception) {
             result.error("INSTALL_FAILED", e.localizedMessage, null)
         }

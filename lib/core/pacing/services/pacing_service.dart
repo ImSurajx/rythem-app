@@ -47,11 +47,23 @@ class PacingService {
     final isUpcoming = todayStart.isBefore(trackStart);
     final daysUntilStart = isUpcoming ? trackStart.difference(todayStart).inDays : 0;
 
+    if (roadmap.isOpenLab || roadmap.targetCompletionDate == null) {
+      return PacingBudget(
+        roadmapId: roadmapId,
+        remainingEffort: remainingEffort,
+        daysLeft: 0,
+        todayEffortShare: 0.0,
+        isRoadmapCompleted: isRoadmapCompleted,
+        isUpcoming: false,
+        daysUntilStart: 0,
+      );
+    }
+
     if (isUpcoming) {
       final targetDate = roadmap.targetCompletionDate;
       final int daysLeft = targetDate != null
           ? PacingCalculator.calculateDaysLeft(targetDate, now: trackStart)
-          : 30;
+          : 0;
 
       return PacingBudget(
         roadmapId: roadmapId,

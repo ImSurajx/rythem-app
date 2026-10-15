@@ -94,9 +94,9 @@ void main() {
       );
 
       // Verify prompt and unlocked button
-      expect(find.text('No active topic in focus right now.'), findsOneWidget);
+      expect(find.text('No active topic'), findsOneWidget);
       expect(find.text('Pull Next Topic'), findsOneWidget);
-      expect(find.text('Complete current topic to unlock next'), findsNothing);
+      expect(find.text('In focus'), findsNothing);
     });
 
     testWidgets('invokes onPullNextTopic callback on tap', (tester) async {
@@ -163,7 +163,7 @@ void main() {
       expect(find.byIcon(Icons.reply_rounded), findsOneWidget);
 
       // Verify locked state message below
-      expect(find.text('Complete current topic to unlock next'), findsOneWidget);
+      expect(find.text('In focus'), findsOneWidget);
       expect(find.text('Pull Next Topic'), findsNothing);
 
       // Tap Return to Tracker
@@ -272,9 +272,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Track Complete! 100% Finished 🎉'), findsOneWidget);
+      expect(find.text('Track Complete 🎉'), findsOneWidget);
       expect(find.text('Pull Next Topic'), findsNothing);
-      expect(find.text('Complete current topic to unlock next'), findsNothing);
+      expect(find.text('In focus'), findsNothing);
     });
   });
 }

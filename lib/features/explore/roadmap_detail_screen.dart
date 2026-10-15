@@ -756,7 +756,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     final remainingCount = totalCount - completedCount;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
     final linkedCount = _currentBeats.where((b) => b.sourceUrl?.isNotEmpty == true).length;
-    final unlinkedCount = totalCount - linkedCount;
     final totalEffort = _currentBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final completedEffort = _currentBeats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final category = _currentRoadmap.description?.isNotEmpty == true
@@ -965,7 +964,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
-                                    '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts completed',
+                                    _currentRoadmap.isOpenLab
+                                        ? '${completedEffort.toStringAsFixed(1)} pts'
+                                        : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts completed',
                                     style: RythemTypography.bodySmall.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w600,
@@ -973,7 +974,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                     ),
                                   ),
                                   Text(
-                                    ' • $completedCount/$totalCount topics',
+                                    _currentRoadmap.isOpenLab
+                                        ? ' • $completedCount'
+                                        : ' • $completedCount/$totalCount topics',
                                     style: RythemTypography.bodySmall.copyWith(
                                       color: themeColors.textSecondary,
                                       fontSize: 11.5,
@@ -1023,7 +1026,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '$remainingCount topics',
+                                        '$remainingCount',
                                         style: RythemTypography.labelSmall.copyWith(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w600,
@@ -1058,7 +1061,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
+                                        '$linkedCount linked',
                                         style: RythemTypography.labelSmall.copyWith(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -1252,7 +1255,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'SYLLABUS & TOPIC FLOW',
+                          'SYLLABUS',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontWeight: FontWeight.w700,
@@ -1260,7 +1263,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                         ),
                         Text(
-                          '${_currentChapters.length} Chapters • $totalCount Topics',
+                          '${_currentChapters.length} ch • $totalCount topics',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontSize: 10,
@@ -1276,7 +1279,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         padding: const EdgeInsets.all(28),
                         child: Center(
                           child: Text(
-                            'No topics found in this track.\nAttach a YouTube resource or import a syllabus outline.',
+                            'No topics yet',
                             style: RythemTypography.bodySmall.copyWith(
                               color: themeColors.textTertiary,
                             ),

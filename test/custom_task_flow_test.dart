@@ -492,8 +492,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Open Lab header and empty state
-      expect(find.text('OPEN LAB'), findsOneWidget);
-      expect(find.text('No active task. Tap below to log your work & keep your streak!'), findsOneWidget);
+      expect(find.text('Open Lab'), findsOneWidget);
+      expect(find.text('No active task'), findsOneWidget);
 
       // Verify "Pull Next Topic" is NOT present, only single button is present
       expect(find.text('Pull Next Topic'), findsNothing);
