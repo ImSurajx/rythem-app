@@ -274,8 +274,8 @@ void main() {
       expect(find.text('State Machine Replication'), findsOneWidget);
       expect(find.text('Leader Election Dynamics'), findsOneWidget);
 
-      // Mentor extra badge rendered on unaligned beat b2
-      expect(find.text('MENTOR EXTRA'), findsOneWidget);
+      // Cards are clean with no inline mentor extra tags
+      expect(find.text('MENTOR EXTRA'), findsNothing);
 
       // Toggle a beat checkbox
       await tester.ensureVisible(find.byIcon(Icons.check_rounded).first);

@@ -18,8 +18,9 @@ class BeatEntity {
   final DateTime updatedAt;
 
   bool get isCustomTask =>
-      syllabusTopicId != null &&
-      (syllabusTopicId == 'custom_task' || syllabusTopicId!.startsWith('custom:'));
+      (syllabusTopicId != null &&
+          (syllabusTopicId == 'custom_task' || syllabusTopicId!.startsWith('custom:'))) ||
+      id.startsWith('custom_');
 
   String get customTaskCategory {
     if (!isCustomTask) return '';

@@ -1,5 +1,25 @@
 # Release
 
+## Rythem v1.1.3
+
+Release removing inline tag clutter from task cards, grouping tasks by category with headers on the top-left, ensuring visible custom task titles, and bumping version to 1.1.3.
+
+---
+
+### ✨ Highlights & Improvements
+
+- **Top-Left Category Grouping**:
+  - Tasks in both Open Lab and user-driven tracks are organized under category group cards with the category indicator badge (`⚡ REVISION`, `⚡ PRACTICE`, `⚡ OPEN LAB`, etc.) prominently positioned on the **top-left**.
+  - Right side of group header displays aggregate effort points and completion progress (`⚡ 4.0 pts • 2/3 complete`).
+- **Clean Task Cards (Zero Tag Clutter)**:
+  - Removed all inline tags (`MENTOR EXTRA`, `RESOURCE $n`, and category chips) from inside individual task cards (`BeatTile`).
+  - Task titles are rendered cleanly and completely unobstructed.
+- **Custom Task Title Visibility & Gap Prevention**:
+  - Excluded custom tasks from syllabus gap detection so tasks without a source URL remain standard task items rather than falling into "⚠️ Uncovered Syllabus Gaps".
+  - Created custom tasks now have `isMentorExtra: false`.
+
+---
+
 ## Rythem v1.1.2-preview
 
 Preview release fixing native APK package installation via Android FileProvider, removing front category chips for cleaner cards, shortening button wording, and unifying curriculum task tiles.

@@ -323,8 +323,8 @@ void main() {
       expect(find.text('Resource 1 Core Video'), findsOneWidget);
       expect(find.text('Resource 2 Stacked Video'), findsOneWidget);
 
-      // Verify RESOURCE 2 badge rendered on stacked beat
-      expect(find.text('RESOURCE 2'), findsOneWidget);
+      // Verify clean cards with no inline tags
+      expect(find.text('RESOURCE 2'), findsNothing);
 
       // Verify Uncovered Syllabus Gaps section and Fill Gap button
       expect(find.text('⚠️ Uncovered Syllabus Gaps'), findsOneWidget);

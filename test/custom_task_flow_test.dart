@@ -6,6 +6,7 @@ import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/flow/flow_screen.dart';
 import 'package:rythem_app/features/flow/create_custom_task_dialog.dart';
 import 'package:rythem_app/core/update/app_update_manager.dart';
+import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
 
 void main() {
   sqfliteFfiInit();
@@ -595,6 +596,7 @@ void main() {
 
     test('AppUpdateManager semver comparison correctly identifies newer versions', () {
       expect(AppUpdateManager.isNewerVersion('v1.2.0', 'v1.1.0-Stable'), isTrue);
+      expect(AppUpdateManager.isNewerVersion('v1.1.3', 'v1.1.2-preview'), isTrue);
       expect(AppUpdateManager.isNewerVersion('v1.1.2-preview', 'v1.1.0-Stable'), isTrue);
       expect(AppUpdateManager.isNewerVersion('v1.1.2-preview', 'v1.1.1-preview'), isTrue);
       expect(AppUpdateManager.isNewerVersion('v2.0.0', 'v1.1.0-Stable'), isTrue);
@@ -603,6 +605,61 @@ void main() {
       expect(AppUpdateManager.isNewerVersion('v1.0.9', 'v1.1.0-Stable'), isFalse);
       expect(AppUpdateManager.isNewerVersion('1.0.0', '1.1.0'), isFalse);
       expect(AppUpdateManager.isNewerVersion('invalid', '1.1.0'), isFalse);
+    });
+
+    testWidgets('Custom tasks render grouped under category header with clean title and no mentor tags', (tester) async {
+      final now = DateTime.now();
+      final chapter = ChapterEntity(
+        id: 'ch_test',
+        roadmapId: 'rm_test',
+        title: 'Algorithms',
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final beats = [
+        BeatEntity(
+          id: 'b_custom_rev',
+          chapterId: 'ch_test',
+          roadmapId: 'rm_test',
+          title: 'Review Dijkstra Proof',
+          effortWeight: 1.5,
+          sortOrder: 0,
+          isCompleted: false,
+          isMentorExtra: false,
+          syllabusTopicId: 'custom:Revision',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ChapterAccordion(
+                chapter: chapter,
+                beats: beats,
+                initialExpanded: true,
+                onBeatToggled: (_, __) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Top-left category header badge
+      expect(find.text('⚡ REVISION'), findsOneWidget);
+      // Clean task title
+      expect(find.text('Review Dijkstra Proof'), findsOneWidget);
+      // No inline mentor extra or resource tags
+      expect(find.text('MENTOR EXTRA'), findsNothing);
+      expect(find.text('RESOURCE 1'), findsNothing);
+      // Effort and duration display
+      expect(find.text('1.5'), findsOneWidget);
+      expect(find.text('15m'), findsOneWidget);
     });
   });
 }
