@@ -227,6 +227,16 @@ class RoadmapRepository {
   Future<RoadmapEntity> ensureOpenLabRoadmapExists() async {
     final existing = await getRoadmapById(RoadmapEntity.openLabId);
     if (existing != null) {
+      if (existing.targetCompletionDate != null) {
+        final db = await _db;
+        await db.update(
+          DatabaseTables.roadmaps,
+          {RoadmapColumns.targetCompletionDate: null},
+          where: '${RoadmapColumns.id} = ?',
+          whereArgs: [RoadmapEntity.openLabId],
+        );
+        return existing.copyWith(targetCompletionDate: null);
+      }
       return existing;
     }
     final now = DateTime.now();

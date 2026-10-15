@@ -115,7 +115,7 @@ class CurriculumIngestionService {
       title: roadmapTitle,
       description: customDescription ?? extracted.description,
       startDate: startDate ?? now,
-      targetCompletionDate: targetCompletionDate ?? now.add(const Duration(days: 30)),
+      targetCompletionDate: targetCompletionDate,
       isPrimary: isPrimary,
       createdAt: now,
       updatedAt: now,

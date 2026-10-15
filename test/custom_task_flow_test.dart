@@ -324,11 +324,11 @@ void main() {
       await tester.tap(find.text('Open Dialog'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Create Custom Task'), findsOneWidget);
+      expect(find.text('Custom Task'), findsOneWidget);
       expect(find.text('System Design Track'), findsOneWidget);
       expect(find.text('CATEGORY'), findsOneWidget);
       expect(find.text('TASK TITLE / TOPIC'), findsOneWidget);
-      expect(find.text('DURATION / TIME'), findsOneWidget);
+      expect(find.text('DURATION'), findsOneWidget);
 
       // Select category 'Practice'
       await tester.tap(find.text('Practice'));
@@ -424,7 +424,7 @@ void main() {
 
       await tester.tap(find.text('Custom Task'));
       await tester.pumpAndSettle();
-      expect(find.text('Create Custom Task'), findsOneWidget);
+      expect(find.text('Custom Task'), findsNWidgets(2));
 
       await tester.enterText(find.byType(TextField).first, 'Flexbox Froggy');
       await tester.pump();
@@ -505,7 +505,7 @@ void main() {
 
       // Verify Open Lab dialog styling and title (title + button)
       expect(find.text('Log Task'), findsNWidgets(2));
-      expect(find.text('Open Lab • Universal Workspace'), findsOneWidget);
+      expect(find.text('Open Lab'), findsWidgets);
 
       // Select preset 1h (1 hour -> 6 effort points)
       await tester.tap(find.text('1h'));

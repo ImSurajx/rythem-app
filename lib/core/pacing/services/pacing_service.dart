@@ -87,7 +87,7 @@ class PacingService {
     if (targetDate != null) {
       daysLeft = PacingCalculator.calculateDaysLeft(targetDate, now: simulatedNow);
     } else {
-      daysLeft = 30;
+      daysLeft = 0;
     }
 
     // 3. Derive today's effort share using goal date and study intensity schedule

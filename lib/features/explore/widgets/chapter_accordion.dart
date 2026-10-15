@@ -76,7 +76,11 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     final totalEffort = widget.beats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final completedEffort = widget.beats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
-    final gapsCount = widget.beats.where((b) => b.sourceUrl == null && !b.isMentorExtra).length;
+    final isOpenLabChapter = widget.chapter.roadmapId == RoadmapEntity.openLabId ||
+        widget.chapter.id == ChapterEntity.openLabChapterId;
+    final gapsCount = isOpenLabChapter
+        ? 0
+        : widget.beats.where((b) => !b.isCustomTask && b.sourceUrl == null && !b.isMentorExtra).length;
 
     return RepaintBoundary(
       child: Container(
@@ -154,31 +158,42 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                             ),
                             const SizedBox(width: 2),
-                            Text(
-                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
-                              style: RythemTypography.bodySmall.copyWith(
-                                color: themeColors.textSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                            if (isOpenLabChapter) ...[
+                              Text(
+                                '${completedEffort.toStringAsFixed(1)} pts • $completedCount logged',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              '($completedCount/$totalCount)',
-                              style: RythemTypography.bodySmall.copyWith(
-                                color: themeColors.textTertiary,
-                                fontSize: 10,
+                            ] else ...[
+                              Text(
+                                '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '• ${(progressRatio * 100).toInt()}%',
-                              style: RythemTypography.labelSmall.copyWith(
-                                color: themeColors.textSecondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(width: 5),
+                              Text(
+                                '($completedCount/$totalCount)',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textTertiary,
+                                  fontSize: 10,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '• ${(progressRatio * 100).toInt()}%',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                             if (gapsCount > 0) ...[
                               const SizedBox(width: 8),
                               Container(
@@ -204,14 +219,14 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                   ),
                   const SizedBox(width: 10),
 
-                  if (widget.onAttachResourceToChapter != null) ...[
+                  if (widget.onAttachResourceToChapter != null && !isOpenLabChapter) ...[
                     IconButton(
                       icon: Icon(
                         Icons.add_link_rounded,
                         size: 19,
                         color: themeColors.textSecondary,
                       ),
-                      tooltip: 'Attach Resource to Subject',
+                      tooltip: 'Attach Resource',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       onPressed: () => widget.onAttachResourceToChapter?.call(widget.chapter),
@@ -251,7 +266,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Center(
                             child: Text(
-                              'No topics in this module yet',
+                              isOpenLabChapter ? 'No tasks logged' : 'No topics in module',
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                               ),

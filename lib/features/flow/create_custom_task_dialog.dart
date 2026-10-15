@@ -253,7 +253,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    widget.roadmap.isOpenLab ? 'Log Task' : 'Create Custom Task',
+                                    widget.roadmap.isOpenLab ? 'Log Task' : 'Custom Task',
                                     style: RythemTypography.titleMedium.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w700,
@@ -261,7 +261,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                     ),
                                   ),
                                   Text(
-                                    widget.roadmap.isOpenLab ? 'Open Lab • Universal Workspace' : widget.roadmap.title,
+                                    widget.roadmap.isOpenLab ? 'Open Lab' : widget.roadmap.title,
                                     style: RythemTypography.labelSmall.copyWith(
                                       color: themeColors.textSecondary,
                                       fontSize: 11,
@@ -536,7 +536,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                             child: Row(
                               children: [
                                 Text(
-                                  'DURATION / TIME',
+                                  'DURATION',
                                   style: RythemTypography.labelSmall.copyWith(
                                     color: themeColors.textTertiary,
                                     fontSize: 10,
@@ -664,7 +664,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
 
                       // Input 3: Optional Resource URL
                       Text(
-                        'RESOURCE LINK (OPTIONAL)',
+                        'LINK (OPTIONAL)',
                         style: RythemTypography.labelSmall.copyWith(
                           color: themeColors.textTertiary,
                           fontSize: 10,
