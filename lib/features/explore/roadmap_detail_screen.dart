@@ -637,7 +637,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: GlassButton(
-                    label: 'Attach to Topic',
+                    label: 'Attach',
                     icon: Icons.link_rounded,
                     onPressed: () {
                       final url = controller.text.trim();

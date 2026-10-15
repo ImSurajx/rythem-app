@@ -482,7 +482,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                       ),
                     ),
                     Text(
-                      'Download Offline Model',
+                      'Offline Model',
                       style: RythemTypography.titleLarge.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w800,
@@ -496,7 +496,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Rythem runs 100% private offline intelligence for mathematical shortfall diagnosis and concept clarity. Select your mentor — it will download automatically in the background as you begin.',
+            'Private offline intelligence for guidance and concept clarity. Downloads in the background.',
             style: RythemTypography.bodySmall.copyWith(
               color: themeColors.textSecondary,
               height: 1.45,

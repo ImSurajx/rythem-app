@@ -226,7 +226,7 @@ class MetricsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
-                  'No tracks currently active. Ingest or create a track to see live progress.',
+                  'No active tracks. Create a track to begin.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                   ),

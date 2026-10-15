@@ -894,7 +894,7 @@ class _DesignSystemShowcaseScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'STORED TARGET TRACKS IN SQLITE',
+                    'SAVED TRACKS',
                     style: RythemTypography.labelSmall.copyWith(
                       color: themeColors.textTertiary,
                       letterSpacing: 1.5,
@@ -909,7 +909,7 @@ class _DesignSystemShowcaseScreenState
               const SizedBox(height: 16),
               if (_allRoadmaps.isEmpty)
                 Text(
-                  'No targets found in SQLite database.',
+                  'No tracks found.',
                   style: TextStyle(color: themeColors.textSecondary),
                 )
               else
@@ -1719,7 +1719,7 @@ class _DesignSystemShowcaseScreenState
           ),
           const SizedBox(height: 6),
           Text(
-            'Automated rolling daily snapshots on device storage, with on-demand JSON export and restoration for total data portability.',
+            'Daily local backups with JSON export and restore.',
             style: RythemTypography.bodySmall.copyWith(
               color: themeColors.textTertiary,
               fontSize: 11,
@@ -1758,7 +1758,7 @@ class _DesignSystemShowcaseScreenState
                       Text(
                         _latestAutoBackup != null
                             ? 'Snapshot: ${_latestAutoBackup!.relativeTimeDescription}'
-                            : 'No snapshots created yet',
+                            : 'No backups yet',
                         style: TextStyle(
                           color: themeColors.textPrimary,
                           fontSize: 12.5,
@@ -1790,7 +1790,7 @@ class _DesignSystemShowcaseScreenState
             child: GlassButton(
               onPressed: _isPerformingAutoBackup ? null : _handleManualAutoBackup,
               icon: Icons.bolt_rounded,
-              label: _isPerformingAutoBackup ? 'Creating Snapshot...' : 'Back Up Database Now',
+              label: _isPerformingAutoBackup ? 'Backing Up...' : 'Back Up Now',
               variant: GlassButtonVariant.primary,
               height: 44,
             ),
@@ -1864,7 +1864,7 @@ class _DesignSystemShowcaseScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Restore Rolling Snapshot',
+                          'Restore Snapshot',
                           style: TextStyle(
                             color: themeColors.textPrimary,
                             fontSize: 12.5,
@@ -1873,7 +1873,7 @@ class _DesignSystemShowcaseScreenState
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'View & restore from ${AutoBackupManager.maxRetainedDailySnapshots}-day automatic device snapshots',
+                          'Restore from daily device snapshots',
                           style: TextStyle(
                             color: themeColors.textTertiary,
                             fontSize: 10.5,
@@ -2011,9 +2011,9 @@ class _DesignSystemShowcaseScreenState
                               final info = await _updateManager.checkForUpdates();
                               if (mounted) {
                                 if (info == null) {
-                                  _showToast('Unable to check for updates. Check internet connection.');
+                                  _showToast('Check connection and retry');
                                 } else if (!info.isUpdateAvailable) {
-                                  _showToast('Rythem is up to date (${info.tagName})');
+                                  _showToast('Up to date (${info.tagName})');
                                 }
                               }
                             },
@@ -2214,7 +2214,7 @@ class _DesignSystemShowcaseScreenState
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'New Version Available: ${updateInfo.tagName}',
+                            'Update Available: ${updateInfo.tagName}',
                             style: RythemTypography.labelSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: themeColors.textPrimary,
@@ -2271,7 +2271,7 @@ class _DesignSystemShowcaseScreenState
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Download & Install',
+                                    'Download',
                                     style: RythemTypography.labelSmall.copyWith(
                                       color: isDark ? Colors.black : Colors.white,
                                       fontWeight: FontWeight.w700,
@@ -2293,7 +2293,7 @@ class _DesignSystemShowcaseScreenState
                     const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF10B981), size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      'Rythem is up to date (${updateInfo.tagName})',
+                      'Up to date (${updateInfo.tagName})',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textSecondary,
                         fontSize: 11,
@@ -2303,7 +2303,7 @@ class _DesignSystemShowcaseScreenState
                 ),
               ] else ...[
                 Text(
-                  'Check for official updates, new features, and stability fixes directly from GitHub releases.',
+                  'Check for updates and release fixes.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                     fontSize: 11,
@@ -2415,14 +2415,14 @@ class _DesignSystemShowcaseScreenState
                     Icon(Icons.history_rounded, size: 20, color: colors.actionPrimary),
                     const SizedBox(width: 8),
                     Text(
-                      'Select Auto-Backup Snapshot',
+                      'Restore Snapshot',
                       style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Select a rolling daily snapshot stored locally in device storage to restore.',
+                  'Select a local snapshot to restore.',
                   style: RythemTypography.bodySmall.copyWith(color: colors.textTertiary),
                 ),
                 const SizedBox(height: 16),
@@ -2696,7 +2696,7 @@ class _DesignSystemShowcaseScreenState
           backgroundColor: isDark ? const Color(0xFF1E1E22) : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            'Restore Data Backup',
+            'Restore Backup',
             style: RythemTypography.titleMedium.copyWith(color: colors.textPrimary),
           ),
           content: Text(
@@ -2714,7 +2714,7 @@ class _DesignSystemShowcaseScreenState
                 foregroundColor: colors.actionOnPrimary,
               ),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Select File & Restore'),
+              child: const Text('Restore'),
             ),
           ],
         );

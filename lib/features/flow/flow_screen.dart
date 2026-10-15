@@ -1345,7 +1345,7 @@ class _TrackTodoListCard extends StatelessWidget {
                           Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
                           SizedBox(width: 4),
                           Text(
-                            'Start Today Early',
+                            'Start Early',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 11,
@@ -1375,7 +1375,7 @@ class _TrackTodoListCard extends StatelessWidget {
                           Icon(Icons.menu_book_rounded, size: 14, color: themeColors.textSecondary),
                           const SizedBox(width: 4),
                           Text(
-                            'Peek Syllabus',
+                            'View Syllabus',
                             style: TextStyle(
                               color: themeColors.textPrimary,
                               fontSize: 11,
@@ -1954,7 +1954,7 @@ class _EmptyMissionState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Your flow queue is clear. Create or import your syllabus outline or link a playlist in Explore to begin.',
+              'Queue is clear. Create or explore tracks to begin.',
               style: RythemTypography.bodySmall.copyWith(
                 color: themeColors.textTertiary,
                 height: 1.4,
@@ -1964,7 +1964,7 @@ class _EmptyMissionState extends StatelessWidget {
             if (onExplore != null) ...[
               const SizedBox(height: 16),
               GlassButton(
-                label: 'Create / Explore Tracks',
+                label: 'Explore Tracks',
                 icon: Icons.explore_outlined,
                 onPressed: onExplore!,
               ),
