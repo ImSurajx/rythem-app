@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
+import 'package:rythem_app/core/database/models/roadmap_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/utils/resource_launcher.dart';
@@ -49,6 +50,7 @@ class ChapterAccordion extends StatefulWidget {
 class _ChapterAccordionState extends State<ChapterAccordion>
     with SingleTickerProviderStateMixin {
   late bool _isExpanded;
+  String? _selectedCategoryFilter;
 
   @override
   void initState() {
@@ -74,7 +76,11 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     final totalEffort = widget.beats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final completedEffort = widget.beats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
-    final gapsCount = widget.beats.where((b) => b.sourceUrl == null && !b.isMentorExtra).length;
+    final isOpenLabChapter = widget.chapter.roadmapId == RoadmapEntity.openLabId ||
+        widget.chapter.id == ChapterEntity.openLabChapterId;
+    final gapsCount = isOpenLabChapter
+        ? 0
+        : widget.beats.where((b) => !b.isCustomTask && b.sourceUrl == null && !b.isMentorExtra).length;
 
     return RepaintBoundary(
       child: Container(
@@ -152,31 +158,42 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                             ),
                             const SizedBox(width: 2),
-                            Text(
-                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
-                              style: RythemTypography.bodySmall.copyWith(
-                                color: themeColors.textSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                            if (isOpenLabChapter) ...[
+                              Text(
+                                '${completedEffort.toStringAsFixed(1)} pts • $completedCount logged',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              '($completedCount/$totalCount)',
-                              style: RythemTypography.bodySmall.copyWith(
-                                color: themeColors.textTertiary,
-                                fontSize: 10,
+                            ] else ...[
+                              Text(
+                                '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '• ${(progressRatio * 100).toInt()}%',
-                              style: RythemTypography.labelSmall.copyWith(
-                                color: themeColors.textSecondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(width: 5),
+                              Text(
+                                '($completedCount/$totalCount)',
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textTertiary,
+                                  fontSize: 10,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '• ${(progressRatio * 100).toInt()}%',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textSecondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                             if (gapsCount > 0) ...[
                               const SizedBox(width: 8),
                               Container(
@@ -202,14 +219,14 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                   ),
                   const SizedBox(width: 10),
 
-                  if (widget.onAttachResourceToChapter != null) ...[
+                  if (widget.onAttachResourceToChapter != null && !isOpenLabChapter) ...[
                     IconButton(
                       icon: Icon(
                         Icons.add_link_rounded,
                         size: 19,
                         color: themeColors.textSecondary,
                       ),
-                      tooltip: 'Attach Resource to Subject',
+                      tooltip: 'Attach Resource',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       onPressed: () => widget.onAttachResourceToChapter?.call(widget.chapter),
@@ -249,7 +266,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Center(
                             child: Text(
-                              'No topics in this module yet',
+                              isOpenLabChapter ? 'No tasks logged' : 'No topics in module',
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                               ),
@@ -278,21 +295,41 @@ class _ChapterAccordionState extends State<ChapterAccordion>
   }
 
   Widget _buildCategorizedBeatsList(RythemColorTokens themeColors, bool isDark) {
+    final isOpenLabChapter = widget.chapter.roadmapId == RoadmapEntity.openLabId ||
+        widget.chapter.id == ChapterEntity.openLabChapterId;
+
+    // Collect category counts for Open Lab
+    final categoryCounts = <String, int>{};
+    for (final beat in widget.beats) {
+      final cat = beat.customTaskCategory.isNotEmpty ? beat.customTaskCategory : 'General';
+      categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+    }
+
     // 1. Separate regular video beats from uncovered syllabus gaps
     final List<BeatEntity> videoBeats = [];
     final List<BeatEntity> gapBeats = [];
 
     // Ensure incoming beats are strictly sorted by sortOrder
-    final sortedBeats = List<BeatEntity>.from(widget.beats)
+    var sortedBeats = List<BeatEntity>.from(widget.beats)
       ..sort((a, b) {
         final cmp = a.sortOrder.compareTo(b.sortOrder);
         if (cmp != 0) return cmp;
         return a.createdAt.compareTo(b.createdAt);
       });
 
+    // If Open Lab filter is active, filter beats
+    if (isOpenLabChapter && _selectedCategoryFilter != null) {
+      sortedBeats = sortedBeats.where((b) {
+        final cat = b.customTaskCategory.isNotEmpty ? b.customTaskCategory : 'General';
+        return cat.toLowerCase() == _selectedCategoryFilter!.toLowerCase();
+      }).toList();
+    }
+
     for (final beat in sortedBeats) {
-      final isGap = beat.id.contains('_gap_') ||
-          (beat.sourceUrl == null && beat.syllabusTopicId != null && !beat.isMentorExtra);
+      final isGap = !isOpenLabChapter &&
+          !beat.isCustomTask &&
+          (beat.id.contains('_gap_') ||
+              (beat.sourceUrl == null && beat.syllabusTopicId != null && !beat.isMentorExtra));
       if (isGap) {
         gapBeats.add(beat);
       } else {
@@ -300,31 +337,169 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       }
     }
 
-    // 2. Group video beats into contiguous chronological milestones
+    // Build category filter bar for Open Lab
+    Widget? openLabFilterBar;
+    if (isOpenLabChapter && categoryCounts.isNotEmpty) {
+      final categories = ['All', ...categoryCounts.keys];
+      openLabFilterBar = Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: categories.map((cat) {
+              final isAll = cat == 'All';
+              final isSelected = isAll
+                  ? (_selectedCategoryFilter == null)
+                  : (_selectedCategoryFilter?.toLowerCase() == cat.toLowerCase());
+              final count = isAll ? widget.beats.length : (categoryCounts[cat] ?? 0);
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedCategoryFilter = isAll ? null : cat;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDark ? const Color(0xFF6366F1).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.18))
+                          : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04)),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1))
+                            : (isDark ? Colors.white12 : Colors.black12),
+                        width: isSelected ? 1.0 : 0.6,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cat,
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: isSelected
+                                ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                : themeColors.textSecondary,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? (isDark ? const Color(0xFF818CF8).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.15))
+                                : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isSelected
+                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                  : themeColors.textTertiary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      );
+    }
+
+    if (sortedBeats.isEmpty && isOpenLabChapter) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (openLabFilterBar != null) openLabFilterBar,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                'No tasks in "${_selectedCategoryFilter ?? 'Open Lab'}".',
+                style: RythemTypography.bodySmall.copyWith(
+                  color: themeColors.textTertiary,
+                  fontSize: 11.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // 2. Group video beats into milestones / category sections
     final List<({String title, bool isCustom, List<BeatEntity> beats})> milestoneSections = [];
-    for (final beat in videoBeats) {
-      final String milestoneTitle;
-      if (beat.isCustomTask) {
-        final cat = beat.customTaskCategory;
-        milestoneTitle = cat.isNotEmpty ? cat : 'Personal Study & Revision';
-      } else {
-        milestoneTitle = beat.syllabusTopicId ?? 'Core Curriculum';
+    if (isOpenLabChapter) {
+      // Group Open Lab beats by category
+      final Map<String, List<BeatEntity>> beatsByCategory = {};
+      for (final beat in videoBeats) {
+        final cat = beat.customTaskCategory.isNotEmpty ? beat.customTaskCategory : 'General';
+        beatsByCategory.putIfAbsent(cat, () => []).add(beat);
       }
-      if (milestoneSections.isEmpty || milestoneSections.last.title != milestoneTitle) {
-        milestoneSections.add((title: milestoneTitle, isCustom: beat.isCustomTask, beats: [beat]));
-      } else {
-        milestoneSections.last.beats.add(beat);
+      for (final entry in beatsByCategory.entries) {
+        milestoneSections.add((
+          title: entry.key,
+          isCustom: true,
+          beats: entry.value,
+        ));
+      }
+    } else {
+      // In normal tracker chapters, group contiguous beats
+      for (final beat in videoBeats) {
+        final String milestoneTitle;
+        final bool isCustom = beat.isCustomTask;
+        if (isCustom) {
+          final cat = beat.customTaskCategory;
+          milestoneTitle = cat.isNotEmpty ? cat : 'Revision';
+        } else if (beat.syllabusTopicId != null && beat.syllabusTopicId!.isNotEmpty) {
+          milestoneTitle = beat.syllabusTopicId!;
+        } else if (milestoneSections.isNotEmpty && !milestoneSections.last.isCustom) {
+          milestoneTitle = milestoneSections.last.title;
+        } else {
+          milestoneTitle = 'Core Curriculum';
+        }
+        if (milestoneSections.isEmpty ||
+            milestoneSections.last.title != milestoneTitle ||
+            milestoneSections.last.isCustom != isCustom) {
+          milestoneSections.add((title: milestoneTitle, isCustom: isCustom, beats: [beat]));
+        } else {
+          milestoneSections.last.beats.add(beat);
+        }
       }
     }
 
-    // If there is only 1 flat milestone and no gaps, render flat list
-    if (milestoneSections.length <= 1 && gapBeats.isEmpty) {
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: sortedBeats.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 6),
-        itemBuilder: (context, index) => _buildBeatItem(sortedBeats[index], themeColors, isDark),
+    final hasAnyCustomTasks = sortedBeats.any((b) => b.isCustomTask);
+
+    // If pure curriculum with 1 flat milestone and no custom tasks/gaps, render simple flat list
+    if (milestoneSections.length <= 1 && gapBeats.isEmpty && !isOpenLabChapter && !hasAnyCustomTasks) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: sortedBeats.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemBuilder: (context, index) => _buildBeatItem(sortedBeats[index], themeColors, isDark),
+          ),
+        ],
       );
     }
 
@@ -337,10 +512,14 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       final milestoneEffort = beats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
       final completed = beats.where((b) => b.isCompleted).length;
 
+      final titleText = milestone.isCustom
+          ? '⚡ ${milestone.title.toUpperCase()}'
+          : milestone.title;
+
       sections.add(
         _TopicGroupSection(
-          title: milestone.isCustom ? '⚡ ${milestone.title}' : milestone.title,
-          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length} complete',
+          title: titleText,
+          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length}',
           icon: milestone.isCustom ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
           accentColor: milestone.isCustom
               ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
@@ -353,12 +532,12 @@ class _ChapterAccordionState extends State<ChapterAccordion>
     }
 
     // Render Uncovered Syllabus Gaps at the bottom
-    if (gapBeats.isNotEmpty) {
+    if (gapBeats.isNotEmpty && !isOpenLabChapter) {
       final completed = gapBeats.where((b) => b.isCompleted).length;
       sections.add(
         _TopicGroupSection(
           title: '⚠️ Uncovered Syllabus Gaps',
-          subtitle: '$completed/${gapBeats.length} complete • ${gapBeats.length} gap${gapBeats.length == 1 ? '' : 's'}',
+          subtitle: '$completed/${gapBeats.length} complete',
           icon: Icons.warning_amber_rounded,
           accentColor: const Color(0xFFF59E0B),
           themeColors: themeColors,
@@ -401,7 +580,10 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: sections,
+      children: [
+        if (openLabFilterBar != null) openLabFilterBar,
+        ...sections,
+      ],
     );
   }
 
@@ -723,100 +905,6 @@ class BeatTile extends StatelessWidget {
                             ),
                           ),
                         ],
-                        // Stacked Resource Badge (Resource 2, 3, etc.)
-                        () {
-                          final match = RegExp(r'_r(\d+)_').firstMatch(beat.id);
-                          final rNum = match != null ? int.tryParse(match.group(1)!) : null;
-                          if (rNum != null && rNum > 1) {
-                            return Container(
-                              margin: const EdgeInsets.only(right: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withOpacity(isDark ? 0.22 : 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFF6366F1).withOpacity(0.4),
-                                  width: 0.6,
-                                ),
-                              ),
-                              child: Text(
-                                'RESOURCE $rNum',
-                                style: RythemTypography.labelSmall.copyWith(
-                                  fontSize: 7.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        }(),
-                        // Custom Task or Mentor Extra Badge
-                        if (beat.isCustomTask) ...[
-                          Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFFF59E0B).withOpacity(0.18)
-                                  : const Color(0xFFD97706).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFFFBBF24).withOpacity(0.4)
-                                    : const Color(0xFFD97706).withOpacity(0.3),
-                                width: 0.6,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.bolt_rounded,
-                                  size: 9,
-                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  beat.customTaskCategory.toUpperCase(),
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                    letterSpacing: 0.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ] else if (beat.isMentorExtra) ...[
-                          Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withOpacity(0.12)
-                                  : Colors.black.withOpacity(0.07),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isDark
-                                    ? themeColors.glassBorderHighlight
-                                    : Colors.black26,
-                                width: 0.6,
-                              ),
-                            ),
-                            child: Text(
-                              'MENTOR EXTRA',
-                              style: RythemTypography.labelSmall.copyWith(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w700,
-                                color: themeColors.textPrimary,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                          ),
-                        ],
                         Expanded(
                           child: Text(
                             beat.title,
@@ -841,13 +929,12 @@ class BeatTile extends StatelessWidget {
                       spacing: 5,
                       runSpacing: 2,
                       children: [
-                        if (!hasResource) ...[
+                        if (!hasResource && !beat.isCustomTask) ...[
                           Text(
-                            'no resource linked yet',
+                            'Unlinked',
                             style: RythemTypography.labelSmall.copyWith(
                               color: themeColors.textTertiary.withOpacity(0.75),
                               fontSize: 9.5,
-                              fontStyle: FontStyle.italic,
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -873,6 +960,31 @@ class BeatTile extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            if (beat.isCustomTask) ...[
+                              const SizedBox(width: 5),
+                              Text(
+                                '•',
+                                style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                () {
+                                  final totalMins = (beat.effortWeight * 10).round();
+                                  if (totalMins < 60) {
+                                    return '${totalMins}m';
+                                  } else {
+                                    final hrs = totalMins ~/ 60;
+                                    final rem = totalMins % 60;
+                                    return rem > 0 ? '${hrs}h ${rem}m' : '${hrs}h';
+                                  }
+                                }(),
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textTertiary,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],

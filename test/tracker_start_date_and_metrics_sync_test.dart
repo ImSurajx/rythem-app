@@ -267,10 +267,10 @@ void main() {
       // Verify scheduled kickoff card is rendered
       expect(find.textContaining('KICKOFF'), findsOneWidget);
       expect(find.textContaining('Track Scheduled for'), findsOneWidget);
-      expect(find.text('Start Today Early'), findsOneWidget);
+      expect(find.text('Start Early'), findsOneWidget);
 
-      // Tap "Start Today Early"
-      await tester.tap(find.text('Start Today Early'));
+      // Tap "Start Early"
+      await tester.tap(find.text('Start Early'));
       await tester.pump();
       expect(startEarlyCalled, isTrue);
     });

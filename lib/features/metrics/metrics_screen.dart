@@ -226,7 +226,7 @@ class MetricsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
-                  'No tracks currently active. Ingest or create a track to see live progress.',
+                  'No active tracks. Create a track to begin.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                   ),
@@ -423,7 +423,7 @@ class _TrackOverviewCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (budget != null)
+                if (budget != null && budget!.daysLeft > 0 && !roadmap.isOpenLab && roadmap.targetCompletionDate != null)
                   Text(
                     '${budget!.daysLeft} days left',
                     style: RythemTypography.labelSmall.copyWith(

@@ -23,9 +23,12 @@ class RoadmapEntity {
     required this.updatedAt,
   });
 
+  static const String openLabId = 'roadmap_open_lab';
+
   bool get isActive => status == 'active';
   bool get isArchived => status == 'archived';
   bool get isCompleted => status == 'completed';
+  bool get isOpenLab => id == openLabId || id == 'open_lab';
 
   RoadmapEntity copyWith({
     String? id,

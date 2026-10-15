@@ -335,21 +335,41 @@ class ModelDownloadManager {
         existingBytes = await partFile.length();
       }
 
-      final request = http.Request('GET', Uri.parse(info.downloadUrl));
-      request.headers['User-Agent'] = 'Rythem-App/1.0.0';
+      final candidateUrls = <String>[
+        info.downloadUrl,
+        if (info.fallbackDownloadUrl != null && info.fallbackDownloadUrl!.isNotEmpty)
+          info.fallbackDownloadUrl!,
+      ];
 
-      // If we have an existing partial download, request Range from existing offset
-      if (existingBytes > 0) {
-        request.headers['Range'] = 'bytes=$existingBytes-';
+      http.StreamedResponse? response;
+      Object? lastError;
+
+      for (final url in candidateUrls) {
+        try {
+          final request = http.Request('GET', Uri.parse(url));
+          request.headers['User-Agent'] = 'Rythem-App/1.0.0';
+
+          // If we have an existing partial download, request Range from existing offset
+          if (existingBytes > 0) {
+            request.headers['Range'] = 'bytes=$existingBytes-';
+          }
+
+          final res = await downloadClient.send(request);
+          if (res.statusCode < 400 || res.statusCode == 416) {
+            response = res;
+            break;
+          } else {
+            lastError = HttpException(
+                'Failed to download model asset. HTTP Status: ${res.statusCode}');
+          }
+        } catch (err) {
+          lastError = err;
+        }
       }
 
-      await _settingsRepo.setSetting(_prefPendingTierKey, tier.name);
-      await _settingsRepo.setSetting(_prefPendingBytesKey, existingBytes.toString());
-
-      final response = await downloadClient.send(request);
-      if (response.statusCode >= 400 && response.statusCode != 416) {
-        throw HttpException(
-            'Failed to download model asset. HTTP Status: ${response.statusCode}');
+      if (response == null) {
+        throw lastError ??
+            const HttpException('Failed to download model asset from all available sources.');
       }
 
       // If HTTP 416 (Range Not Satisfiable), file might already be complete or corrupted

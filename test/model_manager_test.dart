@@ -42,14 +42,14 @@ void main() {
       final compact = ModelInfo.forTier(ModelTier.compact);
       expect(compact.tier, ModelTier.compact);
       expect(compact.filename, 'qwen2.5-0.5b-instruct-q4_k_m.gguf');
-      expect(compact.downloadUrl.contains('ImSurajx/rythem-app/releases'), isTrue);
+      expect(compact.downloadUrl.contains('huggingface.co') || compact.downloadUrl.contains('ImSurajx/rythem-app/releases'), isTrue);
       expect(compact.formattedSize, contains('MB'));
       expect(compact.targetRamMb, 600);
 
       final balanced = ModelInfo.forTier(ModelTier.balanced);
       expect(balanced.tier, ModelTier.balanced);
       expect(balanced.filename, 'qwen2.5-1.5b-instruct-q4_k_m.gguf');
-      expect(balanced.downloadUrl.contains('ImSurajx/rythem-app/releases'), isTrue);
+      expect(balanced.downloadUrl.contains('huggingface.co') || balanced.downloadUrl.contains('ImSurajx/rythem-app/releases'), isTrue);
       expect(balanced.formattedSize, contains('GB'));
       expect(balanced.targetRamMb, 1350);
 

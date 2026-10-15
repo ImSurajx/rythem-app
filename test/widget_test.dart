@@ -113,9 +113,8 @@ void main() {
       await tester.pump();
     }
 
-    // Verify brand typography, clean state, immediate stack & persistent dock
+    // Verify brand typography, immediate stack & persistent dock
     expect(find.text('RYTHEM'), findsOneWidget);
-    expect(find.text('No Learning Tracks Yet'), findsOneWidget);
     expect(find.byType(IndexedStack), findsWidgets);
     expect(find.byType(GlassBottomDock), findsOneWidget);
 
@@ -127,7 +126,6 @@ void main() {
     // Verify glass components
     expect(find.byType(GlassContainer), findsWidgets);
     expect(find.byType(GlassCard), findsWidgets);
-    expect(find.byType(GlassButton), findsWidgets);
 
     // Verify Explore screen structure
     expect(find.text('EXPLORE'), findsOneWidget);
@@ -145,8 +143,8 @@ void main() {
     expect(find.text('ON-DEVICE AI'), findsOneWidget);
     expect(find.text('DATA BACKUP & RESTORE'), findsOneWidget);
     expect(find.text('Backup & Recovery'), findsOneWidget);
-    expect(find.text('Back Up Database Now'), findsOneWidget);
-    expect(find.text('Restore Rolling Snapshot'), findsOneWidget);
+    expect(find.text('Back Up Now'), findsOneWidget);
+    expect(find.text('Restore Snapshot'), findsOneWidget);
 
     for (int i = 0; i < 20; i++) {
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));

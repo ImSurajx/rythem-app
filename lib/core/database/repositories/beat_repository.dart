@@ -337,7 +337,7 @@ class BeatRepository {
         sortOrder: targetSortOrder,
         isCompleted: isCompleted,
         completedAt: isCompleted ? now : null,
-        isMentorExtra: true,
+        isMentorExtra: false,
         syllabusTopicId: 'custom:${category.trim().isEmpty ? 'Revision' : category.trim()}',
         createdAt: now,
         updatedAt: now,

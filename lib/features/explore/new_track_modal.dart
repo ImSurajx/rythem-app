@@ -661,7 +661,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Import / Paste Syllabus (Optional)',
+                            'Syllabus (Optional)',
                             style: RythemTypography.labelSmall.copyWith(
                               color: themeColors.textPrimary,
                               fontWeight: FontWeight.w600,
@@ -685,7 +685,7 @@ class _NewTrackModalState extends State<NewTrackModal> {
               if (_showSyllabusInput) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Import JSON / TXT from storage, paste clipboard text, or enter topics manually.',
+                  'Import or paste topics manually.',
                   style: RythemTypography.bodySmall.copyWith(
                     color: themeColors.textTertiary,
                     fontSize: 10.5,

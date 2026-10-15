@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -52,8 +53,9 @@ class AppUpdateInfo {
 }
 
 class AppUpdateManager {
-  static const String currentVersion = 'v1.1.0-Stable';
+  static const String currentVersion = 'v1.1.8-Stable';
   static const String _releasesApiUrl = 'https://api.github.com/repos/ImSurajx/rythem-app/releases/latest';
+  static const MethodChannel _platformChannel = MethodChannel('com.rythem.rythem_app/storage_permission');
 
   static AppUpdateManager? _instance;
   static AppUpdateManager get instance => _instance ??= AppUpdateManager._internal();
@@ -269,30 +271,35 @@ class AppUpdateManager {
     updateProgressNotifier.value = null;
   }
 
-  /// Triggers installation or launches download URL.
-  Future<void> installDownloadedUpdate() async {
+  /// Triggers native APK installation.
+  /// Returns 'SUCCESS', 'PERMISSION_REQUESTED', 'FILE_NOT_FOUND', or 'ERROR'.
+  Future<String> installDownloadedUpdate() async {
     final apkPath = downloadedApkPathNotifier.value;
-    if (apkPath != null && await File(apkPath).exists()) {
+    if (apkPath == null || !await File(apkPath).exists()) {
+      final info = updateInfoNotifier.value;
+      if (info != null) {
+        await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
+      }
+      return 'FILE_NOT_FOUND';
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
       try {
-        final uri = Uri.file(apkPath);
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (!launched) {
-          final info = updateInfoNotifier.value;
-          if (info != null) {
-            await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
-          }
-        }
-      } catch (_) {
-        final info = updateInfoNotifier.value;
-        if (info != null) {
-          await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
-        }
+        final result = await _platformChannel.invokeMethod<String>(
+          'installApk',
+          {'filePath': apkPath},
+        );
+        return result ?? 'SUCCESS';
+      } catch (e) {
+        debugPrint('Native APK installer error: $e');
+        return 'ERROR: $e';
       }
     } else {
       final info = updateInfoNotifier.value;
       if (info != null) {
         await launchUrl(Uri.parse(info.htmlUrl), mode: LaunchMode.externalApplication);
       }
+      return 'UNSUPPORTED_PLATFORM';
     }
   }
 }

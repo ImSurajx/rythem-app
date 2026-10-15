@@ -189,10 +189,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify contiguous milestone headers, inline mentor extra, and uncovered gaps
+    // Verify contiguous milestone headers and uncovered gaps; clean cards without inline mentor tags
     expect(find.text('Functions and Graphs'), findsOneWidget);
     expect(find.text('Polynomial Functions'), findsOneWidget);
-    expect(find.text('MENTOR EXTRA'), findsOneWidget);
+    expect(find.text('Bonus: Calculator Shortcuts'), findsOneWidget);
+    expect(find.text('MENTOR EXTRA'), findsNothing);
     expect(find.text('⚠️ Uncovered Syllabus Gaps'), findsOneWidget);
   });
 

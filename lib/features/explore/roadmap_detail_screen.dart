@@ -637,7 +637,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: GlassButton(
-                    label: 'Attach to Topic',
+                    label: 'Attach',
                     icon: Icons.link_rounded,
                     onPressed: () {
                       final url = controller.text.trim();
@@ -756,7 +756,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     final remainingCount = totalCount - completedCount;
     final progressRatio = totalCount > 0 ? (completedCount / totalCount) : 0.0;
     final linkedCount = _currentBeats.where((b) => b.sourceUrl?.isNotEmpty == true).length;
-    final unlinkedCount = totalCount - linkedCount;
     final totalEffort = _currentBeats.fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final completedEffort = _currentBeats.where((b) => b.isCompleted).fold<double>(0.0, (sum, b) => sum + b.effortWeight);
     final category = _currentRoadmap.description?.isNotEmpty == true
@@ -833,42 +832,44 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Tooltip(
-                            message: 'Sync & Remap Resources',
-                            child: GestureDetector(
-                              onTap: _isSyncing ? null : _handleSyncResources,
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                                  border: Border.all(
-                                    color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
-                                    width: 0.9,
+                          if (!_currentRoadmap.isOpenLab) ...[
+                            const SizedBox(width: 8),
+                            Tooltip(
+                              message: 'Sync & Remap Resources',
+                              child: GestureDetector(
+                                onTap: _isSyncing ? null : _handleSyncResources,
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                                    border: Border.all(
+                                      color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
+                                      width: 0.9,
+                                    ),
                                   ),
-                                ),
-                                child: _isSyncing
-                                    ? Center(
-                                        child: SizedBox(
-                                          width: 14,
-                                          height: 14,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 1.8,
-                                            valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                                  child: _isSyncing
+                                      ? Center(
+                                          child: SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.8,
+                                              valueColor: AlwaysStoppedAnimation<Color>(themeColors.textPrimary),
+                                            ),
                                           ),
+                                        )
+                                      : Icon(
+                                          Icons.sync_rounded,
+                                          size: 16,
+                                          color: themeColors.textPrimary,
                                         ),
-                                      )
-                                    : Icon(
-                                        Icons.sync_rounded,
-                                        size: 16,
-                                        color: themeColors.textPrimary,
-                                      ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                           if (widget.onDeleteRoadmap != null) ...[
                             const SizedBox(width: 6),
                             GestureDetector(
@@ -965,7 +966,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
-                                    '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts completed',
+                                    _currentRoadmap.isOpenLab
+                                        ? '${completedEffort.toStringAsFixed(1)} pts'
+                                        : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts completed',
                                     style: RythemTypography.bodySmall.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w600,
@@ -973,7 +976,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                     ),
                                   ),
                                   Text(
-                                    ' • $completedCount/$totalCount topics',
+                                    _currentRoadmap.isOpenLab
+                                        ? ' • $completedCount'
+                                        : ' • $completedCount/$totalCount topics',
                                     style: RythemTypography.bodySmall.copyWith(
                                       color: themeColors.textSecondary,
                                       fontSize: 11.5,
@@ -998,137 +1003,139 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           const SizedBox(height: 16),
 
                           // Status Breakdown Chips (Requirement 2 & 10)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                          if (!_currentRoadmap.isOpenLab) ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                      ),
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'REMAINING',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$remainingCount topics',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: themeColors.textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'RESOURCES',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$linkedCount linked${unlinkedCount > 0 ? ' ($unlinkedCount unlinked)' : ''}',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: themeColors.textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isDark ? themeColors.glassBorder : const Color(0x10000000),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'EFFORT',
-                                        style: RythemTypography.labelSmall.copyWith(
-                                          fontSize: 8.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: themeColors.textTertiary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.bolt_rounded,
-                                            size: 13,
-                                            color: themeColors.textSecondary,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'REMAINING',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: themeColors.textTertiary,
                                           ),
-                                          const SizedBox(width: 2),
-                                          Expanded(
-                                            child: Text(
-                                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)}',
-                                              style: RythemTypography.labelSmall.copyWith(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: themeColors.textPrimary,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '$remainingCount',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: themeColors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'RESOURCES',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: themeColors.textTertiary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '$linkedCount linked',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: themeColors.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.035),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDark ? themeColors.glassBorder : const Color(0x10000000),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'EFFORT',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: themeColors.textTertiary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.bolt_rounded,
+                                              size: 13,
+                                              color: themeColors.textSecondary,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                            const SizedBox(width: 2),
+                                            Expanded(
+                                              child: Text(
+                                                '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)}',
+                                                style: RythemTypography.labelSmall.copyWith(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: themeColors.textPrimary,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
                     const SizedBox(height: 14),
 
                     // "Up Next" Topic Highlight (Direct Resource Launch)
-                    if (nextPendingBeat != null)
+                    if (nextPendingBeat != null && !_currentRoadmap.isOpenLab)
                       GestureDetector(
                         onTap: () {
                           if (nextPendingBeat.sourceUrl?.isNotEmpty == true) {
@@ -1252,7 +1259,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'SYLLABUS & TOPIC FLOW',
+                          _currentRoadmap.isOpenLab ? 'ACTIVITY LOG' : 'SYLLABUS',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontWeight: FontWeight.w700,
@@ -1260,7 +1267,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                         ),
                         Text(
-                          '${_currentChapters.length} Chapters • $totalCount Topics',
+                          _currentRoadmap.isOpenLab
+                              ? '$totalCount logged'
+                              : '${_currentChapters.length} ch • $totalCount topics',
                           style: RythemTypography.labelSmall.copyWith(
                             color: themeColors.textTertiary,
                             fontSize: 10,
@@ -1276,7 +1285,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                         padding: const EdgeInsets.all(28),
                         child: Center(
                           child: Text(
-                            'No topics found in this track.\nAttach a YouTube resource or import a syllabus outline.',
+                            'No topics yet',
                             style: RythemTypography.bodySmall.copyWith(
                               color: themeColors.textTertiary,
                             ),

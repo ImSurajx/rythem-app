@@ -561,7 +561,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'No Flag Notes Yet',
+                'No Flags',
                 style: RythemTypography.titleMedium.copyWith(
                   color: themeColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -570,7 +570,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'When studying in Flow or Explore, tap the flag icon on any beat to record checkpoints, questions, or practice reflections.\n\nAll your reflections will gather here for easy review and revision.',
+                'Flag beats while studying to record reflections for revision.',
                 textAlign: TextAlign.center,
                 style: RythemTypography.bodySmall.copyWith(
                   color: themeColors.textTertiary,
@@ -910,7 +910,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 Icon(Icons.edit_note_rounded, size: 14, color: emeraldAccent),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'PRACTICE & REFLECTION NOTES',
+                                  'NOTES',
                                   style: TextStyle(
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w800,
@@ -1178,7 +1178,9 @@ class _RoadmapExploreCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts',
+                      roadmap.isOpenLab
+                          ? '${completedEffort.toStringAsFixed(1)} pts'
+                          : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -1186,7 +1188,9 @@ class _RoadmapExploreCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      ' • $completedBeats/$totalBeats topics',
+                      roadmap.isOpenLab
+                          ? ' • $completedBeats logged'
+                          : ' • $completedBeats/$totalBeats topics',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textSecondary,
                         fontSize: 11,
@@ -1194,20 +1198,23 @@ class _RoadmapExploreCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                Text(
-                  '${(progressRatio * 100).toInt()}%',
-                  style: RythemTypography.labelSmall.copyWith(
-                    color: themeColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+                if (!roadmap.isOpenLab)
+                  Text(
+                    '${(progressRatio * 100).toInt()}%',
+                    style: RythemTypography.labelSmall.copyWith(
+                      color: themeColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
-            GlassProgressBar(
-              progress: progressRatio,
-              height: 5,
-            ),
+            if (!roadmap.isOpenLab) ...[
+              const SizedBox(height: 8),
+              GlassProgressBar(
+                progress: progressRatio,
+                height: 5,
+              ),
+            ],
           ],
         ),
       );
@@ -1243,7 +1250,7 @@ class _EmptyExploreState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              isSearching ? 'No Matching Tracks' : 'No Roadmaps Stored',
+              isSearching ? 'No tracks found' : 'No tracks',
               style: RythemTypography.titleMedium.copyWith(
                 color: themeColors.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -1252,8 +1259,8 @@ class _EmptyExploreState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               isSearching
-                  ? 'No curriculum found matching "$searchQuery". Try another keyword or create a new track.'
-                  : 'Your curriculum catalog is empty. Create your first track to begin learning.',
+                  ? 'Try another keyword or add a track.'
+                  : 'Add a track to start.',
               style: RythemTypography.bodySmall.copyWith(
                 color: themeColors.textTertiary,
                 height: 1.4,
@@ -1262,7 +1269,7 @@ class _EmptyExploreState extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             GlassButton(
-              label: 'Create New Track',
+              label: 'Create Track',
               icon: Icons.add_rounded,
               height: 48,
               variant: GlassButtonVariant.primary,
