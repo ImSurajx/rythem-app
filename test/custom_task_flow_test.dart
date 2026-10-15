@@ -82,6 +82,13 @@ void main() {
               FOREIGN KEY (${BeatLogColumns.roadmapId}) REFERENCES ${DatabaseTables.roadmaps} (${RoadmapColumns.id}) ON DELETE CASCADE
             );
           ''');
+          batch.execute('''
+            CREATE TABLE ${DatabaseTables.appSettings} (
+              ${AppSettingsColumns.key} TEXT PRIMARY KEY,
+              ${AppSettingsColumns.value} TEXT NOT NULL,
+              ${AppSettingsColumns.updatedAt} TEXT NOT NULL
+            );
+          ''');
           await batch.commit(noResult: true);
         },
       ),
@@ -320,27 +327,29 @@ void main() {
       expect(find.text('System Design Track'), findsOneWidget);
       expect(find.text('CATEGORY'), findsOneWidget);
       expect(find.text('TASK TITLE / TOPIC'), findsOneWidget);
-      expect(find.text('EFFORT POINTS'), findsOneWidget);
+      expect(find.text('DURATION / TIME'), findsOneWidget);
 
       // Select category 'Practice'
       await tester.tap(find.text('Practice'));
       await tester.pump();
 
-      // Select preset effort 0.5 pts
-      await tester.tap(find.text('0.5 pts'));
+      // Select preset 30m (30 min / 10 = 3.0 effort points)
+      await tester.tap(find.text('30m'));
       await tester.pump();
-      expect(find.text('⚡ 0.5 pts'), findsOneWidget);
+      expect(find.text('30 min • ⚡ 3.0 pts'), findsOneWidget);
 
       // Enter task title
       await tester.enterText(find.byType(TextField).first, 'Revise Distributed Caching');
       await tester.pump();
 
       // Submit
+      await tester.ensureVisible(find.text('Add to Focus 🎯'));
       await tester.tap(find.text('Add to Focus 🎯'));
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 11));
 
       expect(createdTitle, 'Revise Distributed Caching');
-      expect(createdEffort, 0.5);
+      expect(createdEffort, 3.0);
       expect(createdUrl, isNull);
       expect(createdCategory, 'Practice');
     });
@@ -404,6 +413,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      await tester.drag(find.byType(FlowScreen), const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('Pull Next Topic'), findsOneWidget);
       expect(find.text('Custom Task'), findsOneWidget);
 
@@ -416,10 +427,121 @@ void main() {
 
       await tester.enterText(find.byType(TextField).first, 'Flexbox Froggy');
       await tester.pump();
+      await tester.ensureVisible(find.text('Add to Focus 🎯'));
       await tester.tap(find.text('Add to Focus 🎯'));
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 11));
       expect(customCalled, isTrue);
       expect(customCat, 'Revision'); // default category
+    });
+
+    testWidgets('Open Lab renders only single prominent Log Task / Project button without Pull Next Topic', (tester) async {
+      final now = DateTime.now();
+      final openLabRoadmap = RoadmapEntity(
+        id: RoadmapEntity.openLabId,
+        title: 'Open Lab',
+        description: 'Universal workspace for personal projects and unguided practice',
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(openLabRoadmap.isOpenLab, isTrue);
+
+      final openLabChapter = ChapterEntity(
+        id: ChapterEntity.openLabChapterId,
+        roadmapId: RoadmapEntity.openLabId,
+        title: 'Activity Log',
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      bool customCalled = false;
+      String? customTitle;
+      double? customEffort;
+      String? customCategory;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: FlowScreen(
+              activeRoadmap: openLabRoadmap,
+              allRoadmaps: [openLabRoadmap],
+              chapters: [openLabChapter],
+              allBeats: const [],
+              pacingBudget: null,
+              streakDays: 5,
+              onSwitchRoadmap: () {},
+              onBeatToggled: (_, __) async {},
+              onPullNextTopic: (_) {},
+              onCreateCustomTask: (rm, title, effort, url, category) {
+                customCalled = true;
+                customTitle = title;
+                customEffort = effort;
+                customCategory = category;
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(FlowScreen), const Offset(0, -300));
+      await tester.pumpAndSettle();
+
+      // Open Lab header and empty state
+      expect(find.text('OPEN LAB'), findsOneWidget);
+      expect(find.text('No active task. Tap below to log your work & keep your streak!'), findsOneWidget);
+
+      // Verify "Pull Next Topic" is NOT present, only single button is present
+      expect(find.text('Pull Next Topic'), findsNothing);
+      expect(find.text('⚡ Log Task / Project'), findsOneWidget);
+
+      // Tap button to open Open Lab dialog
+      await tester.tap(find.text('⚡ Log Task / Project'));
+      await tester.pumpAndSettle();
+
+      // Verify Open Lab dialog styling and title
+      expect(find.text('Log Task / Project'), findsOneWidget);
+      expect(find.text('Open Lab • Universal Workspace'), findsOneWidget);
+      expect(find.text('Log in Open Lab 🧪'), findsOneWidget);
+
+      // Select preset 1h (1 hour -> 6 effort points)
+      await tester.tap(find.text('1h'));
+      await tester.pump();
+      expect(find.text('1 hr • ⚡ 6.0 pts'), findsOneWidget);
+
+      // Add a dynamic category: "Open Source"
+      await tester.tap(find.text('+ Add Category'));
+      await tester.pumpAndSettle();
+
+      final categoryField = find.byWidgetPredicate(
+        (w) => w is TextField && (w.decoration?.hintText?.contains('Anatomy') ?? false),
+      );
+      await tester.enterText(categoryField, 'Open Source');
+      await tester.tap(find.byIcon(Icons.check_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Open Source'), findsOneWidget);
+
+      // Enter task title
+      final titleField = find.byWidgetPredicate(
+        (w) => w is TextField && (w.decoration?.hintText?.contains('Robbins') ?? false),
+      );
+      await tester.enterText(titleField, 'PR to Flutter repository');
+      await tester.pump();
+
+      // Submit
+      await tester.ensureVisible(find.text('Log in Open Lab 🧪'));
+      await tester.tap(find.text('Log in Open Lab 🧪'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 11));
+
+      expect(customCalled, isTrue);
+      expect(customTitle, 'PR to Flutter repository');
+      expect(customEffort, 6.0);
+      expect(customCategory, 'Open Source');
     });
   });
 

@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../database_event_bus.dart';
 import '../database_service.dart';
+import '../models/chapter_entity.dart';
 import '../models/roadmap_entity.dart';
 import '../tables.dart';
 
@@ -221,5 +222,46 @@ class RoadmapRepository {
       completedEffort: (row['completed_effort'] as num?)?.toDouble() ?? 0.0,
       totalEffort: (row['total_effort'] as num?)?.toDouble() ?? 0.0,
     );
+  }
+
+  Future<RoadmapEntity> ensureOpenLabRoadmapExists() async {
+    final existing = await getRoadmapById(RoadmapEntity.openLabId);
+    if (existing != null) {
+      return existing;
+    }
+    final now = DateTime.now();
+    final openLab = RoadmapEntity(
+      id: RoadmapEntity.openLabId,
+      title: 'Open Lab',
+      description: 'Freeform workspace for self-directed projects, practice, and personal study.',
+      status: 'active',
+      isPrimary: false,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await createRoadmap(openLab);
+
+    final db = await _db;
+    final chResults = await db.query(
+      DatabaseTables.chapters,
+      where: '${ChapterColumns.id} = ?',
+      whereArgs: [ChapterEntity.openLabChapterId],
+      limit: 1,
+    );
+    if (chResults.isEmpty) {
+      await db.insert(
+        DatabaseTables.chapters,
+        {
+          ChapterColumns.id: ChapterEntity.openLabChapterId,
+          ChapterColumns.roadmapId: RoadmapEntity.openLabId,
+          ChapterColumns.title: 'Activity Log',
+          ChapterColumns.sortOrder: 0,
+          ChapterColumns.createdAt: now.toIso8601String(),
+          ChapterColumns.updatedAt: now.toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    return openLab;
   }
 }

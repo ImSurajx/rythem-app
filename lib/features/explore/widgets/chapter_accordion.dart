@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
+import 'package:rythem_app/core/database/models/roadmap_entity.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/utils/resource_launcher.dart';
@@ -49,6 +50,7 @@ class ChapterAccordion extends StatefulWidget {
 class _ChapterAccordionState extends State<ChapterAccordion>
     with SingleTickerProviderStateMixin {
   late bool _isExpanded;
+  String? _selectedCategoryFilter;
 
   @override
   void initState() {
@@ -278,17 +280,35 @@ class _ChapterAccordionState extends State<ChapterAccordion>
   }
 
   Widget _buildCategorizedBeatsList(RythemColorTokens themeColors, bool isDark) {
+    final isOpenLabChapter = widget.chapter.roadmapId == RoadmapEntity.openLabId ||
+        widget.chapter.id == ChapterEntity.openLabChapterId;
+
+    // Collect category counts for Open Lab
+    final categoryCounts = <String, int>{};
+    for (final beat in widget.beats) {
+      final cat = beat.customTaskCategory.isNotEmpty ? beat.customTaskCategory : 'General';
+      categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+    }
+
     // 1. Separate regular video beats from uncovered syllabus gaps
     final List<BeatEntity> videoBeats = [];
     final List<BeatEntity> gapBeats = [];
 
     // Ensure incoming beats are strictly sorted by sortOrder
-    final sortedBeats = List<BeatEntity>.from(widget.beats)
+    var sortedBeats = List<BeatEntity>.from(widget.beats)
       ..sort((a, b) {
         final cmp = a.sortOrder.compareTo(b.sortOrder);
         if (cmp != 0) return cmp;
         return a.createdAt.compareTo(b.createdAt);
       });
+
+    // If Open Lab filter is active, filter beats
+    if (isOpenLabChapter && _selectedCategoryFilter != null) {
+      sortedBeats = sortedBeats.where((b) {
+        final cat = b.customTaskCategory.isNotEmpty ? b.customTaskCategory : 'General';
+        return cat.toLowerCase() == _selectedCategoryFilter!.toLowerCase();
+      }).toList();
+    }
 
     for (final beat in sortedBeats) {
       final isGap = beat.id.contains('_gap_') ||
@@ -298,6 +318,92 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       } else {
         videoBeats.add(beat);
       }
+    }
+
+    // Build category filter bar for Open Lab
+    Widget? openLabFilterBar;
+    if (isOpenLabChapter && categoryCounts.isNotEmpty) {
+      final categories = ['All', ...categoryCounts.keys];
+      openLabFilterBar = Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: categories.map((cat) {
+              final isAll = cat == 'All';
+              final isSelected = isAll
+                  ? (_selectedCategoryFilter == null)
+                  : (_selectedCategoryFilter?.toLowerCase() == cat.toLowerCase());
+              final count = isAll ? widget.beats.length : (categoryCounts[cat] ?? 0);
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedCategoryFilter = isAll ? null : cat;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDark ? const Color(0xFF6366F1).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.18))
+                          : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04)),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1))
+                            : (isDark ? Colors.white12 : Colors.black12),
+                        width: isSelected ? 1.0 : 0.6,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cat,
+                          style: RythemTypography.labelSmall.copyWith(
+                            color: isSelected
+                                ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                : themeColors.textSecondary,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? (isDark ? const Color(0xFF818CF8).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.15))
+                                : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: isSelected
+                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                  : themeColors.textTertiary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      );
     }
 
     // 2. Group video beats into contiguous chronological milestones
@@ -319,12 +425,32 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
     // If there is only 1 flat milestone and no gaps, render flat list
     if (milestoneSections.length <= 1 && gapBeats.isEmpty) {
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: sortedBeats.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 6),
-        itemBuilder: (context, index) => _buildBeatItem(sortedBeats[index], themeColors, isDark),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (openLabFilterBar != null) openLabFilterBar,
+          if (sortedBeats.isEmpty && isOpenLabChapter)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text(
+                  'No tasks in "$_selectedCategoryFilter".',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textTertiary,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: sortedBeats.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              itemBuilder: (context, index) => _buildBeatItem(sortedBeats[index], themeColors, isDark),
+            ),
+        ],
       );
     }
 
@@ -401,7 +527,10 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: sections,
+      children: [
+        if (openLabFilterBar != null) openLabFilterBar,
+        ...sections,
+      ],
     );
   }
 
@@ -873,6 +1002,31 @@ class BeatTile extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            if (beat.isCustomTask) ...[
+                              const SizedBox(width: 5),
+                              Text(
+                                '•',
+                                style: TextStyle(color: themeColors.textTertiary, fontSize: 9),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                () {
+                                  final totalMins = (beat.effortWeight * 10).round();
+                                  if (totalMins < 60) {
+                                    return '${totalMins}m';
+                                  } else {
+                                    final hrs = totalMins ~/ 60;
+                                    final rem = totalMins % 60;
+                                    return rem > 0 ? '${hrs}h ${rem}m' : '${hrs}h';
+                                  }
+                                }(),
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: themeColors.textTertiary,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],

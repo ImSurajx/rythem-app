@@ -8,6 +8,8 @@ class ChapterEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  static const String openLabChapterId = 'chapter_open_lab_activity';
+
   const ChapterEntity({
     required this.id,
     required this.roadmapId,

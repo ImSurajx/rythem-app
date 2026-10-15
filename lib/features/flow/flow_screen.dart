@@ -575,6 +575,39 @@ class _TrackTodoListCard extends StatelessWidget {
                       Expanded(
                         child: Row(
                           children: [
+                            if (roadmap.isOpenLab)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0x33F59E0B) : const Color(0x20D97706),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0x80F59E0B) : const Color(0x60D97706),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.science_rounded,
+                                      size: 11,
+                                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'OPEN LAB',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             Expanded(
                               child: Text(
                                 roadmap.title,
@@ -618,7 +651,9 @@ class _TrackTodoListCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
+                              roadmap.isOpenLab
+                                  ? '${completedEffort.toStringAsFixed(1)} pts'
+                                  : '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: themeColors.textPrimary,
                                 fontSize: 10,
@@ -627,7 +662,9 @@ class _TrackTodoListCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '($completedCount/$totalCount)',
+                              roadmap.isOpenLab
+                                  ? '($completedCount logged)'
+                                  : '($completedCount/$totalCount)',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: themeColors.textSecondary,
                                 fontSize: 9.5,
@@ -678,7 +715,7 @@ class _TrackTodoListCard extends StatelessWidget {
           ),
 
           // Actionable Focus Beats (Flow Focus)
-          if (allBeats.isEmpty)
+          if (allBeats.isEmpty && !roadmap.isOpenLab)
             Padding(
               padding: const EdgeInsets.all(20),
               child: Center(
@@ -908,11 +945,14 @@ class _TrackTodoListCard extends StatelessWidget {
                             child: Text(
                               isAllTrackCompleted
                                   ? 'All topics completed!'
-                                  : 'No active topic in focus right now.',
+                                  : (roadmap.isOpenLab
+                                      ? 'No active task. Tap below to log your work & keep your streak!'
+                                      : 'No active topic in focus right now.'),
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                                 fontSize: 12,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
@@ -945,9 +985,11 @@ class _TrackTodoListCard extends StatelessWidget {
                                 child: Text(
                                   (beatProgressMap[activeBeat.id] ?? 0) > 0
                                       ? 'Current topic at ${beatProgressMap[activeBeat.id]}% • Complete 100% to unlock next'
-                                      : (activeBeat.isCustomTask
-                                          ? 'Custom task in focus • Complete or discard to unlock next'
-                                          : 'Complete current topic to unlock next'),
+                                      : (roadmap.isOpenLab
+                                          ? 'Task in focus • Complete or discard to log next'
+                                          : (activeBeat.isCustomTask
+                                              ? 'Custom task in focus • Complete or discard to unlock next'
+                                              : 'Complete current topic to unlock next')),
                                   style: RythemTypography.labelSmall.copyWith(
                                     color: themeColors.textTertiary.withOpacity(0.7),
                                     fontWeight: FontWeight.w500,
@@ -959,6 +1001,51 @@ class _TrackTodoListCard extends StatelessWidget {
                             ],
                           ),
                         )
+                      else if (roadmap.isOpenLab) ...[
+                        if (onCreateCustomTask != null)
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: onCreateCustomTask,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF6366F1).withOpacity(0.15)
+                                      : const Color(0xFF6366F1).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF818CF8).withOpacity(0.4)
+                                        : const Color(0xFF6366F1).withOpacity(0.35),
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_task_rounded,
+                                      size: 16,
+                                      color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '⚡ Log Task / Project',
+                                      style: RythemTypography.button.copyWith(
+                                        color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ]
                       else if (isAllTrackCompleted) ...[
                         Container(
                           width: double.infinity,

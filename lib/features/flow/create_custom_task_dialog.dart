@@ -1,14 +1,16 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rythem_app/core/database/models/roadmap_entity.dart';
+import 'package:rythem_app/core/database/repositories/app_settings_repository.dart';
 import 'package:rythem_app/core/theme/colors.dart';
 import 'package:rythem_app/core/theme/typography.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/smooth_dialog.dart';
 
-/// Modal dialog allowing users to create a custom study/revision task
-/// for a specific roadmap tracker.
+/// Modal dialog allowing users to create a custom study/revision/project task
+/// for a specific roadmap tracker or the Open Lab tracker.
 class CreateCustomTaskDialog extends StatefulWidget {
   final RoadmapEntity roadmap;
   final void Function(String title, double effortWeight, String? sourceUrl, String category) onTaskCreated;
@@ -39,21 +41,19 @@ class CreateCustomTaskDialog extends StatefulWidget {
 }
 
 class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
+  final _appSettingsRepo = AppSettingsRepository();
   late final TextEditingController _titleController;
   late final TextEditingController _urlController;
-  late final TextEditingController _effortController;
+  late final TextEditingController _hoursController;
+  late final TextEditingController _newCategoryController;
 
+  List<String> _categories = List.from(AppSettingsRepository.defaultStarterCategories);
   String _selectedCategory = 'Revision';
-  final List<String> _presetCategories = [
-    'Revision',
-    'Practice',
-    'Deep Dive',
-    'Side Project',
-    'General',
-  ];
+  bool _isAddingCategory = false;
 
-  double _selectedEffort = 1.0;
-  final List<double> _presetEfforts = [0.5, 1.0, 1.5, 2.0, 3.0];
+  // Selected duration in hours: default 1.0 hr (60m -> 6.0 pts)
+  double _selectedHours = 1.0;
+  final List<double> _presetHours = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0];
   String? _errorText;
 
   @override
@@ -61,30 +61,91 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
     super.initState();
     _titleController = TextEditingController();
     _urlController = TextEditingController();
-    _effortController = TextEditingController(text: '1.0');
+    _hoursController = TextEditingController(text: '1.0');
+    _newCategoryController = TextEditingController();
+    _loadSavedCategories();
+  }
+
+  Future<void> _loadSavedCategories() async {
+    try {
+      final saved = await _appSettingsRepo.getCustomTaskCategories();
+      if (mounted && saved.isNotEmpty) {
+        setState(() {
+          _categories = saved;
+          if (!_categories.contains(_selectedCategory)) {
+            _selectedCategory = _categories.first;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _urlController.dispose();
-    _effortController.dispose();
+    _hoursController.dispose();
+    _newCategoryController.dispose();
     super.dispose();
   }
 
-  void _selectPresetEffort(double value) {
+  String _formatDurationReadable(double hours) {
+    final totalMinutes = (hours * 60).round();
+    if (totalMinutes < 60) {
+      return '$totalMinutes min';
+    }
+    final h = totalMinutes ~/ 60;
+    final m = totalMinutes % 60;
+    return m > 0 ? '${h}h ${m}m' : '$h hr${h > 1 ? 's' : ''}';
+  }
+
+  String _formatPresetChip(double hours) {
+    final totalMinutes = (hours * 60).round();
+    if (totalMinutes < 60) {
+      return '${totalMinutes}m';
+    }
+    final h = totalMinutes / 60.0;
+    if (h == h.roundToDouble()) {
+      return '${h.toInt()}h';
+    }
+    return '${h.toStringAsFixed(1)}h';
+  }
+
+  void _selectPresetHours(double value) {
     HapticFeedback.selectionClick();
     setState(() {
-      _selectedEffort = value;
-      _effortController.text = value.toStringAsFixed(1);
+      _selectedHours = value;
+      _hoursController.text = value.toStringAsFixed(value == value.roundToDouble() ? 1 : 2);
     });
   }
 
-  void _onCustomEffortChanged(String value) {
+  void _onCustomHoursChanged(String value) {
     final parsed = double.tryParse(value.trim());
     if (parsed != null && parsed > 0) {
       setState(() {
-        _selectedEffort = parsed;
+        _selectedHours = parsed;
+      });
+    }
+  }
+
+  Future<void> _handleAddCustomCategory() async {
+    final newCat = _newCategoryController.text.trim();
+    if (newCat.isNotEmpty) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        if (!_categories.any((c) => c.toLowerCase() == newCat.toLowerCase())) {
+          _categories.add(newCat);
+        }
+        _selectedCategory = newCat;
+        _isAddingCategory = false;
+        _newCategoryController.clear();
+      });
+      try {
+        await _appSettingsRepo.saveCustomTaskCategory(newCat);
+      } catch (_) {}
+    } else {
+      setState(() {
+        _isAddingCategory = false;
       });
     }
   }
@@ -98,18 +159,33 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
       return;
     }
 
-    final parsedEffort = double.tryParse(_effortController.text.trim()) ?? _selectedEffort;
-    final finalEffort = parsedEffort > 0 ? parsedEffort : 1.0;
+    final parsedHours = double.tryParse(_hoursController.text.trim()) ?? _selectedHours;
+    final finalHours = parsedHours > 0 ? parsedHours : 1.0;
+    // 10 min = 1 effort point -> 1 hour = 6 effort points
+    final calculatedEffort = (finalHours * 6.0).clamp(0.5, 60.0);
     final url = _urlController.text.trim();
 
     HapticFeedback.mediumImpact();
     Navigator.of(context).pop();
     widget.onTaskCreated(
       title,
-      finalEffort,
+      calculatedEffort,
       url.isNotEmpty ? url : null,
       _selectedCategory,
     );
+
+    unawaited(_appSettingsRepo.saveCustomTaskCategory(_selectedCategory));
+  }
+
+  IconData _getCategoryIcon(String cat) {
+    final lower = cat.toLowerCase();
+    if (lower.contains('revision') || lower.contains('review')) return Icons.repeat_rounded;
+    if (lower.contains('practice') || lower.contains('exercise') || lower.contains('problem')) return Icons.code_rounded;
+    if (lower.contains('read') || lower.contains('book') || lower.contains('paper')) return Icons.menu_book_rounded;
+    if (lower.contains('project') || lower.contains('build') || lower.contains('app')) return Icons.rocket_launch_rounded;
+    if (lower.contains('deep') || lower.contains('research')) return Icons.biotech_rounded;
+    if (lower.contains('open') || lower.contains('source')) return Icons.public_rounded;
+    return Icons.bookmark_border_rounded;
   }
 
   @override
@@ -117,6 +193,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final themeColors = isDark ? RythemColors.dark : RythemColors.light;
+    final calculatedEffort = (_selectedHours * 6.0).clamp(0.5, 60.0);
 
     return Center(
       child: Container(
@@ -166,7 +243,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
-                                  Icons.add_task_rounded,
+                                  widget.roadmap.isOpenLab ? Icons.science_rounded : Icons.add_task_rounded,
                                   size: 18,
                                   color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                                 ),
@@ -176,7 +253,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Create Custom Task',
+                                    widget.roadmap.isOpenLab ? 'Log Task / Project' : 'Create Custom Task',
                                     style: RythemTypography.titleMedium.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w700,
@@ -184,7 +261,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                     ),
                                   ),
                                   Text(
-                                    widget.roadmap.title,
+                                    widget.roadmap.isOpenLab ? 'Open Lab • Universal Workspace' : widget.roadmap.title,
                                     style: RythemTypography.labelSmall.copyWith(
                                       color: themeColors.textSecondary,
                                       fontSize: 11,
@@ -209,83 +286,187 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                       ),
                       const SizedBox(height: 18),
 
-                      // Category Selector
-                      Text(
-                        'CATEGORY',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textTertiary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
+                      // Category Selector with Dynamic Memory & Custom Creator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'CATEGORY',
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          if (!_isAddingCategory)
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _isAddingCategory = true);
+                              },
+                              child: Text(
+                                '+ Add Category',
+                                style: RythemTypography.labelSmall.copyWith(
+                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 7),
+
+                      // If adding custom category, show inline textfield
+                      if (_isAddingCategory) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _newCategoryController,
+                                autofocus: true,
+                                style: RythemTypography.bodySmall.copyWith(
+                                  color: themeColors.textPrimary,
+                                  fontSize: 12,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. Anatomy, Torts, Open Source, Calculus',
+                                  hintStyle: RythemTypography.bodySmall.copyWith(
+                                    color: themeColors.textTertiary.withOpacity(0.6),
+                                    fontSize: 11,
+                                  ),
+                                  isDense: true,
+                                  filled: true,
+                                  fillColor: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                                    ),
+                                  ),
+                                ),
+                                onSubmitted: (_) => _handleAddCustomCategory(),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              onPressed: _handleAddCustomCategory,
+                              icon: const Icon(Icons.check_rounded, size: 16),
+                              color: const Color(0xFF10B981),
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            ),
+                            IconButton(
+                              onPressed: () => setState(() => _isAddingCategory = false),
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              color: themeColors.textTertiary,
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+
+                      // Scrollable category chips
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: _presetCategories.map((cat) {
-                            final isSelected = _selectedCategory == cat;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: InkWell(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  setState(() => _selectedCategory = cat);
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? (isDark
-                                            ? const Color(0xFFF59E0B).withOpacity(0.2)
-                                            : const Color(0xFFD97706).withOpacity(0.12))
-                                        : (isDark
-                                            ? Colors.white.withOpacity(0.04)
-                                            : Colors.black.withOpacity(0.03)),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
+                          children: [
+                            ..._categories.map((cat) {
+                              final isSelected = _selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _selectedCategory = cat);
+                                  },
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
                                       color: isSelected
-                                          ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
-                                          : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
-                                      width: isSelected ? 1.2 : 0.8,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        cat == 'Revision'
-                                            ? Icons.repeat_rounded
-                                            : cat == 'Practice'
-                                                ? Icons.code_rounded
-                                                : cat == 'Deep Dive'
-                                                    ? Icons.menu_book_rounded
-                                                    : cat == 'Side Project'
-                                                        ? Icons.rocket_launch_rounded
-                                                        : Icons.task_alt_rounded,
-                                        size: 11,
+                                          ? (isDark
+                                              ? const Color(0xFFF59E0B).withOpacity(0.2)
+                                              : const Color(0xFFD97706).withOpacity(0.12))
+                                          : (isDark
+                                              ? Colors.white.withOpacity(0.04)
+                                              : Colors.black.withOpacity(0.03)),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
                                         color: isSelected
                                             ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
-                                            : themeColors.textSecondary,
+                                            : (isDark ? themeColors.glassBorder : const Color(0x18000000)),
+                                        width: isSelected ? 1.2 : 0.8,
                                       ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        cat,
-                                        style: RythemTypography.labelSmall.copyWith(
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _getCategoryIcon(cat),
+                                          size: 11,
                                           color: isSelected
                                               ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
                                               : themeColors.textSecondary,
-                                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                          fontSize: 11,
                                         ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          cat,
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            color: isSelected
+                                                ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                                                : themeColors.textSecondary,
+                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                            if (!_isAddingCategory)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: InkWell(
+                                  onTap: () => setState(() => _isAddingCategory = true),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                                        width: 0.8,
+                                        style: BorderStyle.solid,
                                       ),
-                                    ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.add_rounded, size: 12, color: themeColors.textTertiary),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          'Custom',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: themeColors.textTertiary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -309,7 +490,9 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                           fontSize: 13,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'e.g. Revision: Dynamic Programming, solve 5 problems',
+                          hintText: widget.roadmap.isOpenLab
+                              ? 'e.g. Robbins Pathology Ch. 4 review, Flutter bugfix #42'
+                              : 'e.g. Revision: Dynamic Programming, solve 5 problems',
                           hintStyle: RythemTypography.bodySmall.copyWith(
                             color: themeColors.textTertiary.withOpacity(0.6),
                             fontSize: 12,
@@ -345,44 +528,68 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Input 2: Effort Points
+                      // Input 2: Time / Duration (with Hours/Minutes and Live Effort Points preview)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'EFFORT POINTS',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textTertiary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.8,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  'DURATION / TIME',
+                                  style: RythemTypography.labelSmall.copyWith(
+                                    color: themeColors.textTertiary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '(10m = ⚡ 1pt)',
+                                    style: RythemTypography.bodySmall.copyWith(
+                                      color: themeColors.textTertiary.withOpacity(0.6),
+                                      fontSize: 9.5,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            '⚡ ${_selectedEffort.toStringAsFixed(1)} pts',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706)).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${_formatDurationReadable(_selectedHours)} • ⚡ ${calculatedEffort.toStringAsFixed(1)} pts',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
 
-                      // Preset chips row + custom field
+                      // Preset duration chips row + custom hours field
                       Row(
                         children: [
                           Expanded(
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Row(
-                                children: _presetEfforts.map((effort) {
-                                  final isSelected = (_selectedEffort - effort).abs() < 0.05;
+                                children: _presetHours.map((hours) {
+                                  final isSelected = (_selectedHours - hours).abs() < 0.05;
                                   return Padding(
                                     padding: const EdgeInsets.only(right: 6),
                                     child: InkWell(
-                                      onTap: () => _selectPresetEffort(effort),
+                                      onTap: () => _selectPresetHours(hours),
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -403,7 +610,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                           ),
                                         ),
                                         child: Text(
-                                          '${effort.toStringAsFixed(1)} pts',
+                                          _formatPresetChip(hours),
                                           style: RythemTypography.labelSmall.copyWith(
                                             color: isSelected ? themeColors.textPrimary : themeColors.textSecondary,
                                             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -419,10 +626,10 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                           ),
                           const SizedBox(width: 6),
                           SizedBox(
-                            width: 64,
+                            width: 68,
                             height: 34,
                             child: TextField(
-                              controller: _effortController,
+                              controller: _hoursController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               textAlign: TextAlign.center,
                               style: RythemTypography.labelSmall.copyWith(
@@ -431,7 +638,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                 fontSize: 11,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'pts',
+                                hintText: 'hours',
                                 filled: true,
                                 fillColor: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
                                 contentPadding: EdgeInsets.zero,
@@ -448,7 +655,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                   ),
                                 ),
                               ),
-                              onChanged: _onCustomEffortChanged,
+                              onChanged: _onCustomHoursChanged,
                             ),
                           ),
                         ],
@@ -519,7 +726,9 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'When completed, this task permanently appends to your tracker right after your last completed topic and counts toward your daily study streak.',
+                                widget.roadmap.isOpenLab
+                                    ? 'Tasks in Open Lab log directly into your Activity Log and credit towards your daily study streak.'
+                                    : 'When completed, this task permanently appends to your tracker right after your last completed topic and counts toward your daily study streak.',
                                 style: RythemTypography.bodySmall.copyWith(
                                   color: themeColors.textTertiary,
                                   fontSize: 10.5,
@@ -545,7 +754,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: GlassButton(
-                              label: 'Add to Focus 🎯',
+                              label: widget.roadmap.isOpenLab ? 'Log in Open Lab 🧪' : 'Add to Focus 🎯',
                               variant: GlassButtonVariant.primary,
                               onPressed: _handleSave,
                             ),

@@ -602,9 +602,14 @@ class _DesignSystemShowcaseScreenState
       unawaited(_modelDownloadManager.resumePendingDownload().then((_) {
         if (mounted) _loadModelStatus();
       }));
+      await _roadmapRepo.ensureOpenLabRoadmapExists();
       final active = await _roadmapRepo.getActiveRoadmaps();
       if (active.isNotEmpty) {
-        _roadmapId = active.first.id;
+        final preferred = active.firstWhere(
+          (r) => !r.isOpenLab,
+          orElse: () => active.first,
+        );
+        _roadmapId = preferred.id;
       } else {
         _roadmapId = '';
       }
@@ -653,7 +658,11 @@ class _DesignSystemShowcaseScreenState
     }
 
     if (_roadmapId.isEmpty || !allRoadmaps.any((r) => r.id == _roadmapId)) {
-      _roadmapId = allRoadmaps.first.id;
+      final preferred = allRoadmaps.firstWhere(
+        (r) => !r.isOpenLab,
+        orElse: () => allRoadmaps.first,
+      );
+      _roadmapId = preferred.id;
     }
 
     // Fetch chapters, beats, and budgets for ALL roadmaps
@@ -949,12 +958,50 @@ class _DesignSystemShowcaseScreenState
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  rm.title,
-                                  style: RythemTypography.bodyLarge.copyWith(
-                                    color: themeColors.textPrimary,
-                                    fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    if (rm.isOpenLab) ...[
+                                      const Icon(
+                                        Icons.science_rounded,
+                                        size: 16,
+                                        color: Color(0xFF818CF8),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Flexible(
+                                      child: Text(
+                                        rm.title,
+                                        style: RythemTypography.bodyLarge.copyWith(
+                                          color: themeColors.textPrimary,
+                                          fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (rm.isOpenLab) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF6366F1).withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: const Color(0xFF818CF8).withOpacity(0.35),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'OPEN LAB',
+                                          style: RythemTypography.labelSmall.copyWith(
+                                            color: const Color(0xFF818CF8),
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ],
