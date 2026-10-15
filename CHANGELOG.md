@@ -1,5 +1,32 @@
 # Release
 
+## Rythem v1.1.2-preview
+
+Preview release fixing native APK package installation via Android FileProvider, removing front category chips for cleaner cards, shortening button wording, and unifying curriculum task tiles.
+
+---
+
+### ✨ Highlights & Fixes
+
+- **Native Android APK Installer Bridge**:
+  - Replaced raw URL file launch with native Android `FileProvider` (`content://`) intent and `REQUEST_INSTALL_PACKAGES` permission handling.
+  - Automatically triggers the system "Install Unknown Apps" permission prompt if required and launches the native package installer without redirecting to GitHub in the browser.
+
+- **Clean Task Tile Typography & Design**:
+  - Removed prepended orange category chips from the front of custom task cards in both Open Lab and curriculum tracks.
+  - Titles now align cleanly and consistently with standard curriculum topics.
+  - Duration and effort points remain subtly indicated in the metadata line (`⚡ 6.0 • 1h`).
+
+- **Unified Curriculum Task Tiles**:
+  - Custom tasks added to structured courses now flow inline within their parent chapter as standard task completion tiles rather than splitting into separate amber milestone category blocks.
+  - Open Lab Activity Log displays as a clean flat list filtered by top category chips.
+
+- **Streamlined UI Wording**:
+  - Flow Screen Open Lab action simplified to **`⚡ Log Task`**.
+  - Custom task creation dialog buttons shortened to **`Log Task`** (Open Lab) and **`Add Task`** (curriculum tracks).
+
+---
+
 ## Rythem v1.1.1-preview
 
 Preview release introducing the default **Open Lab** tracker for independent projects & non-syllabus learning, duration-based effort calculation (10 min = 1 effort point), and dynamically extensible task categories.

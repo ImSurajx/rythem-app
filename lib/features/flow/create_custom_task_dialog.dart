@@ -253,7 +253,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    widget.roadmap.isOpenLab ? 'Log Task / Project' : 'Create Custom Task',
+                                    widget.roadmap.isOpenLab ? 'Log Task' : 'Create Custom Task',
                                     style: RythemTypography.titleMedium.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w700,
@@ -727,8 +727,8 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                             Expanded(
                               child: Text(
                                 widget.roadmap.isOpenLab
-                                    ? 'Tasks in Open Lab log directly into your Activity Log and credit towards your daily study streak.'
-                                    : 'When completed, this task permanently appends to your tracker right after your last completed topic and counts toward your daily study streak.',
+                                    ? 'Logs into Activity Log and counts toward your daily streak.'
+                                    : 'Appends to your tracker and counts toward your daily streak.',
                                 style: RythemTypography.bodySmall.copyWith(
                                   color: themeColors.textTertiary,
                                   fontSize: 10.5,
@@ -754,7 +754,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: GlassButton(
-                              label: widget.roadmap.isOpenLab ? 'Log in Open Lab 🧪' : 'Add to Focus 🎯',
+                              label: widget.roadmap.isOpenLab ? 'Log Task' : 'Add Task',
                               variant: GlassButtonVariant.primary,
                               onPressed: _handleSave,
                             ),

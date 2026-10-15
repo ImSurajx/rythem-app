@@ -406,30 +406,13 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       );
     }
 
-    // 2. Group video beats into contiguous chronological milestones
-    final List<({String title, bool isCustom, List<BeatEntity> beats})> milestoneSections = [];
-    for (final beat in videoBeats) {
-      final String milestoneTitle;
-      if (beat.isCustomTask) {
-        final cat = beat.customTaskCategory;
-        milestoneTitle = cat.isNotEmpty ? cat : 'Personal Study & Revision';
-      } else {
-        milestoneTitle = beat.syllabusTopicId ?? 'Core Curriculum';
-      }
-      if (milestoneSections.isEmpty || milestoneSections.last.title != milestoneTitle) {
-        milestoneSections.add((title: milestoneTitle, isCustom: beat.isCustomTask, beats: [beat]));
-      } else {
-        milestoneSections.last.beats.add(beat);
-      }
-    }
-
-    // If there is only 1 flat milestone and no gaps, render flat list
-    if (milestoneSections.length <= 1 && gapBeats.isEmpty) {
+    // If this is Open Lab, render flat list with the category filter bar at top
+    if (isOpenLabChapter) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (openLabFilterBar != null) openLabFilterBar,
-          if (sortedBeats.isEmpty && isOpenLabChapter)
+          if (sortedBeats.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
@@ -454,6 +437,40 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       );
     }
 
+    // 2. Group video beats into contiguous chronological milestones for curriculum
+    final List<({String title, List<BeatEntity> beats})> milestoneSections = [];
+    for (final beat in videoBeats) {
+      final String milestoneTitle;
+      if (beat.syllabusTopicId != null && beat.syllabusTopicId!.isNotEmpty) {
+        milestoneTitle = beat.syllabusTopicId!;
+      } else if (milestoneSections.isNotEmpty) {
+        milestoneTitle = milestoneSections.last.title;
+      } else {
+        milestoneTitle = 'Core Curriculum';
+      }
+      if (milestoneSections.isEmpty || milestoneSections.last.title != milestoneTitle) {
+        milestoneSections.add((title: milestoneTitle, beats: [beat]));
+      } else {
+        milestoneSections.last.beats.add(beat);
+      }
+    }
+
+    // If there is only 1 flat milestone and no gaps, render flat list
+    if (milestoneSections.length <= 1 && gapBeats.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: sortedBeats.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            itemBuilder: (context, index) => _buildBeatItem(sortedBeats[index], themeColors, isDark),
+          ),
+        ],
+      );
+    }
+
     final sections = <Widget>[];
 
     // Render contiguous milestones in strict 1..N order
@@ -465,12 +482,10 @@ class _ChapterAccordionState extends State<ChapterAccordion>
 
       sections.add(
         _TopicGroupSection(
-          title: milestone.isCustom ? '⚡ ${milestone.title}' : milestone.title,
+          title: milestone.title,
           subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length} complete',
-          icon: milestone.isCustom ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
-          accentColor: milestone.isCustom
-              ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
-              : (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
+          icon: Icons.menu_book_rounded,
+          accentColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
           themeColors: themeColors,
           isDark: isDark,
           children: beats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),
@@ -881,45 +896,8 @@ class BeatTile extends StatelessWidget {
                           }
                           return const SizedBox.shrink();
                         }(),
-                        // Custom Task or Mentor Extra Badge
-                        if (beat.isCustomTask) ...[
-                          Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFFF59E0B).withOpacity(0.18)
-                                  : const Color(0xFFD97706).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFFFBBF24).withOpacity(0.4)
-                                    : const Color(0xFFD97706).withOpacity(0.3),
-                                width: 0.6,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.bolt_rounded,
-                                  size: 9,
-                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  beat.customTaskCategory.toUpperCase(),
-                                  style: RythemTypography.labelSmall.copyWith(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                    letterSpacing: 0.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ] else if (beat.isMentorExtra) ...[
+                        // Mentor Extra Badge
+                        if (beat.isMentorExtra) ...[
                           Container(
                             margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),

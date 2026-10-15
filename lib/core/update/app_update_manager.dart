@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -52,8 +53,9 @@ class AppUpdateInfo {
 }
 
 class AppUpdateManager {
-  static const String currentVersion = 'v1.1.1-preview';
+  static const String currentVersion = 'v1.1.2-preview';
   static const String _releasesApiUrl = 'https://api.github.com/repos/ImSurajx/rythem-app/releases/latest';
+  static const MethodChannel _platformChannel = MethodChannel('com.rythem.rythem_app/storage_permission');
 
   static AppUpdateManager? _instance;
   static AppUpdateManager get instance => _instance ??= AppUpdateManager._internal();
@@ -273,6 +275,18 @@ class AppUpdateManager {
   Future<void> installDownloadedUpdate() async {
     final apkPath = downloadedApkPathNotifier.value;
     if (apkPath != null && await File(apkPath).exists()) {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          final success = await _platformChannel.invokeMethod<bool>(
+            'installApk',
+            {'filePath': apkPath},
+          );
+          if (success == true) return;
+        } catch (e) {
+          debugPrint('Native APK installer error: $e');
+        }
+      }
+
       try {
         final uri = Uri.file(apkPath);
         final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);

@@ -343,8 +343,8 @@ void main() {
       await tester.pump();
 
       // Submit
-      await tester.ensureVisible(find.text('Add to Focus 🎯'));
-      await tester.tap(find.text('Add to Focus 🎯'));
+      await tester.ensureVisible(find.text('Add Task'));
+      await tester.tap(find.text('Add Task'));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 11));
 
@@ -427,15 +427,15 @@ void main() {
 
       await tester.enterText(find.byType(TextField).first, 'Flexbox Froggy');
       await tester.pump();
-      await tester.ensureVisible(find.text('Add to Focus 🎯'));
-      await tester.tap(find.text('Add to Focus 🎯'));
+      await tester.ensureVisible(find.text('Add Task'));
+      await tester.tap(find.text('Add Task'));
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 11));
       expect(customCalled, isTrue);
       expect(customCat, 'Revision'); // default category
     });
 
-    testWidgets('Open Lab renders only single prominent Log Task / Project button without Pull Next Topic', (tester) async {
+    testWidgets('Open Lab renders only single prominent Log Task button without Pull Next Topic', (tester) async {
       final now = DateTime.now();
       final openLabRoadmap = RoadmapEntity(
         id: RoadmapEntity.openLabId,
@@ -496,16 +496,15 @@ void main() {
 
       // Verify "Pull Next Topic" is NOT present, only single button is present
       expect(find.text('Pull Next Topic'), findsNothing);
-      expect(find.text('⚡ Log Task / Project'), findsOneWidget);
+      expect(find.text('⚡ Log Task'), findsOneWidget);
 
       // Tap button to open Open Lab dialog
-      await tester.tap(find.text('⚡ Log Task / Project'));
+      await tester.tap(find.text('⚡ Log Task'));
       await tester.pumpAndSettle();
 
-      // Verify Open Lab dialog styling and title
-      expect(find.text('Log Task / Project'), findsOneWidget);
+      // Verify Open Lab dialog styling and title (title + button)
+      expect(find.text('Log Task'), findsNWidgets(2));
       expect(find.text('Open Lab • Universal Workspace'), findsOneWidget);
-      expect(find.text('Log in Open Lab 🧪'), findsOneWidget);
 
       // Select preset 1h (1 hour -> 6 effort points)
       await tester.tap(find.text('1h'));
@@ -533,8 +532,9 @@ void main() {
       await tester.pump();
 
       // Submit
-      await tester.ensureVisible(find.text('Log in Open Lab 🧪'));
-      await tester.tap(find.text('Log in Open Lab 🧪'));
+      final submitButton = find.text('Log Task').last;
+      await tester.ensureVisible(submitButton);
+      await tester.tap(submitButton);
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 11));
 
@@ -595,6 +595,8 @@ void main() {
 
     test('AppUpdateManager semver comparison correctly identifies newer versions', () {
       expect(AppUpdateManager.isNewerVersion('v1.2.0', 'v1.1.0-Stable'), isTrue);
+      expect(AppUpdateManager.isNewerVersion('v1.1.2-preview', 'v1.1.0-Stable'), isTrue);
+      expect(AppUpdateManager.isNewerVersion('v1.1.2-preview', 'v1.1.1-preview'), isTrue);
       expect(AppUpdateManager.isNewerVersion('v2.0.0', 'v1.1.0-Stable'), isTrue);
       expect(AppUpdateManager.isNewerVersion('v1.1.1', 'v1.1.0-Stable'), isTrue);
       expect(AppUpdateManager.isNewerVersion('v1.1.0', 'v1.1.0-Stable'), isFalse);
