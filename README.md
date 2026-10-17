@@ -4,11 +4,10 @@
 ### The Local-First Learning Operating System & Milestone Pacing Tracker
 
 [![Release](https://img.shields.io/github/v/release/ImSurajx/rythem-app?color=10B981&label=Release&logo=github)](https://github.com/ImSurajx/rythem-app/releases/latest)
-[![AI Models](https://img.shields.io/badge/AI%20Models-v1.0.0--stable-blueviolet.svg)](https://github.com/ImSurajx/rythem-app/releases/tag/v1.0.0-stable)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0)
-[![Offline First](https://img.shields.io/badge/Offline-100%25%20Local-10B981)](#private-offline-ai-architecture)
+[![Offline First](https://img.shields.io/badge/Offline-100%25%20Local-10B981)](#-technical-architecture)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)](https://sqlite.org)
 
 **Beats over clocks. Milestones over stopwatches. Progress felt, not measured.**
@@ -16,8 +15,8 @@
 [Key Features](#-key-features) •
 [App Walkthrough](#-how-to-operate-the-app) •
 [Format Syllabus with GPT](#-how-to-format--import-any-syllabus-using-gpt) •
-[Screenshots](#-visual-showcase--screenshots) •
 [Architecture](#-technical-architecture) •
+[Building Locally](#-building--running-locally) •
 [Contributing](#-contributing)
 
 </div>
@@ -31,10 +30,12 @@ Traditional study trackers trap learners in anxiety: toxic countdown timers, ove
 **Rythem redesigns self-directed learning from first principles:**
 
 - ⏱️ **Zero Stopwatches**: No minute or hour counting anywhere in the UI. Work is measured in atomic **Beats** (lessons, exercises, topics).
-- 🌊 **Dynamic Pacing Dilution**: Missed a day or fell behind? Rythem never shames you. It mathematically redistributes remaining effort across your target completion date.
-- 🧘 **Evening Unlock**: Complete your daily quota and Rythem locks into a psychological rest state. Rest without guilt.
-- 🧠 **100% Private On-Device AI**: Powered by local Small Language Models (Qwen 2.5 0.5B and 1.5B GGUF) for instant concept breakdown, shortfall remediation, and active recall without sending data to the cloud.
-- 💎 **Liquid Glass Aesthetics**: Liquid monochrome frosted glass design system engineered for 60/120 FPS fluid rendering.
+- 🌊 **Dynamic Pacing Dilution**: Missed a day or fell behind? Rythem never shames you. It mathematically redistributes remaining beats across your target completion date.
+- 🎯 **User-Driven Focus**: No forced daily grind. Pull topics into your focus queue on demand, conquer them in a distraction-free focus view, and unlock evening rest without guilt.
+- 🧪 **Open Lab Sandbox**: Need to log ad-hoc tasks, practice sessions, or spontaneous explorations outside rigid curricula? The built-in Open Lab lets you log custom beats effortlessly.
+- 🚩 **Friction Flags & Study Checkpoints**: Flag confusing concepts with reflective notes, log partial progress percentages, and revisit roadblocks systematically.
+- 🧠 **100% Private On-Device AI**: Powered by local Small Language Models (Qwen 2.5 GGUF) for offline concept breakdown, shortfall remediation, and active recall without sending data to the cloud.
+- 💎 **Obsidian Liquid Glass Aesthetics**: Standardized obsidian frosted glass design system engineered for 60/120 FPS fluid rendering.
 
 ---
 
@@ -42,13 +43,17 @@ Traditional study trackers trap learners in anxiety: toxic countdown timers, ove
 
 | Feature | Description |
 | :--- | :--- |
-| **Milestone Pacing Engine** | Pure mathematical pacing that dynamically balances daily effort quotas based on your custom 7-day study rhythm (Rest, Light, Normal, Deep). |
-| **YouTube Playlist Ingestion** | One-tap extraction of YouTube playlists (from 10 to 230+ videos) with automatic clustering into structured chapters and deep-linked video timestamps. |
-| **Syllabus Outline Ingestion** | Ingest Markdown syllabi, academic curricula, or textbook tables of contents. Automatically aligns mentor videos with course topics. |
+| **Milestone Pacing Engine** | Pure mathematical pacing that dynamically balances daily beat quotas based on your custom 7-day study rhythm (Rest, Light, Normal, Deep). |
+| **User-Driven Focus Mode** | On-demand topic pull queue with sequential "In Focus" flow, live beat counters, and one-tap Complete & Advance navigation. |
+| **Open Lab Tracker** | Flexible sandbox environment to track custom study tasks, spontaneous research, and rapid logs without mutating roadmap structures. |
+| **Friction & Checkpoint Logging** | Flag confusing beats, attach friction notes, track percentage progress, and delete or resolve flags across any screen. |
+| **YouTube Playlist Ingestion** | One-tap extraction of YouTube playlists (from 10 to 230+ videos) with automatic clustering into structured chapters and video timestamps. |
+| **Syllabus Outline Ingestion** | Ingest Markdown syllabi, academic curricula, or textbook tables of contents. Automatically aligns mentor resources with topics. |
 | **"Mentor's Flow is King"** | Non-syllabus bonus topics covered by creators are preserved in-place with `Mentor Extra` badges—never deleted or tossed into orphaned bins. |
-| **Private AI Mentorship** | Offline pedagogical assistant explaining challenging concepts, diagnosing lag causes, and recommending spaced revisions. |
-| **Full Month Habit Calendar** | Interactive GitHub-style contribution heat map tracking daily beat completions with honest streak calculations. |
+| **Full Month Habit Calendar** | Interactive emerald streak heat map tracking daily completed beats with honest streak calculations and month-by-month pagination. |
 | **Stock-Market Velocity Chart** | Financial-style momentum graphs displaying daily velocity fluctuations, peak performance days, and cumulative lifetime curves. |
+| **Segregated Backup Storage** | Separate dedicated directories for automated rolling snapshots (`Rythem/Backups/snapshots/`) and user-triggered manual exports (`Rythem/Backups/manual/`). |
+| **In-App GitHub Updater** | Clean glass-styled update checker directly verifying GitHub releases with release changelog viewing and download triggers. |
 | **Air-Gapped Data Safety** | Embedded SQLite architecture with transactional cascades, foreign-key safety, and full JSON state backup and restore. |
 
 ---
@@ -65,23 +70,27 @@ Navigate to the **Explore** tab to create a track:
 - **Paste YouTube Playlist**: Enter any public YouTube playlist URL. Rythem extracts video titles and clusters them into 4–8 organized chapters.
 - **Import Syllabus Markdown**: Paste your course outline. Rythem parses chapters, topics, and milestones instantly.
 - **Resource Linking**: Tap any beat to attach documentation links, video URLs, or custom notes.
+- **Flag Friction / Confusing Beats**: Encountered an ambiguous or difficult concept? Tap the flag icon to store inline friction notes and mark topics for deeper review.
 
 ### 3. Conquering Your Daily Flow
 Navigate to the **Flow** tab:
-- **Self-Paced Learning**: Progress through your tracks freely without artificial quotas or overdue shaming.
-- **One-Tap Completion**: Tap checkmarks with tactile haptic feedback.
+- **Today's Focus Queue**: Pull the next topic into your active queue when you are ready to study.
+- **Focus Session View**: Tap any beat to enter a focused, distraction-free environment displaying the topic sequence, current beat counter, and a bottom floating action bar with **Complete & Advance**.
+- **Open Lab Sandbox**: Switch to Open Lab to log ad-hoc tasks, exercises, or side projects with `⚡ Log Task`.
+- **Celebratory Rest State**: Finishing all topics for the day transitions your focus card into a celebratory completion state with unlocked pull controls.
 
 ### 4. Analyzing Momentum & Velocity
 Navigate to the **Metrics** tab:
-- **Full Month Calendar**: Review your monthly streak heat tiles. Tap any day to inspect completed beats.
+- **Full Month Calendar**: Review your monthly emerald streak heat tiles. Tap any day to inspect completed beats and navigate through past months.
 - **7-Day Beat Rhythm**: Review bar charts showing daily completed beats over the past week.
 - **Monthly Stock Chart**: Track peaks and valleys in learning velocity.
 - **Lifetime Curve**: Watch your cumulative completed beats climb.
 
-### 5. Settings & Disaster Recovery
+### 5. Settings, Backups & Updates
 Navigate to the **Settings** tab:
 - **On-Device AI Engine**: Inspect offline models, toggle active tiers, or monitor background downloads.
-- **Unified Data Backup & Recovery**: Automated rolling daily snapshots (7-day history) alongside instant JSON file export and restoration for total data portability.
+- **Isolated Backups**: Automated rolling snapshots run in the background (saved to `Rythem/Backups/snapshots/`), while manual user backups are archived in `Rythem/Backups/manual/`.
+- **App Updates**: Check for the latest release via the GitHub API, inspect interactive release notes, and install updates with frosted glass controls.
 
 ---
 
@@ -144,22 +153,6 @@ RAW SYLLABUS:
 
 ---
 
-## 📸 Visual Showcase & Screenshots
-
-<div align="center">
-
-| Daily Flow (Mission & Rest) | Explore & Chaptering | Metrics & Habit Heatmap |
-| :---: | :---: | :---: |
-| <img src="assets/screenshots/flow_screen.png" width="260" alt="Daily Flow Screen" /> | <img src="assets/screenshots/explore_screen.png" width="260" alt="Explore Screen" /> | <img src="assets/screenshots/metrics_screen.png" width="260" alt="Metrics Screen" /> |
-
-| 7-Day Rhythm Bar Chart | Stock-Market Momentum | Settings & Weekly Schedule |
-| :---: | :---: | :---: |
-| <img src="assets/screenshots/seven_days_chart.png" width="260" alt="7-Day Rhythm Chart" /> | <img src="assets/screenshots/stock_chart.png" width="260" alt="Stock Market Momentum Chart" /> | <img src="assets/screenshots/settings_screen.png" width="260" alt="Settings Screen" /> |
-
-</div>
-
----
-
 ## 🏗️ Technical Architecture
 
 Rythem is engineered with clean layered architecture:
@@ -168,7 +161,7 @@ Rythem is engineered with clean layered architecture:
 ┌─────────────────────────────────────────────────────────────┐
 │                       PRESENTATION LAYER                    │
 │   FlowScreen  │  ExploreScreen  │  MetricsScreen  │ Settings│
-│        (Liquid Glass Design System · Repaint Boundaries)    │
+│    (Obsidian Liquid Glass System · 12px Standardized Glass) │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -179,7 +172,8 @@ Rythem is engineered with clean layered architecture:
 ┌──────────────────────────────▼──────────────────────────────┐
 │                        DOMAIN ENGINES                       │
 │    PacingService    │   RevisionService   │ IngestionEngine │
-│  (Effort Dilution)  │  (Forgetting Curve) │(YouTube/Markdown)│
+│  (Beats Dilution)   │  (Forgetting Curve) │(YouTube/Markdown)│
+│                     │                     │  AutoBackupMgr  │
 └──────────────────────────────┬──────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -218,7 +212,7 @@ flutter pub get
 # 3. Verify static analysis
 flutter analyze
 
-# 4. Run automated test suites (123+ tests)
+# 4. Run automated test suites (160+ tests)
 flutter test
 
 # 5. Launch the app in debug mode
@@ -231,9 +225,9 @@ flutter run
 
 Contributions are warmly welcome! To maintain software quality and release reliability, please follow these guidelines:
 
-1. **Fork and Branch**: Create a descriptive feature branch (`feat/smart-clustering` or `fix/calendar-touch`).
+1. **Fork and Branch**: Work on branches following the `release/vX.Y.Z` or descriptive convention.
 2. **Follow Code Guidelines**:
-   - Adhere to the established liquid glass design system and color tokens (`RythemColors`).
+   - Adhere to the established obsidian glass design system, color tokens (`RythemColors`), and 12px rounded glass button standards.
    - Run `flutter analyze` to ensure zero warnings or errors.
    - Run `flutter test` to ensure all existing and new test suites pass.
 3. **Signed Commits**: Always sign off your git commits using `git commit -s`.
@@ -251,4 +245,3 @@ Distributed under the PolyForm Noncommercial License 1.0.0. See [LICENSE](LICENS
 <div align="center">
 Built with care for self-directed learners everywhere.
 </div>
-
