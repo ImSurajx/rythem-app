@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'glass_container.dart';
+export 'glass_container.dart';
 
 class GlassCard extends StatefulWidget {
   final Widget child;

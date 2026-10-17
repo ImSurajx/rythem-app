@@ -139,15 +139,22 @@ class _DockButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(26),
           border: isSelected
               ? Border.all(
-                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x20000000),
+                  color: isDark ? const Color(0x6638BDF8) : const Color(0x330284C7),
                   width: 1.0,
                 )
               : null,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
+                    color: isDark
+                        ? const Color(0xFF38BDF8).withOpacity(0.16)
+                        : const Color(0xFF0284C7).withOpacity(0.10),
+                    blurRadius: 14,
+                    offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
                     offset: const Offset(0, 1),
                   ),
                 ]
@@ -164,7 +171,9 @@ class _DockButton extends StatelessWidget {
                 child: Icon(
                   item.icon,
                   size: 20,
-                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                  color: isSelected
+                      ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7))
+                      : themeColors.textTertiary,
                 ),
               ),
               const SizedBox(height: 3),
@@ -174,7 +183,9 @@ class _DockButton extends StatelessWidget {
                 style: RythemTypography.labelSmall.copyWith(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
+                  color: isSelected
+                      ? (isDark ? const Color(0xFFE0F2FE) : const Color(0xFF0369A1))
+                      : themeColors.textTertiary,
                 ),
                 child: Text(item.label),
               ),

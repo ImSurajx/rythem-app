@@ -4,7 +4,6 @@ import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/database/models/chapter_entity.dart';
 import 'package:rythem_app/core/widgets/glass_button.dart';
 import 'package:rythem_app/core/widgets/glass_card.dart';
-import 'package:rythem_app/core/widgets/glass_container.dart';
 import 'package:rythem_app/features/explore/widgets/chapter_accordion.dart';
 
 void main() {

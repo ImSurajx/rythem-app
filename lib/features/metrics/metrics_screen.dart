@@ -122,6 +122,7 @@ class MetricsScreen extends StatelessWidget {
 
           // Primary Metric Hero: Completed Beats
           GlassCard(
+            level: GlassLevel.liquid,
             padding: const EdgeInsets.all(22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

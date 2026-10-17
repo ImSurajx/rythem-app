@@ -393,6 +393,44 @@ void main() {
       expect(find.text('No notes match "Nonexistent Query"'), findsOneWidget);
     });
 
+    testWidgets('ExploreScreen Flag Notes card contains Delete Note button which triggers flag removal', (tester) async {
+      String? savedNoteParam;
+      BeatEntity? savedBeatParam;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: ExploreScreen(
+              roadmaps: [testRoadmap1],
+              chaptersByRoadmap: {'rm_1': [testChapter1, testChapter2]},
+              beatsByRoadmap: {'rm_1': testBeats},
+              beatNotesMap: const {'b2': 'Need to revisit Paxos vs Raft consensus trade-offs.'},
+              beatProgressMap: const {'b2': 80},
+              onBeatToggled: (_, __) async {},
+              onSaveFlag: (beat, note) async {
+                savedBeatParam = beat;
+                savedNoteParam = note;
+              },
+              onCreateTrack: ({required title, required category, startDate, required targetDate, resourceUrl, syllabusText}) async {},
+            ),
+          ),
+        ),
+      );
+
+      // Switch to Flag Notes
+      await tester.tap(find.text('Flag Notes (1)'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete Note'), findsOneWidget);
+
+      await tester.tap(find.text('Delete Note'));
+      await tester.pumpAndSettle();
+
+      expect(savedBeatParam?.id, 'b2');
+      expect(savedNoteParam, '');
+    });
+
     testWidgets('ConfusingBeatDialog saves note via onFlagSaved and pre-populates initialNote', (tester) async {
       String? savedNote;
       await tester.pumpWidget(

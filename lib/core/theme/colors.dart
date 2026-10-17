@@ -70,6 +70,30 @@ class RythemColors {
     stops: [0.0, 0.45, 1.0],
   );
 
+  static const LinearGradient electricCyanGradient = LinearGradient(
+    colors: [Color(0xFF00F2FE), Color(0xFF4FACFE)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient amberBeatGradient = LinearGradient(
+    colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient emeraldSuccessGradient = LinearGradient(
+    colors: [Color(0xFF10B981), Color(0xFF059669)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient violetFocusGradient = LinearGradient(
+    colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient darkSpecularBorder = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -188,6 +212,14 @@ class RythemThemeColors {
     required this.rowBackground,
     required this.rowBorder,
   });
+
+  LinearGradient get electricCyanGradient => RythemColors.electricCyanGradient;
+  LinearGradient get amberBeatGradient => RythemColors.amberBeatGradient;
+  LinearGradient get emeraldSuccessGradient => RythemColors.emeraldSuccessGradient;
+  LinearGradient get violetFocusGradient => RythemColors.violetFocusGradient;
+  Color get activeGlow => isDark ? const Color(0x3300F2FE) : const Color(0x2200F2FE);
+  Color get amberGlow => isDark ? const Color(0x33F59E0B) : const Color(0x22F59E0B);
+  Color get emeraldGlow => isDark ? const Color(0x3310B981) : const Color(0x2210B981);
 }
 
 typedef RythemColorTokens = RythemThemeColors;

@@ -768,17 +768,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0x14FFFFFF) : Colors.white,
+        color: isDark ? const Color(0x18FFFFFF) : Colors.white.withOpacity(0.92),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+          color: isDark ? themeColors.glassBorderHighlight.withOpacity(0.25) : const Color(0x18000000),
           width: 0.9,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(isDark ? 0.32 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -964,11 +964,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       context,
                       beat: item.beat,
                       initialNote: item.notes,
+                      onDelete: () {
+                        if (widget.onSaveFlag != null) {
+                          widget.onSaveFlag!(item.beat, '');
+                        } else {
+                          widget.onSaveCheckpoint?.call(item.beat, item.progress, '');
+                        }
+                        if (mounted) setState(() {});
+                      },
                       onFlagSaved: (savedNote) {
                         if (widget.onSaveFlag != null) {
                           widget.onSaveFlag!(item.beat, savedNote);
                         } else {
-                          widget.onSaveCheckpoint?.call(item.beat, 0, savedNote);
+                          widget.onSaveCheckpoint?.call(item.beat, item.progress, savedNote);
                         }
                         if (mounted) setState(() {});
                       },
@@ -1019,6 +1027,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       Text(
                         'Open Track',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: themeColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Delete Note / Flag Button
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  if (widget.onSaveFlag != null) {
+                    widget.onSaveFlag!(item.beat, '');
+                  } else {
+                    widget.onSaveCheckpoint?.call(item.beat, item.progress, '');
+                  }
+                  if (mounted) setState(() {});
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withOpacity(isDark ? 0.12 : 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFEF4444).withOpacity(0.35),
+                      width: 0.7,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 13,
+                        color: Color(0xFFEF4444),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Delete Note',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                        ),
                       ),
                     ],
                   ),

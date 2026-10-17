@@ -6,6 +6,8 @@ class GlassProgressBar extends StatelessWidget {
   final double height;
   final BorderRadius? borderRadius;
   final bool showGlow;
+  final Gradient? gradient;
+  final Color? fillColor;
 
   const GlassProgressBar({
     super.key,
@@ -13,6 +15,8 @@ class GlassProgressBar extends StatelessWidget {
     this.height = 8.0,
     this.borderRadius,
     this.showGlow = true,
+    this.gradient,
+    this.fillColor,
   });
 
   @override
@@ -38,19 +42,20 @@ class GlassProgressBar extends StatelessWidget {
             builder: (context, constraints) {
               final fillWidth = constraints.maxWidth * clampedProgress;
               return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 320),
                 curve: Curves.easeOutCubic,
                 width: fillWidth,
                 height: height,
                 decoration: BoxDecoration(
-                  color: themeColors.progressFill,
+                  gradient: gradient ?? (fillColor == null ? themeColors.electricCyanGradient : null),
+                  color: gradient == null ? (fillColor ?? themeColors.progressFill) : null,
                   borderRadius: effectiveRadius,
                   boxShadow: showGlow && clampedProgress > 0
                       ? [
                           BoxShadow(
                             color: isDark
-                                ? Colors.white.withOpacity(0.35)
-                                : Colors.black.withOpacity(0.15),
+                                ? const Color(0xFF00F2FE).withOpacity(0.4)
+                                : const Color(0xFF0284C7).withOpacity(0.25),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),

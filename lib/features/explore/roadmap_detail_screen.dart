@@ -1316,6 +1316,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                               context,
                               beat: beat,
                               initialNote: _beatNotes[beat.id] ?? '',
+                              onDelete: () => _handleFlagBeat(beat, ''),
                               onFlagSaved: (note) => _handleFlagBeat(beat, note),
                             );
                           },

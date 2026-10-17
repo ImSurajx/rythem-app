@@ -56,10 +56,16 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
     _currentPercent = widget.initialPercent.clamp(0, 100);
     _percentController = TextEditingController(text: _currentPercent.toString());
     _notesController = TextEditingController(text: widget.initialNotes ?? '');
+    _notesController.addListener(_onNotesChanged);
+  }
+
+  void _onNotesChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _notesController.removeListener(_onNotesChanged);
     _percentController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -306,14 +312,54 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
                       const SizedBox(height: 16),
 
                       // Input 2: Comments / Notes & Practice Reflections
-                      Text(
-                        'PRACTICE & REFLECTION NOTES',
-                        style: RythemTypography.labelSmall.copyWith(
-                          color: themeColors.textTertiary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                          fontSize: 10,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'PRACTICE & REFLECTION NOTES',
+                              style: RythemTypography.labelSmall.copyWith(
+                                color: themeColors.textTertiary,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                                fontSize: 10,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_notesController.text.trim().isNotEmpty)
+                            InkWell(
+                              borderRadius: BorderRadius.circular(6),
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  _notesController.clear();
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 13,
+                                      color: Color(0xFFEF4444),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'Clear Note',
+                                      style: RythemTypography.labelSmall.copyWith(
+                                        color: const Color(0xFFEF4444),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Container(

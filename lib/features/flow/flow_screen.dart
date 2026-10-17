@@ -789,22 +789,33 @@ class _TrackTodoListCard extends StatelessWidget {
                                   title: beat.title,
                                 ),
                                 onFlag: () {
-                                  ConfusingBeatDialog.show(
-                                    context,
-                                    beat: beat,
-                                    initialNote: beatNotesMap[beat.id] ?? '',
-                                    onFlagSaved: (note) {
-                                      if (onSaveFlag != null) {
-                                        onSaveFlag!(beat, note);
-                                      } else {
-                                        onSaveCheckpoint?.call(
-                                          beat,
-                                          beatProgressMap[beat.id] ?? 0,
-                                          note,
-                                        );
-                                      }
-                                    },
-                                  );
+                                ConfusingBeatDialog.show(
+                                  context,
+                                  beat: beat,
+                                  initialNote: beatNotesMap[beat.id] ?? '',
+                                  onDelete: () {
+                                    if (onSaveFlag != null) {
+                                      onSaveFlag!(beat, '');
+                                    } else {
+                                      onSaveCheckpoint?.call(
+                                        beat,
+                                        beatProgressMap[beat.id] ?? 0,
+                                        '',
+                                      );
+                                    }
+                                  },
+                                  onFlagSaved: (note) {
+                                    if (onSaveFlag != null) {
+                                      onSaveFlag!(beat, note);
+                                    } else {
+                                      onSaveCheckpoint?.call(
+                                        beat,
+                                        beatProgressMap[beat.id] ?? 0,
+                                        note,
+                                      );
+                                    }
+                                  },
+                                );
                                 },
                               ),
                             )),
@@ -892,6 +903,17 @@ class _TrackTodoListCard extends StatelessWidget {
                                       context,
                                       beat: currentBeat,
                                       initialNote: beatNotesMap[currentBeat.id] ?? '',
+                                      onDelete: () {
+                                        if (onSaveFlag != null) {
+                                          onSaveFlag!(currentBeat, '');
+                                        } else {
+                                          onSaveCheckpoint?.call(
+                                            currentBeat,
+                                            beatProgressMap[currentBeat.id] ?? 0,
+                                            '',
+                                          );
+                                        }
+                                      },
                                       onFlagSaved: (note) {
                                         if (onSaveFlag != null) {
                                           onSaveFlag!(currentBeat, note);

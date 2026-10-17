@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:rythem_app/core/database/models/beat_entity.dart';
 import 'package:rythem_app/core/theme/theme.dart';
 import 'package:rythem_app/features/flow/checkpoint_dialog.dart';
+import 'package:rythem_app/features/flow/confusing_beat_dialog.dart';
 
 void main() {
   setUpAll(() {
@@ -133,6 +134,95 @@ void main() {
 
       expect(savedPercentage, 100);
       expect(savedNotes, '');
+    });
+
+    testWidgets('Clear Note button in CheckpointDialog clears practice notes', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  CheckpointDialog.show(
+                    context,
+                    beat: testBeat,
+                    initialPercent: 40,
+                    initialNotes: 'Existing reflection note',
+                    onSaveCheckpoint: (_, __) {},
+                  );
+                },
+                child: const Text('Open Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Clear Note'), findsOneWidget);
+      expect(find.text('Existing reflection note'), findsOneWidget);
+
+      await tester.tap(find.text('Clear Note'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Existing reflection note'), findsNothing);
+      expect(find.text('Clear Note'), findsNothing);
+    });
+  });
+
+  group('ConfusingBeatDialog Delete Flag Tests', () {
+    final testBeat = BeatEntity(
+      id: 'beat_flag_del_test',
+      chapterId: 'ch_test',
+      roadmapId: 'rm_test',
+      title: 'Backpropagation on Computation Graphs',
+      effortWeight: 1.5,
+      sortOrder: 0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    testWidgets('renders Remove Flag button when initialNote is present and triggers onDelete', (tester) async {
+      bool deleteCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  ConfusingBeatDialog.show(
+                    context,
+                    beat: testBeat,
+                    initialNote: 'Got stuck on chain rule application',
+                    onDelete: () {
+                      deleteCalled = true;
+                    },
+                    onFlagSaved: (_) {},
+                  );
+                },
+                child: const Text('Open Flag Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Flag Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('FLAG FRICTION / CONFUSION'), findsOneWidget);
+      expect(find.text('Remove Flag'), findsOneWidget);
+
+      await tester.tap(find.text('Remove Flag'));
+      await tester.pumpAndSettle();
+
+      expect(deleteCalled, isTrue);
+      expect(find.text('FLAG FRICTION / CONFUSION'), findsNothing);
     });
   });
 }

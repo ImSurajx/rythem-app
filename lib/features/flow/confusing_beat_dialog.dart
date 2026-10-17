@@ -14,6 +14,7 @@ class ConfusingBeatDialog extends StatefulWidget {
   final BeatEntity beat;
   final String? initialNote;
   final ValueChanged<String>? onFlagSaved;
+  final VoidCallback? onDelete;
   final LocalInferenceService inferenceService;
 
   ConfusingBeatDialog({
@@ -21,6 +22,7 @@ class ConfusingBeatDialog extends StatefulWidget {
     required this.beat,
     this.initialNote,
     this.onFlagSaved,
+    this.onDelete,
     LocalInferenceService? inferenceService,
   }) : inferenceService = inferenceService ?? LocalInferenceService();
 
@@ -29,6 +31,7 @@ class ConfusingBeatDialog extends StatefulWidget {
     required BeatEntity beat,
     String? initialNote,
     ValueChanged<String>? onFlagSaved,
+    VoidCallback? onDelete,
     LocalInferenceService? inferenceService,
   }) {
     return showSmoothDialog<void>(
@@ -38,6 +41,7 @@ class ConfusingBeatDialog extends StatefulWidget {
         beat: beat,
         initialNote: initialNote,
         onFlagSaved: onFlagSaved,
+        onDelete: onDelete,
         inferenceService: inferenceService ?? LocalInferenceService(),
       ),
     );
@@ -172,8 +176,42 @@ class _ConfusingBeatDialogState extends State<ConfusingBeatDialog> {
                     ),
                     const SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        if (widget.initialNote != null && widget.initialNote!.trim().isNotEmpty)
+                          InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.of(context).pop();
+                              if (widget.onDelete != null) {
+                                widget.onDelete!();
+                              } else {
+                                widget.onFlagSaved?.call('');
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 16,
+                                    color: Color(0xFFEF4444),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Remove Flag',
+                                    style: RythemTypography.labelSmall.copyWith(
+                                      color: const Color(0xFFEF4444),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: Text(
