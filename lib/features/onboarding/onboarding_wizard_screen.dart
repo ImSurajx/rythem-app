@@ -340,13 +340,13 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF3B82F6).withOpacity(0.12) : const Color(0xFF3B82F6).withOpacity(0.08),
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
               border: Border.all(
-                color: isDark ? const Color(0xFF3B82F6).withOpacity(0.3) : const Color(0xFF3B82F6).withOpacity(0.2),
+                color: isDark ? themeColors.glassBorderHighlight : themeColors.glassBorder,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF3B82F6).withOpacity(0.15),
+                  color: (isDark ? Colors.black : Colors.black12).withOpacity(0.2),
                   blurRadius: 18,
                   spreadRadius: 2,
                 ),
@@ -355,14 +355,14 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             child: Icon(
               Icons.graphic_eq_rounded,
               size: 36,
-              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+              color: themeColors.textPrimary,
             ),
           ),
           const SizedBox(height: 20),
           Text(
             'BEATS OVER CLOCKS',
             style: RythemTypography.labelSmall.copyWith(
-              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+              color: themeColors.textTertiary,
               letterSpacing: 1.4,
               fontWeight: FontWeight.w800,
             ),
@@ -397,7 +397,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF14171F) : const Color(0xFFF8FAFC),
+        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
@@ -411,13 +411,13 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               Icon(
                 Icons.waves_rounded,
                 size: 15,
-                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                color: themeColors.textSecondary,
               ),
               const SizedBox(width: 6),
               Text(
                 'THE RYTHEM ATOM: BEATS',
                 style: RythemTypography.labelSmall.copyWith(
-                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                  color: themeColors.textSecondary,
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
@@ -427,23 +427,29 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ),
           const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0x15EF4444) : const Color(0x10EF4444),
+              color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
+              border: Border.all(
+                color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.06),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.timer_off_outlined, size: 14, color: Color(0xFFEF4444)),
+                Icon(
+                  Icons.timer_off_outlined,
+                  size: 14,
+                  color: themeColors.textTertiary,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Traditional: Monolithic 4-hour video or giant chapter',
                     style: TextStyle(
                       fontSize: 10.5,
-                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
-                      fontWeight: FontWeight.w600,
+                      color: themeColors.textSecondary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -454,22 +460,28 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0x1510B981) : const Color(0x1010B981),
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorderHighlight : themeColors.glassBorder,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF10B981)),
+                    Icon(
+                      Icons.bolt_rounded,
+                      size: 14,
+                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Rythem: Bite-sized Beats in sequence',
                       style: TextStyle(
                         fontSize: 10.5,
-                        color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                        color: themeColors.textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -499,16 +511,19 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
       decoration: BoxDecoration(
         color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             beats,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9.5,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFFFBBF24),
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
             ),
           ),
           const SizedBox(width: 4),
@@ -537,13 +552,13 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.08),
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
               border: Border.all(
-                color: isDark ? const Color(0xFF10B981).withOpacity(0.3) : const Color(0xFF10B981).withOpacity(0.2),
+                color: isDark ? themeColors.glassBorderHighlight : themeColors.glassBorder,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  color: (isDark ? Colors.black : Colors.black12).withOpacity(0.2),
                   blurRadius: 18,
                   spreadRadius: 2,
                 ),
@@ -552,14 +567,14 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             child: Icon(
               Icons.spa_outlined,
               size: 36,
-              color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+              color: themeColors.textPrimary,
             ),
           ),
           const SizedBox(height: 20),
           Text(
             'SELF-PACED FREEDOM',
             style: RythemTypography.labelSmall.copyWith(
-              color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+              color: themeColors.textTertiary,
               letterSpacing: 1.4,
               fontWeight: FontWeight.w800,
             ),
@@ -594,7 +609,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF14171F) : const Color(0xFFF8FAFC),
+        color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
@@ -604,26 +619,37 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         children: [
           _buildPillarRow(
             icon: Icons.bolt_rounded,
-            iconColor: const Color(0xFFFBBF24),
+            iconColor: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
             title: 'Atomic Momentum',
             description: '10 mins = 1 Beat. Every single focused increment moves you forward.',
             themeColors: themeColors,
+            isDark: isDark,
           ),
-          const Divider(height: 16, thickness: 0.5),
+          Divider(
+            height: 16,
+            thickness: 0.5,
+            color: isDark ? Colors.white12 : Colors.black12,
+          ),
           _buildPillarRow(
             icon: Icons.self_improvement_rounded,
-            iconColor: isDark ? Colors.white : Colors.black87,
+            iconColor: themeColors.textPrimary,
             title: 'Zero Guilt or Broken Streaks',
             description: 'Rest when you need to. Momentum is always preserved honestly.',
             themeColors: themeColors,
+            isDark: isDark,
           ),
-          const Divider(height: 16, thickness: 0.5),
+          Divider(
+            height: 16,
+            thickness: 0.5,
+            color: isDark ? Colors.white12 : Colors.black12,
+          ),
           _buildPillarRow(
             icon: Icons.shield_outlined,
-            iconColor: const Color(0xFF10B981),
+            iconColor: themeColors.textPrimary,
             title: '100% Private & On-Device',
             description: 'Your curricula, checkpoints, and notes stay strictly on your phone.',
             themeColors: themeColors,
+            isDark: isDark,
           ),
         ],
       ),
@@ -636,6 +662,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
     required String title,
     required String description,
     required RythemColorTokens themeColors,
+    required bool isDark,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,8 +670,11 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         Container(
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.12),
+            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
             shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+            ),
           ),
           child: Icon(icon, size: 15, color: iconColor),
         ),
@@ -713,8 +743,8 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                     Text(
                       'LOCAL ON-DEVICE AI',
                       style: RythemTypography.labelSmall.copyWith(
-                        color: themeColors.actionPrimary,
-                        letterSpacing: 1.2,
+                        color: themeColors.textTertiary,
+                        letterSpacing: 1.4,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -775,7 +805,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF14171F) : const Color(0xFFF8FAFC),
+              color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
@@ -786,7 +816,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                 Icon(
                   Icons.lock_outline_rounded,
                   size: 15,
-                  color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                  color: themeColors.textTertiary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -873,7 +903,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: Colors.green.shade400,
+                          color: themeColors.textTertiary,
                         ),
                       ),
                     ],
@@ -884,7 +914,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           ] else ...[
             Row(
               children: [
-                Icon(Icons.shield_outlined, size: 14, color: Colors.green.shade400),
+                Icon(Icons.shield_outlined, size: 14, color: themeColors.textTertiary),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -990,19 +1020,26 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.15),
+                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark ? themeColors.glassBorderHighlight : themeColors.glassBorder,
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle_rounded, size: 14, color: Colors.green),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 14,
+                          color: themeColors.textPrimary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Ready',
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
-                            color: Colors.green.shade400,
+                            color: themeColors.textPrimary,
                           ),
                         ),
                       ],
