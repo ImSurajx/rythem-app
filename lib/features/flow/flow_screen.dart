@@ -1082,26 +1082,38 @@ class _TrackTodoListCard extends StatelessWidget {
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFFF59E0B).withOpacity(0.1) : const Color(0xFFD97706).withOpacity(0.06),
+                                  gradient: isDark ? RythemColors.glassBlackGradient : null,
+                                  color: isDark ? null : const Color(0xFF18181B),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: isDark ? const Color(0xFFF59E0B).withOpacity(0.3) : const Color(0xFFD97706).withOpacity(0.25),
-                                    width: 0.8,
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.18)
+                                        : Colors.black.withOpacity(0.12),
+                                    width: 1.0,
                                   ),
+                                  boxShadow: isDark
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.4),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : null,
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.add_task_rounded,
                                       size: 14,
-                                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                      color: Colors.white,
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       'Add Task',
                                       style: RythemTypography.button.copyWith(
-                                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 11.5,
                                       ),
@@ -1126,27 +1138,39 @@ class _TrackTodoListCard extends StatelessWidget {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                                       decoration: BoxDecoration(
-                                        color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                                        gradient: isDark ? RythemColors.glassBlackGradient : null,
+                                        color: isDark ? null : const Color(0xFF18181B),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.18)
+                                              : Colors.black.withOpacity(0.12),
                                           width: 1.0,
                                         ),
+                                        boxShadow: isDark
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.4),
+                                                  blurRadius: 12,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ]
+                                            : null,
                                       ),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.arrow_forward_rounded,
                                             size: 15,
-                                            color: themeColors.textPrimary,
+                                            color: Colors.white,
                                           ),
                                           const SizedBox(width: 5),
                                           Flexible(
                                             child: Text(
                                               'Pull Next Topic',
                                               style: RythemTypography.button.copyWith(
-                                                color: themeColors.textPrimary,
+                                                color: Colors.white,
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 11.5,
                                               ),
@@ -1171,31 +1195,39 @@ class _TrackTodoListCard extends StatelessWidget {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                                       decoration: BoxDecoration(
-                                        color: isDark
-                                            ? const Color(0xFFF59E0B).withOpacity(0.12)
-                                            : const Color(0xFFD97706).withOpacity(0.08),
+                                        gradient: isDark ? RythemColors.glassBlackGradient : null,
+                                        color: isDark ? null : const Color(0xFF18181B),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                           color: isDark
-                                              ? const Color(0xFFF59E0B).withOpacity(0.35)
-                                              : const Color(0xFFD97706).withOpacity(0.3),
+                                              ? Colors.white.withOpacity(0.18)
+                                              : Colors.black.withOpacity(0.12),
                                           width: 1.0,
                                         ),
+                                        boxShadow: isDark
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.4),
+                                                  blurRadius: 12,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ]
+                                            : null,
                                       ),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.add_task_rounded,
                                             size: 15,
-                                            color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                            color: Colors.white,
                                           ),
                                           const SizedBox(width: 5),
                                           Flexible(
                                             child: Text(
                                               'Custom Task',
                                               style: RythemTypography.button.copyWith(
-                                                color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                                color: Colors.white,
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 11.5,
                                               ),

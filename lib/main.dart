@@ -2555,8 +2555,9 @@ class _DesignSystemShowcaseScreenState
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: colors.actionPrimary,
-                  foregroundColor: colors.actionOnPrimary,
+                  backgroundColor: const Color(0xFF18181B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text('Confirm Restore'),
@@ -2676,8 +2677,9 @@ class _DesignSystemShowcaseScreenState
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: colors.actionPrimary,
-                foregroundColor: colors.actionOnPrimary,
+                backgroundColor: const Color(0xFF18181B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Restore Backup'),
@@ -2723,8 +2725,9 @@ class _DesignSystemShowcaseScreenState
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: colors.actionPrimary,
-                foregroundColor: colors.actionOnPrimary,
+                backgroundColor: const Color(0xFF18181B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Restore'),

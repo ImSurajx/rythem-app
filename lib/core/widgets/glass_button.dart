@@ -84,31 +84,49 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
     final isDark = themeColors.isDark;
 
     final Color textColor;
-    final Color backgroundColor;
+    final Color? backgroundColor;
+    final Gradient? backgroundGradient;
     final Color borderColor;
     final List<BoxShadow> shadows;
 
     if (widget.variant == GlassButtonVariant.primary) {
-      textColor = themeColors.textPrimary;
+      textColor = Colors.white;
       if (isDark) {
-        backgroundColor = isEnabled ? const Color(0x1EFFFFFF) : const Color(0x0EFFFFFF);
-        borderColor = isEnabled ? const Color(0x32FFFFFF) : const Color(0x1CFFFFFF);
+        backgroundGradient = isEnabled
+            ? RythemColors.glassBlackGradient
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.08),
+                  Colors.black.withOpacity(0.20),
+                ],
+              );
+        backgroundColor = null;
+        borderColor = isEnabled
+            ? Colors.white.withOpacity(0.18)
+            : Colors.white.withOpacity(0.08);
         shadows = isEnabled
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.28),
+                  color: Colors.black.withOpacity(0.40),
                   blurRadius: 12,
-                  offset: const Offset(0, 2),
+                  offset: const Offset(0, 4),
                 ),
               ]
             : [];
       } else {
-        backgroundColor = isEnabled ? const Color(0x18000000) : const Color(0x0A000000);
-        borderColor = isEnabled ? const Color(0x1E000000) : const Color(0x12000000);
+        backgroundGradient = null;
+        backgroundColor = isEnabled
+            ? const Color(0xFF18181B)
+            : const Color(0xFF18181B).withOpacity(0.4);
+        borderColor = isEnabled
+            ? Colors.black.withOpacity(0.12)
+            : Colors.black.withOpacity(0.06);
         shadows = isEnabled
             ? [
                 BoxShadow(
-                  color: const Color(0xFF0E1420).withOpacity(0.05),
+                  color: const Color(0xFF0E1420).withOpacity(0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -117,6 +135,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
       }
     } else if (widget.variant == GlassButtonVariant.secondary) {
       textColor = themeColors.textPrimary;
+      backgroundGradient = null;
       if (isDark) {
         backgroundColor = isEnabled ? const Color(0x18FFFFFF) : const Color(0x0CFFFFFF);
         borderColor = isEnabled ? const Color(0x2AFFFFFF) : const Color(0x18FFFFFF);
@@ -145,6 +164,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
     } else {
       // ghost
       textColor = themeColors.textSecondary;
+      backgroundGradient = null;
       backgroundColor = Colors.transparent;
       borderColor = isDark ? const Color(0x20FFFFFF) : const Color(0x14000000);
       shadows = [];
@@ -194,7 +214,8 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
+        gradient: backgroundGradient,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: borderColor,
           width: widget.variant == GlassButtonVariant.primary ? 1.0 : 0.8,
@@ -207,12 +228,12 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: shadows,
       ),
       child: widget.enableBlur
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                 child: innerContainer,

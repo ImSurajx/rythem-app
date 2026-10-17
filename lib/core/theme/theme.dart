@@ -50,6 +50,21 @@ class RythemTheme {
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0, elevation: 1.0),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
       ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
     );
@@ -98,6 +113,21 @@ class RythemTheme {
         trackHeight: 3.5,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0, elevation: 1.0),
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       ),
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,
