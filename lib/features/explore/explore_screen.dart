@@ -240,7 +240,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final title = r.title.toLowerCase();
       final category = (r.description ?? '').toLowerCase();
       return title.contains(query) || category.contains(query);
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        if (a.isOpenLab && !b.isOpenLab) return -1;
+        if (!a.isOpenLab && b.isOpenLab) return 1;
+        return 0;
+      });
 
     final topPadding = MediaQuery.of(context).padding.top;
 
@@ -1239,9 +1244,7 @@ class _RoadmapExploreCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      roadmap.isOpenLab
-                          ? '${completedEffort.toStringAsFixed(1)} beats'
-                          : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} beats',
+                      '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} beats',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -1249,9 +1252,7 @@ class _RoadmapExploreCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      roadmap.isOpenLab
-                          ? ' • $completedBeats logged'
-                          : ' • $completedBeats/$totalBeats topics',
+                      ' • $completedBeats/$totalBeats topics',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textSecondary,
                         fontSize: 11,
@@ -1259,23 +1260,20 @@ class _RoadmapExploreCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (!roadmap.isOpenLab)
-                  Text(
-                    '${(progressRatio * 100).toInt()}%',
-                    style: RythemTypography.labelSmall.copyWith(
-                      color: themeColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  '${(progressRatio * 100).toInt()}%',
+                  style: RythemTypography.labelSmall.copyWith(
+                    color: themeColors.textPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
               ],
             ),
-            if (!roadmap.isOpenLab) ...[
-              const SizedBox(height: 8),
-              GlassProgressBar(
-                progress: progressRatio,
-                height: 5,
-              ),
-            ],
+            const SizedBox(height: 8),
+            GlassProgressBar(
+              progress: progressRatio,
+              height: 5,
+            ),
           ],
         ),
       );

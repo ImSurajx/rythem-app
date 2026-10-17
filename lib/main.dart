@@ -915,18 +915,26 @@ class _DesignSystemShowcaseScreenState
                 )
               else
                 Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: _allRoadmaps.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) {
-                      final rm = _allRoadmaps[i];
-                      final isCurrent = rm.id == _roadmapId;
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          _switchRoadmap(rm);
-                        },
+                  child: Builder(
+                    builder: (context) {
+                      final sortedRoadmaps = List<RoadmapEntity>.from(_allRoadmaps)
+                        ..sort((a, b) {
+                          if (a.isOpenLab && !b.isOpenLab) return -1;
+                          if (!a.isOpenLab && b.isOpenLab) return 1;
+                          return 0;
+                        });
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: sortedRoadmaps.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, i) {
+                          final rm = sortedRoadmaps[i];
+                          final isCurrent = rm.id == _roadmapId;
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              _switchRoadmap(rm);
+                            },
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -1002,8 +1010,10 @@ class _DesignSystemShowcaseScreenState
                         ),
                       );
                     },
-                  ),
-                ),
+                  );
+                },
+              ),
+            ),
               const SizedBox(height: 16),
             ],
           ),

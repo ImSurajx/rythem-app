@@ -97,7 +97,7 @@ class RoadmapRepository {
     final db = await _db;
     final results = await db.query(
       DatabaseTables.roadmaps,
-      orderBy: '${RoadmapColumns.createdAt} DESC',
+      orderBy: "CASE WHEN ${RoadmapColumns.id} = '${RoadmapEntity.openLabId}' THEN 0 ELSE 1 END, ${RoadmapColumns.createdAt} DESC",
     );
     return results.map(RoadmapEntity.fromMap).toList();
   }
@@ -108,7 +108,7 @@ class RoadmapRepository {
       DatabaseTables.roadmaps,
       where: '${RoadmapColumns.status} = ?',
       whereArgs: ['active'],
-      orderBy: '${RoadmapColumns.isPrimary} DESC, ${RoadmapColumns.createdAt} DESC',
+      orderBy: "CASE WHEN ${RoadmapColumns.id} = '${RoadmapEntity.openLabId}' THEN 0 ELSE 1 END, ${RoadmapColumns.isPrimary} DESC, ${RoadmapColumns.createdAt} DESC",
     );
     return results.map(RoadmapEntity.fromMap).toList();
   }
