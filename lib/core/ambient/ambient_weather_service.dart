@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'location_permission_service.dart';
 
 /// Snapshot of real-time ambient weather conditions.
 class AmbientWeather {
@@ -10,6 +11,7 @@ class AmbientWeather {
   final String? location;
   final bool isDay;
   final DateTime fetchedAt;
+  final bool isLocationBased;
 
   const AmbientWeather({
     required this.condition,
@@ -17,6 +19,7 @@ class AmbientWeather {
     this.location,
     this.isDay = true,
     required this.fetchedAt,
+    this.isLocationBased = false,
   });
 
   @override
@@ -27,17 +30,20 @@ class AmbientWeather {
           condition == other.condition &&
           temperatureC == other.temperatureC &&
           location == other.location &&
-          isDay == other.isDay;
+          isDay == other.isDay &&
+          isLocationBased == other.isLocationBased;
 
   @override
   int get hashCode =>
       condition.hashCode ^
       temperatureC.hashCode ^
       (location?.hashCode ?? 0) ^
-      isDay.hashCode;
+      isDay.hashCode ^
+      isLocationBased.hashCode;
 }
 
-/// Service that fetches real weather conditions ambiently (without requiring GPS or API keys)
+/// Service that fetches real weather conditions ambiently (requesting location permission
+/// for pinpoint weather, with IP-based and diurnal fallbacks)
 /// and produces contextual greetings based on real weather and natural diurnal time periods.
 class AmbientWeatherService {
   AmbientWeatherService._();
@@ -51,9 +57,10 @@ class AmbientWeatherService {
     _cachedWeather = weather;
   }
 
-  /// Fetches real weather using wttr.in with strict timeout and fallback.
+  /// Fetches real weather based on user location coordinates, or IP if permission not granted.
   Future<AmbientWeather?> getWeather({
     bool forceRefresh = false,
+    bool requestPermission = false,
     http.Client? client,
   }) async {
     final now = DateTime.now();
@@ -64,9 +71,22 @@ class AmbientWeatherService {
       }
     }
 
+    LocationCoordinates? coords;
+    try {
+      var hasPerm = await LocationPermissionService.hasLocationPermission();
+      if (!hasPerm && requestPermission) {
+        hasPerm = await LocationPermissionService.requestLocationPermission();
+      }
+      if (hasPerm) {
+        coords = await LocationPermissionService.getLocationCoordinates();
+      }
+    } catch (_) {}
+
     final httpClient = client ?? http.Client();
     try {
-      final uri = Uri.parse('https://wttr.in/?format=j1');
+      final uri = coords != null
+          ? Uri.parse('https://wttr.in/${coords.latitude},${coords.longitude}?format=j1')
+          : Uri.parse('https://wttr.in/?format=j1');
       final response = await httpClient
           .get(uri, headers: {'User-Agent': 'curl/8.4'})
           .timeout(const Duration(seconds: 4));
@@ -100,6 +120,7 @@ class AmbientWeatherService {
               location: area,
               isDay: isDay,
               fetchedAt: now,
+              isLocationBased: coords != null,
             );
             _cachedWeather = weather;
             return weather;

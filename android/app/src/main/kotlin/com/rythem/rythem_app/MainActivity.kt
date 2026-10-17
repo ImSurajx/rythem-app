@@ -18,9 +18,41 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.rythem.rythem_app/storage_permission"
     private val STORAGE_PERMISSION_CODE = 2001
+    private val LOCATION_CHANNEL = "com.rythem.rythem_app/location_permission"
+    private val LOCATION_PERMISSION_CODE = 3001
+    private var pendingLocationResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LOCATION_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "hasLocationPermission" -> {
+                    result.success(hasLocationPermission())
+                }
+                "requestLocationPermission" -> {
+                    if (hasLocationPermission()) {
+                        result.success(true)
+                    } else {
+                        pendingLocationResult = result
+                        ActivityCompat.requestPermissions(
+                            this,
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ),
+                            LOCATION_PERMISSION_CODE
+                        )
+                    }
+                }
+                "getLocation" -> {
+                    getLocation(result)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -53,6 +85,49 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+        }
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
+    private fun getLocation(result: MethodChannel.Result) {
+        if (!hasLocationPermission()) {
+            result.error("PERMISSION_DENIED", "Location permission not granted", null)
+            return
+        }
+        try {
+            val locationManager = getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+            val providers = locationManager.getProviders(true)
+            var bestLocation: android.location.Location? = null
+            for (provider in providers) {
+                val l = locationManager.getLastKnownLocation(provider) ?: continue
+                if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
+                    bestLocation = l
+                }
+            }
+            if (bestLocation != null) {
+                result.success(mapOf(
+                    "latitude" to bestLocation.latitude,
+                    "longitude" to bestLocation.longitude
+                ))
+            } else {
+                result.success(null)
+            }
+        } catch (e: Exception) {
+            result.error("LOCATION_ERROR", e.localizedMessage, null)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_CODE) {
+            val granted = grantResults.isNotEmpty() && grantResults.any { it == PackageManager.PERMISSION_GRANTED }
+            pendingLocationResult?.success(granted)
+            pendingLocationResult = null
         }
     }
 

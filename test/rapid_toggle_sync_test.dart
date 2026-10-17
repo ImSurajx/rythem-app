@@ -230,11 +230,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Page 1 -> Page 2
-      await tester.tap(find.text('Continue'));
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
       await tester.pumpAndSettle();
 
       // Page 2 -> Page 3 (Local On-Device AI)
-      await tester.tap(find.text('Continue'));
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
       await tester.pumpAndSettle();
 
       // Verify we are on the AI model page
@@ -249,8 +249,8 @@ void main() {
       await tester.tap(find.text('Balanced Mentor'));
       await tester.pumpAndSettle();
 
-      // On Step 3 (final step), button is Enter Daily Flow
-      expect(find.text('Enter Daily Flow'), findsOneWidget);
+      // On Step 3 (final step), navigation button shows check icon to complete
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     });
   });
 }

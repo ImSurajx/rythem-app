@@ -5,7 +5,6 @@ import '../../core/ai/services/model_download_manager.dart';
 import '../../core/database/repositories/app_settings_repository.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/typography.dart';
-import '../../core/widgets/glass_button.dart';
 import '../../core/widgets/glass_error_dialog.dart';
 import '../../core/widgets/glass_progress_bar.dart';
 
@@ -214,9 +213,9 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar: Back & Progress Dots
+            // Top Bar: Back & Skip (Minimal Apple style)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -228,62 +227,24 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
                         color: themeColors.textSecondary,
                       ),
                       onPressed: _previousPage,
+                      tooltip: 'Back',
                     )
                   else
-                    const SizedBox(width: 40),
+                    const SizedBox(width: 48, height: 48),
 
-                  // Progress Dots
-                  Row(
-                    children: List.generate(_totalPages, (index) {
-                      final isActive = index == _currentPage;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: isActive ? 24 : 8,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? themeColors.textPrimary
-                              : (isDark ? Colors.white24 : Colors.black12),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      );
-                    }),
-                  ),
-
-                  // Step Indicator & Skip Button
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${_currentPage + 1}/$_totalPages',
-                          style: RythemTypography.labelSmall.copyWith(
-                            color: themeColors.textTertiary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
+                  if (_currentPage < _totalPages - 1)
+                    TextButton(
+                      onPressed: _completeOnboarding,
+                      child: Text(
+                        'Skip',
+                        style: RythemTypography.bodySmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (_currentPage < _totalPages - 1) ...[
-                        const SizedBox(width: 4),
-                        TextButton(
-                          onPressed: _completeOnboarding,
-                          child: Text(
-                            'Skip',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: themeColors.textTertiary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                    )
+                  else
+                    const SizedBox(width: 48, height: 48),
                 ],
               ),
             ),
@@ -302,25 +263,71 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               ),
             ),
 
-            // Bottom Navigation Action
+            // Bottom Navigation: Indicator Dots & Raw Icon Navigation Button (Apple style)
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-              child: _isSeeding
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: themeColors.textPrimary,
-                      ),
-                    )
-                  : GlassButton(
-                      label: _currentPage == _totalPages - 1
-                          ? 'Enter Daily Flow'
-                          : 'Continue',
-                      icon: _currentPage == _totalPages - 1
-                          ? Icons.offline_bolt_outlined
-                          : Icons.arrow_forward_rounded,
-                      onPressed: _nextPage,
-                    ),
+              padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Minimal Apple-style progress indicator dots
+                  Row(
+                    children: List.generate(_totalPages, (index) {
+                      final isActive = index == _currentPage;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.only(right: 6),
+                        width: isActive ? 22 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? themeColors.textPrimary
+                              : (isDark ? Colors.white24 : Colors.black12),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  ),
+
+                  // Raw Navigation Icon Button
+                  _isSeeding
+                      ? SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: themeColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                          child: IconButton(
+                            key: const Key('onboarding_next_button'),
+                            iconSize: 22,
+                            padding: const EdgeInsets.all(14),
+                            constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+                            icon: Icon(
+                              _currentPage == _totalPages - 1
+                                  ? Icons.check_rounded
+                                  : Icons.arrow_forward_rounded,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                            tooltip: _currentPage == _totalPages - 1
+                                ? 'Enter Daily Flow'
+                                : 'Continue',
+                            onPressed: _nextPage,
+                          ),
+                        ),
+                ],
+              ),
             ),
           ],
         ),
@@ -337,24 +344,17 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
               border: Border.all(
-                color: isDark ? themeColors.glassBorderHighlight : themeColors.glassBorder,
+                color: isDark ? Colors.white24 : Colors.black12,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: (isDark ? Colors.black : Colors.black12).withOpacity(0.2),
-                  blurRadius: 18,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
             child: Icon(
               Icons.graphic_eq_rounded,
-              size: 36,
+              size: 32,
               color: themeColors.textPrimary,
             ),
           ),
@@ -549,24 +549,17 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
               border: Border.all(
-                color: isDark ? themeColors.glassBorderHighlight : themeColors.glassBorder,
+                color: isDark ? Colors.white24 : Colors.black12,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: (isDark ? Colors.black : Colors.black12).withOpacity(0.2),
-                  blurRadius: 18,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
             child: Icon(
               Icons.spa_outlined,
-              size: 36,
+              size: 32,
               color: themeColors.textPrimary,
             ),
           ),

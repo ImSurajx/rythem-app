@@ -53,7 +53,7 @@ void main() {
 
       expect(find.text('BEATS OVER CLOCKS'), findsOneWidget);
       expect(find.text('Mastery is felt,\nnot measured.'), findsOneWidget);
-      expect(find.text('Continue'), findsOneWidget);
+      expect(find.byKey(const Key('onboarding_next_button')), findsOneWidget);
       expect(find.text('Skip'), findsOneWidget);
     });
 
@@ -71,18 +71,18 @@ void main() {
       await tester.pumpAndSettle();
 
       // Step 1 -> Step 2
-      await tester.tap(find.text('Continue'));
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
       await tester.pumpAndSettle();
       expect(find.text('SELF-PACED FREEDOM'), findsOneWidget);
 
       // Step 2 -> Step 3
-      await tester.tap(find.text('Continue'));
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
       await tester.pumpAndSettle();
       expect(find.text('LOCAL ON-DEVICE AI'), findsOneWidget);
-      expect(find.text('Enter Daily Flow'), findsOneWidget);
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
 
       // Finish Onboarding
-      await tester.tap(find.text('Enter Daily Flow'));
+      await tester.tap(find.byKey(const Key('onboarding_next_button')));
       await tester.pump();
       for (int i = 0; i < 30; i++) {
         await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));

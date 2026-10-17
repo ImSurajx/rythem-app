@@ -104,9 +104,9 @@ class _FlowScreenState extends State<FlowScreen> {
     _initAmbientWeather();
   }
 
-  void _initAmbientWeather() {
+  void _initAmbientWeather({bool requestPermission = true}) {
     _ambientWeather = AmbientWeatherService.instance.cachedWeather;
-    AmbientWeatherService.instance.getWeather().then((weather) {
+    AmbientWeatherService.instance.getWeather(requestPermission: requestPermission).then((weather) {
       if (mounted && weather != null && weather != _ambientWeather) {
         setState(() {
           _ambientWeather = weather;
@@ -217,18 +217,28 @@ class _FlowScreenState extends State<FlowScreen> {
                           fontSize: 11.5,
                         ),
                       ),
-                      Icon(
-                        AmbientWeatherService.getWeatherIcon(_ambientWeather!, hour: now.hour),
-                        size: 13,
-                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_ambientWeather!.temperatureC}°C ${_ambientWeather!.condition}',
-                        style: RythemTypography.bodySmall.copyWith(
-                          color: themeColors.textSecondary,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
+                      GestureDetector(
+                        onTap: () => _initAmbientWeather(requestPermission: true),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              AmbientWeatherService.getWeatherIcon(_ambientWeather!, hour: now.hour),
+                              size: 13,
+                              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _ambientWeather!.location != null && _ambientWeather!.location!.isNotEmpty
+                                  ? '${_ambientWeather!.temperatureC}°C ${_ambientWeather!.condition} • ${_ambientWeather!.location}'
+                                  : '${_ambientWeather!.temperatureC}°C ${_ambientWeather!.condition}',
+                              style: RythemTypography.bodySmall.copyWith(
+                                color: themeColors.textSecondary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
