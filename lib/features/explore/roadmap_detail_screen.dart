@@ -201,7 +201,6 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       context,
       'Syncing & remapping all module playlists...',
       icon: Icons.sync_rounded,
-      accentColor: const Color(0xFF6366F1),
     );
 
     try {

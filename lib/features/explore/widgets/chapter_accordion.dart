@@ -368,16 +368,26 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                     duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
+                      gradient: isSelected && isDark ? RythemColors.glassBlackGradient : null,
                       color: isSelected
-                          ? (isDark ? const Color(0xFF6366F1).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.18))
+                          ? (isDark ? null : const Color(0xFF18181B))
                           : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04)),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: isSelected
-                            ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1))
+                            ? (isDark ? Colors.white.withOpacity(0.25) : Colors.black.withOpacity(0.15))
                             : (isDark ? Colors.white12 : Colors.black12),
                         width: isSelected ? 1.0 : 0.6,
                       ),
+                      boxShadow: isSelected && isDark
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.35),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -386,7 +396,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                           cat,
                           style: RythemTypography.labelSmall.copyWith(
                             color: isSelected
-                                ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                ? Colors.white
                                 : themeColors.textSecondary,
                             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                             fontSize: 10.5,
@@ -397,7 +407,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? (isDark ? const Color(0xFF818CF8).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.15))
+                                ? (isDark ? Colors.white.withOpacity(0.18) : Colors.white.withOpacity(0.2))
                                 : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -405,7 +415,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                             '$count',
                             style: RythemTypography.labelSmall.copyWith(
                               color: isSelected
-                                  ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5))
+                                  ? Colors.white
                                   : themeColors.textTertiary,
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
@@ -523,7 +533,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
           icon: milestone.isCustom ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
           accentColor: milestone.isCustom
               ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
-              : (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
+              : (isDark ? Colors.white70 : Colors.black87),
           themeColors: themeColors,
           isDark: isDark,
           children: beats.map((b) => _buildBeatItem(b, themeColors, isDark)).toList(),

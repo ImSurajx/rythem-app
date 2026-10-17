@@ -575,15 +575,6 @@ class _TrackTodoListCard extends StatelessWidget {
                       Expanded(
                         child: Row(
                           children: [
-                            if (roadmap.isOpenLab)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: Icon(
-                                  Icons.science_rounded,
-                                  size: 16,
-                                  color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
-                                ),
-                              ),
                             Expanded(
                               child: Text(
                                 roadmap.title,
@@ -1006,30 +997,38 @@ class _TrackTodoListCard extends StatelessWidget {
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF6366F1).withOpacity(0.15)
-                                      : const Color(0xFF6366F1).withOpacity(0.1),
+                                  gradient: isDark ? RythemColors.glassBlackGradient : null,
+                                  color: isDark ? null : const Color(0xFF18181B),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isDark
-                                        ? const Color(0xFF818CF8).withOpacity(0.4)
-                                        : const Color(0xFF6366F1).withOpacity(0.35),
+                                        ? Colors.white.withOpacity(0.18)
+                                        : Colors.black.withOpacity(0.12),
                                     width: 1.0,
                                   ),
+                                  boxShadow: isDark
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.4),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : null,
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.add_task_rounded,
                                       size: 16,
-                                      color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                      color: Colors.white,
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       '⚡ Log Task',
                                       style: RythemTypography.button.copyWith(
-                                        color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 12,
                                       ),

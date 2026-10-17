@@ -960,14 +960,6 @@ class _DesignSystemShowcaseScreenState
                               Expanded(
                                 child: Row(
                                   children: [
-                                    if (rm.isOpenLab) ...[
-                                      const Icon(
-                                        Icons.science_rounded,
-                                        size: 16,
-                                        color: Color(0xFF818CF8),
-                                      ),
-                                      const SizedBox(width: 8),
-                                    ],
                                     Flexible(
                                       child: Text(
                                         rm.title,
@@ -983,17 +975,17 @@ class _DesignSystemShowcaseScreenState
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF6366F1).withOpacity(0.15),
+                                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
-                                            color: const Color(0xFF818CF8).withOpacity(0.35),
+                                            color: themeColors.glassBorder,
                                             width: 0.8,
                                           ),
                                         ),
                                         child: Text(
                                           'OPEN LAB',
                                           style: RythemTypography.labelSmall.copyWith(
-                                            color: const Color(0xFF818CF8),
+                                            color: themeColors.textTertiary,
                                             fontSize: 9,
                                             fontWeight: FontWeight.w700,
                                             letterSpacing: 0.5,

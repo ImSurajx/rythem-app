@@ -243,7 +243,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
-                                  widget.roadmap.isOpenLab ? Icons.science_rounded : Icons.add_task_rounded,
+                                  Icons.add_task_rounded,
                                   size: 18,
                                   color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                                 ),

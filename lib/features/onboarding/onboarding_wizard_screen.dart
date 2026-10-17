@@ -612,7 +612,7 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
           const Divider(height: 16, thickness: 0.5),
           _buildPillarRow(
             icon: Icons.self_improvement_rounded,
-            iconColor: const Color(0xFF8B5CF6),
+            iconColor: isDark ? Colors.white : Colors.black87,
             title: 'Zero Guilt or Broken Streaks',
             description: 'Rest when you need to. Momentum is always preserved honestly.',
             themeColors: themeColors,
