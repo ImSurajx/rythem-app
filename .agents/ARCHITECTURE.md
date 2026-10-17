@@ -44,6 +44,10 @@ lib/
 │   ├── ai/                       # Local inference, models & background downloader
 │   │   ├── models/               # ModelTier, DownloadProgress, GGUF metadata
 │   │   └── services/             # LocalInferenceService, ModelDownloadManager
+│   ├── ambient/                  # Ambient context, weather, daily quotes & location
+│   │   ├── ambient_weather_service.dart # Free Open-Meteo & wttr.in weather with state geocoding
+│   │   ├── daily_quote_service.dart   # ZenQuotes / DummyJSON quotes + 365 offline reserve
+│   │   └── location_permission_service.dart # Platform location permission & geolocator
 │   ├── database/                 # SQLite persistence & data access layer
 │   │   ├── models/               # Entities (Roadmap, Chapter, Beat, BeatLog, AppSetting)
 │   │   ├── repositories/         # Specialized repositories with SQL queries
