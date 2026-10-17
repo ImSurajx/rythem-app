@@ -138,7 +138,7 @@ class BeatRepository {
         await txn.insert(
           DatabaseTables.beatLogs,
           {
-            BeatLogColumns.id: '${beatId}_${now.millisecondsSinceEpoch}',
+            BeatLogColumns.id: '${beatId}_${todayDateStr}_${now.microsecondsSinceEpoch}',
             BeatLogColumns.beatId: beatId,
             BeatLogColumns.roadmapId: current.roadmapId,
             BeatLogColumns.completedDate: todayDateStr,
@@ -353,7 +353,7 @@ class BeatRepository {
         await txn.insert(
           DatabaseTables.beatLogs,
           {
-            BeatLogColumns.id: '${newBeatId}_${now.millisecondsSinceEpoch}',
+            BeatLogColumns.id: '${newBeatId}_${todayStr}_${now.microsecondsSinceEpoch}',
             BeatLogColumns.beatId: newBeatId,
             BeatLogColumns.roadmapId: roadmapId,
             BeatLogColumns.completedDate: todayStr,

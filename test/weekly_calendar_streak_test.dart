@@ -20,13 +20,13 @@ class FakeBeatLogRepository extends BeatLogRepository {
 
 void main() {
   setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   group('BeatLogRepository Date Range Queries (Unit Test)', () {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-
     late BeatLogRepository beatLogRepo;
 
     setUp(() async {

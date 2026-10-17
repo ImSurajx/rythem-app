@@ -35,7 +35,7 @@ class BeatLogRepository {
     await db.insert(
       DatabaseTables.beatLogs,
       {
-        BeatLogColumns.id: '${beatId}_${now.millisecondsSinceEpoch}',
+        BeatLogColumns.id: '${beatId}_${completedDate}_${now.microsecondsSinceEpoch}',
         BeatLogColumns.beatId: beatId,
         BeatLogColumns.roadmapId: roadmapId,
         BeatLogColumns.completedDate: completedDate,
