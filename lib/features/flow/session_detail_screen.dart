@@ -327,6 +327,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                                   context,
                                   beat: beat,
                                   initialNote: _beatNotes[beat.id] ?? '',
+                                  onDelete: () => _handleSaveFlag(beat, ''),
                                   onFlagSaved: (note) => _handleSaveFlag(beat, note),
                                 );
                               },

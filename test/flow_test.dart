@@ -220,5 +220,31 @@ void main() {
       expect(lastToggledBeat?.id, 'b1');
       expect(lastToggledValue, true);
     });
+
+    testWidgets('tapping flag icon in focus mode opens ConfusingBeatDialog', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: RythemTheme.darkTheme,
+          home: SessionDetailScreen(
+            roadmapTitle: 'Active Roadmap',
+            chapterTitle: 'Core Mathematics',
+            beats: testBeats,
+            initialBeatId: 'b1',
+            onBeatToggled: (_, __) async {},
+          ),
+        ),
+      );
+
+      // Find flag button and tap
+      final flagButtons = find.byIcon(Icons.outlined_flag_rounded);
+      expect(flagButtons, findsWidgets);
+      await tester.tap(flagButtons.first);
+      await tester.pumpAndSettle();
+
+      // ConfusingBeatDialog should be visible
+      expect(find.text('FLAG FRICTION / CONFUSION'), findsOneWidget);
+      expect(find.text('First Beat Title'), findsWidgets);
+    });
   });
 }
+
