@@ -93,9 +93,10 @@ void main() {
         if (request.url.host == 'api.bigdatacloud.net') {
           return http.Response(
             jsonEncode({
-              'city': 'San Francisco',
-              'locality': 'Mission District',
-              'countryName': 'United States',
+              'principalSubdivision': 'Delhi',
+              'city': 'New Delhi',
+              'locality': 'Mayur Vihar',
+              'countryName': 'India',
             }),
             200,
           );
@@ -106,14 +107,14 @@ void main() {
       final service = AmbientWeatherService.instance;
       final weather = await service.getWeather(
         forceRefresh: true,
-        mockCoordinates: const LocationCoordinates(latitude: 37.77, longitude: -122.41),
+        mockCoordinates: const LocationCoordinates(latitude: 28.6139, longitude: 77.2090),
         client: mockClient,
       );
 
       expect(weather, isNotNull);
       expect(weather!.condition, 'Clear');
       expect(weather.temperatureC, 22);
-      expect(weather.location, 'San Francisco');
+      expect(weather.location, 'Delhi');
       expect(weather.isLocationBased, isTrue);
     });
 

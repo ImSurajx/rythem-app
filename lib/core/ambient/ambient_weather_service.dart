@@ -122,14 +122,15 @@ class AmbientWeatherService {
                   if (geoRes.statusCode == 200) {
                     final geoData = jsonDecode(geoRes.body);
                     if (geoData is Map<String, dynamic>) {
+                      final subdivision = geoData['principalSubdivision'] as String?;
                       final city = geoData['city'] as String?;
                       final locality = geoData['locality'] as String?;
-                      final subdivision = geoData['principalSubdivision'] as String?;
-                      area = (city != null && city.isNotEmpty)
-                          ? city
-                          : (locality != null && locality.isNotEmpty)
-                              ? locality
-                              : subdivision;
+                      // Focus on state/province/region (e.g. Delhi, Bihar) as requested
+                      area = (subdivision != null && subdivision.isNotEmpty)
+                          ? subdivision
+                          : (city != null && city.isNotEmpty)
+                              ? city
+                              : locality;
                     }
                   }
                 } catch (_) {}
@@ -174,8 +175,13 @@ class AmbientWeatherService {
             String? area;
             final nearest = (data['nearest_area'] as List?)?.firstOrNull;
             if (nearest is Map<String, dynamic>) {
+              final regionList = nearest['region'] as List?;
               final areaList = nearest['areaName'] as List?;
-              if (areaList?.isNotEmpty == true) {
+              // Focus on state/region rather than micro-locality
+              if (regionList?.isNotEmpty == true &&
+                  '${regionList!.first['value']}'.trim().isNotEmpty) {
+                area = '${regionList.first['value']}'.trim();
+              } else if (areaList?.isNotEmpty == true) {
                 area = '${areaList!.first['value']}'.trim();
               }
             }
