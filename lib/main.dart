@@ -23,6 +23,7 @@ import 'core/backup/services/auto_backup_manager.dart';
 import 'core/backup/services/storage_permission_service.dart';
 import 'core/navigation/smooth_page_route.dart';
 import 'core/update/app_update_manager.dart';
+import 'core/utils/resource_launcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1950,21 +1951,22 @@ class _DesignSystemShowcaseScreenState
           final progress = _updateManager.updateProgressNotifier.value;
           final downloadedPath = _updateManager.downloadedApkPathNotifier.value;
           final isDownloading = progress != null && !progress.isCompleted && progress.error == null;
+          final isUpdateAvailable = updateInfo != null && updateInfo.isUpdateAvailable;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
                       Text(
-                        'GitHub Release Channel',
-                        style: RythemTypography.titleSmall.copyWith(
+                        'App Updates',
+                        style: RythemTypography.titleMedium.copyWith(
                           color: themeColors.textPrimary,
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1985,58 +1987,102 @@ class _DesignSystemShowcaseScreenState
                       ),
                     ],
                   ),
-                  if (isChecking)
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(themeColors.textSecondary),
+                  Icon(
+                    Icons.system_update_rounded,
+                    size: 16,
+                    color: themeColors.textTertiary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'GitHub release channel with background download & installer.',
+                style: RythemTypography.bodySmall.copyWith(
+                  color: themeColors.textTertiary,
+                  fontSize: 11,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Status Tile with Live Update Indicator
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: themeColors.glassBorder),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: (downloadedPath != null || isUpdateAvailable
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFF10B981))
+                            .withOpacity(0.12),
+                        shape: BoxShape.circle,
                       ),
-                    )
-                  else
-                    GestureDetector(
-                      onTap: isDownloading
-                          ? null
-                          : () async {
-                              HapticFeedback.lightImpact();
-                              final info = await _updateManager.checkForUpdates();
-                              if (mounted) {
-                                if (info == null) {
-                                  _showToast('Check connection and retry');
-                                } else if (!info.isUpdateAvailable) {
-                                  _showToast('Up to date (${info.tagName})');
-                                }
-                              }
-                            },
-                      behavior: HitTestBehavior.opaque,
-                      child: Row(
+                      child: Icon(
+                        downloadedPath != null
+                            ? Icons.install_mobile_rounded
+                            : (isUpdateAvailable
+                                ? Icons.download_rounded
+                                : Icons.check_circle_outline_rounded),
+                        size: 18,
+                        color: downloadedPath != null || isUpdateAvailable
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF10B981),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.refresh_rounded,
-                            size: 14,
-                            color: isDownloading ? themeColors.textTertiary : themeColors.actionPrimary,
-                          ),
-                          const SizedBox(width: 4),
                           Text(
-                            'Check',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: isDownloading ? themeColors.textTertiary : themeColors.actionPrimary,
+                            downloadedPath != null
+                                ? 'Update Ready: ${updateInfo?.tagName ?? "Latest"}'
+                                : (isDownloading
+                                    ? 'Downloading: ${updateInfo?.tagName ?? ""}'
+                                    : (isUpdateAvailable
+                                        ? 'New Build: ${updateInfo.tagName}'
+                                        : 'Rythem is Up to Date')),
+                            style: TextStyle(
+                              color: themeColors.textPrimary,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            downloadedPath != null
+                                ? 'Package downloaded • Ready to install'
+                                : (isDownloading
+                                    ? '${progress.formattedReceived} / ${progress.formattedTotal} (${progress.formattedProgress})'
+                                    : (isUpdateAvailable
+                                        ? '${updateInfo.formattedSize.isNotEmpty ? "${updateInfo.formattedSize} • " : ""}Release ${updateInfo.tagName} available'
+                                        : 'Version ${AppUpdateManager.currentVersion} • Latest release installed')),
+                            style: TextStyle(
+                              color: themeColors.textTertiary,
                               fontSize: 11,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
 
               // Active download progress
               if (isDownloading) ...[
+                const SizedBox(height: 12),
                 Container(
-                  margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0x1AFFFFFF) : const Color(0x0E000000),
@@ -2109,197 +2155,172 @@ class _DesignSystemShowcaseScreenState
                     ],
                   ),
                 ),
-              ] else if (downloadedPath != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
+              ],
+
+              const SizedBox(height: 12),
+
+              // Primary Action Button (Matching Backup Card's "Back Up Now")
+              if (downloadedPath != null)
+                SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    onPressed: () async {
+                      final status = await _updateManager.installDownloadedUpdate();
+                      if (!mounted) return;
+                      if (status == 'PERMISSION_REQUESTED') {
+                        _showToast(
+                          'Allow Unknown Apps in Settings, then tap Install again',
+                          icon: Icons.security_rounded,
+                          accentColor: const Color(0xFFF59E0B),
+                        );
+                      } else if (status == 'SUCCESS') {
+                        _showToast(
+                          'Opening installer...',
+                          icon: Icons.install_mobile_rounded,
+                          accentColor: const Color(0xFF10B981),
+                        );
+                      }
+                    },
+                    icon: Icons.install_mobile_rounded,
+                    label: 'Install Update Now',
+                    variant: GlassButtonVariant.primary,
+                    height: 44,
+                  ),
+                )
+              else if (isUpdateAvailable)
+                SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    onPressed: isDownloading ? null : () => _updateManager.downloadUpdate(updateInfo),
+                    icon: Icons.download_rounded,
+                    label: isDownloading
+                        ? 'Downloading Update...'
+                        : 'Download Update (${updateInfo.formattedSize.isNotEmpty ? updateInfo.formattedSize : updateInfo.tagName})',
+                    variant: GlassButtonVariant.primary,
+                    height: 44,
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    onPressed: isChecking
+                        ? null
+                        : () async {
+                            HapticFeedback.lightImpact();
+                            final info = await _updateManager.checkForUpdates();
+                            if (mounted) {
+                              if (info == null) {
+                                _showToast('Check connection and retry');
+                              } else if (!info.isUpdateAvailable) {
+                                _showToast('Up to date (${info.tagName})');
+                              }
+                            }
+                          },
+                    icon: isChecking ? Icons.hourglass_top_rounded : Icons.refresh_rounded,
+                    label: isChecking ? 'Checking for Updates...' : 'Check for Updates',
+                    variant: GlassButtonVariant.primary,
+                    height: 44,
+                  ),
+                ),
+
+              const SizedBox(height: 10),
+
+              // Interactive Changelog / Release Details Tile (Matching "Restore Snapshot" tile)
+              InkWell(
+                onTap: () {
+                  final url = updateInfo?.htmlUrl ?? 'https://github.com/ImSurajx/rythem-app/releases';
+                  ResourceLauncher.openResource(context, url: url, title: 'Release Notes');
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.08),
+                    color: isDark ? Colors.white.withOpacity(0.025) : Colors.black.withOpacity(0.02),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2)),
+                    border: Border.all(color: themeColors.glassBorder.withOpacity(0.7)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+                      Icon(Icons.notes_rounded, size: 18, color: themeColors.actionPrimary),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Update Ready',
-                              style: RythemTypography.labelSmall.copyWith(
-                                fontWeight: FontWeight.w600,
+                              'Release Notes & Changelog',
+                              style: TextStyle(
                                 color: themeColors.textPrimary,
-                                fontSize: 11.5,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              'Downloaded',
-                              style: RythemTypography.bodySmall.copyWith(
+                              isUpdateAvailable && updateInfo.releaseNotes?.isNotEmpty == true
+                                  ? updateInfo.releaseNotes!.split('\n').firstWhere(
+                                      (l) => l.trim().isNotEmpty,
+                                      orElse: () => 'Performance improvements and bug fixes.',
+                                    )
+                                  : 'View latest release highlights on GitHub',
+                              style: TextStyle(
                                 color: themeColors.textTertiary,
-                                fontSize: 10,
+                                fontSize: 10.5,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () async {
-                          final status = await _updateManager.installDownloadedUpdate();
-                          if (!mounted) return;
-                          if (status == 'PERMISSION_REQUESTED') {
-                            _showToast(
-                              'Allow Unknown Apps in Settings, then tap Install again',
-                              icon: Icons.security_rounded,
-                              accentColor: const Color(0xFFF59E0B),
-                            );
-                          } else if (status == 'SUCCESS') {
-                            _showToast(
-                              'Opening installer...',
-                              icon: Icons.install_mobile_rounded,
-                              accentColor: const Color(0xFF10B981),
-                            );
-                          }
-                        },
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Install',
-                            style: RythemTypography.labelSmall.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Releases',
+                              style: TextStyle(
+                                color: themeColors.textSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 10,
+                              color: themeColors.textTertiary,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ] else if (updateInfo != null && updateInfo.isUpdateAvailable) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0x14FFFFFF) : const Color(0x08000000),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? const Color(0x1FFFFFFF) : const Color(0x12000000),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF3B82F6),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Update Available: ${updateInfo.tagName}',
-                            style: RythemTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: themeColors.textPrimary,
-                              fontSize: 12,
-                            ),
-                          ),
-                          if (updateInfo.formattedSize.isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              '(${updateInfo.formattedSize})',
-                              style: RythemTypography.bodySmall.copyWith(
-                                color: themeColors.textTertiary,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (updateInfo.releaseNotes != null && updateInfo.releaseNotes!.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          updateInfo.releaseNotes!.split('\n').firstWhere(
-                            (line) => line.trim().isNotEmpty,
-                            orElse: () => 'Performance improvements and bug fixes.',
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: RythemTypography.bodySmall.copyWith(
-                            color: themeColors.textSecondary,
-                            fontSize: 10.5,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          GestureDetector(
-                            onTap: () => _updateManager.downloadUpdate(updateInfo),
-                            behavior: HitTestBehavior.opaque,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white : Colors.black,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.download_rounded,
-                                    size: 13,
-                                    color: isDark ? Colors.black : Colors.white,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Download',
-                                    style: RythemTypography.labelSmall.copyWith(
-                                      color: isDark ? Colors.black : Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ] else if (updateInfo != null && !updateInfo.isUpdateAvailable) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF10B981), size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Up to date (${updateInfo.tagName})',
-                      style: RythemTypography.bodySmall.copyWith(
-                        color: themeColors.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ] else ...[
-                Text(
-                  'Check for updates and release fixes.',
-                  style: RythemTypography.bodySmall.copyWith(
-                    color: themeColors.textTertiary,
-                    fontSize: 11,
-                    height: 1.4,
+              ),
+
+              // If an update is available or downloaded, offer "Check Again" secondary button
+              if (isUpdateAvailable || downloadedPath != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: GlassButton(
+                    onPressed: isChecking
+                        ? null
+                        : () async {
+                            HapticFeedback.lightImpact();
+                            await _updateManager.checkForUpdates();
+                          },
+                    icon: Icons.refresh_rounded,
+                    label: isChecking ? 'Checking...' : 'Check Again',
+                    variant: GlassButtonVariant.secondary,
+                    height: 38,
                   ),
                 ),
               ],
