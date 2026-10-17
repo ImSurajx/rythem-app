@@ -1161,7 +1161,7 @@ class _TrackTodoListCard extends StatelessWidget {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
                                           const Icon(
-                                            Icons.arrow_forward_rounded,
+                                            Icons.subdirectory_arrow_right_rounded,
                                             size: 15,
                                             color: Colors.white,
                                           ),
