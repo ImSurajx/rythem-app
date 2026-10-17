@@ -56,8 +56,8 @@ class LocationPermissionService {
     try {
       final dynamic raw = await _channel.invokeMethod('getLocation');
       if (raw is Map) {
-        final lat = raw['latitude'] as double?;
-        final lon = raw['longitude'] as double?;
+        final lat = (raw['latitude'] as num?)?.toDouble();
+        final lon = (raw['longitude'] as num?)?.toDouble();
         if (lat != null && lon != null) {
           return LocationCoordinates(latitude: lat, longitude: lon);
         }
