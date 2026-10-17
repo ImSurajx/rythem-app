@@ -17,6 +17,9 @@ class BeatEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Progressive weight of this beat in rhythm units (10 min = 1 beat, 1 hr = 6 beats).
+  double get beats => effortWeight;
+
   bool get isCustomTask =>
       (syllabusTopicId != null &&
           (syllabusTopicId == 'custom_task' || syllabusTopicId!.startsWith('custom:'))) ||

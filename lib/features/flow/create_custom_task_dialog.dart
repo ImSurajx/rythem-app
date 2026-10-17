@@ -547,7 +547,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    '(10m = ⚡ 1pt)',
+                                    '(10m = ⚡ 1 beat)',
                                     style: RythemTypography.bodySmall.copyWith(
                                       color: themeColors.textTertiary.withOpacity(0.6),
                                       fontSize: 9.5,
@@ -565,7 +565,7 @@ class _CreateCustomTaskDialogState extends State<CreateCustomTaskDialog> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '${_formatDurationReadable(_selectedHours)} • ⚡ ${calculatedEffort.toStringAsFixed(1)} pts',
+                              '${_formatDurationReadable(_selectedHours)} • ⚡ ${calculatedEffort.toStringAsFixed(1)} beats',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                                 fontSize: 10.5,

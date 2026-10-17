@@ -628,8 +628,8 @@ class _TrackTodoListCard extends StatelessWidget {
                             const SizedBox(width: 2),
                             Text(
                               roadmap.isOpenLab
-                                  ? '${completedEffort.toStringAsFixed(1)} pts'
-                                  : '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
+                                  ? '${completedEffort.toStringAsFixed(1)} beats'
+                                  : '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} beats',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: themeColors.textPrimary,
                                 fontSize: 10,

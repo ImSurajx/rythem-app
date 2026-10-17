@@ -330,34 +330,41 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   // Page 1: Philosophy ("Beats Over Clocks")
   Widget _buildPhilosophyPage(RythemColorTokens themeColors, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+              color: isDark ? const Color(0xFF3B82F6).withOpacity(0.12) : const Color(0xFF3B82F6).withOpacity(0.08),
               border: Border.all(
-                color: isDark ? Colors.white24 : Colors.black12,
+                color: isDark ? const Color(0xFF3B82F6).withOpacity(0.3) : const Color(0xFF3B82F6).withOpacity(0.2),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3B82F6).withOpacity(0.15),
+                  blurRadius: 18,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Icon(
-              Icons.radio_button_checked_rounded,
-              size: 40,
-              color: themeColors.textPrimary,
+              Icons.graphic_eq_rounded,
+              size: 36,
+              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           Text(
             'BEATS OVER CLOCKS',
             style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textTertiary,
+              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
               letterSpacing: 1.4,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
@@ -370,13 +377,147 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               height: 1.15,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'Traditional learning apps punish you with ticking stopwatches, arbitrary minute goals, and broken streaks.\n\nRythem breaks long-form playlists and deep curricula into discrete, atomic Beats. You focus solely on the next concept in rhythm.',
             style: RythemTypography.bodyLarge.copyWith(
               color: themeColors.textSecondary,
-              height: 1.5,
-              fontSize: 14.5,
+              height: 1.45,
+              fontSize: 13.5,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _buildRhythmBeatDemoCard(themeColors, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRhythmBeatDemoCard(RythemColorTokens themeColors, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF14171F) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.waves_rounded,
+                size: 15,
+                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'THE RYTHEM ATOM: BEATS',
+                style: RythemTypography.labelSmall.copyWith(
+                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0x15EF4444) : const Color(0x10EF4444),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.timer_off_outlined, size: 14, color: Color(0xFFEF4444)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Traditional: Monolithic 4-hour video or giant chapter',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0x1510B981) : const Color(0x1010B981),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF10B981)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Rythem: Bite-sized Beats in sequence',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 5,
+                  runSpacing: 5,
+                  children: [
+                    _buildMiniBeatChip('⚡ 1.0 beat', 'Core Concept', themeColors, isDark),
+                    _buildMiniBeatChip('⚡ 1.5 beats', 'Deep Mechanics', themeColors, isDark),
+                    _buildMiniBeatChip('⚡ 0.5 beat', 'Recap & Notes', themeColors, isDark),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniBeatChip(String beats, String label, RythemColorTokens themeColors, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            beats,
+            style: const TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFFBBF24),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w500,
+              color: themeColors.textSecondary,
             ),
           ),
         ],
@@ -386,34 +527,41 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
 
   // Page 2: Self-Paced Freedom
   Widget _buildPacingPage(RythemColorTokens themeColors, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+              color: isDark ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.08),
               border: Border.all(
-                color: isDark ? Colors.white24 : Colors.black12,
+                color: isDark ? const Color(0xFF10B981).withOpacity(0.3) : const Color(0xFF10B981).withOpacity(0.2),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  blurRadius: 18,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Icon(
               Icons.spa_outlined,
-              size: 40,
-              color: themeColors.textPrimary,
+              size: 36,
+              color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           Text(
             'SELF-PACED FREEDOM',
             style: RythemTypography.labelSmall.copyWith(
-              color: themeColors.textTertiary,
+              color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
               letterSpacing: 1.4,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
@@ -426,17 +574,106 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
               height: 1.15,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'No rigid daily quotas, no weekly beat targets, and no overdue shaming. Study when you have momentum, rest when you need to.\n\nEvery task you conquer counts towards your journey and tracks honestly in your personal metrics dashboard.',
             style: RythemTypography.bodyLarge.copyWith(
               color: themeColors.textSecondary,
-              height: 1.5,
-              fontSize: 14.5,
+              height: 1.45,
+              fontSize: 13.5,
             ),
+          ),
+          const SizedBox(height: 18),
+          _buildPacingPillarsCard(themeColors, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPacingPillarsCard(RythemColorTokens themeColors, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF14171F) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildPillarRow(
+            icon: Icons.bolt_rounded,
+            iconColor: const Color(0xFFFBBF24),
+            title: 'Atomic Momentum',
+            description: '10 mins = 1 Beat. Every single focused increment moves you forward.',
+            themeColors: themeColors,
+          ),
+          const Divider(height: 16, thickness: 0.5),
+          _buildPillarRow(
+            icon: Icons.self_improvement_rounded,
+            iconColor: const Color(0xFF8B5CF6),
+            title: 'Zero Guilt or Broken Streaks',
+            description: 'Rest when you need to. Momentum is always preserved honestly.',
+            themeColors: themeColors,
+          ),
+          const Divider(height: 16, thickness: 0.5),
+          _buildPillarRow(
+            icon: Icons.shield_outlined,
+            iconColor: const Color(0xFF10B981),
+            title: '100% Private & On-Device',
+            description: 'Your curricula, checkpoints, and notes stay strictly on your phone.',
+            themeColors: themeColors,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPillarRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+    required RythemColorTokens themeColors,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 15, color: iconColor),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: RythemTypography.titleSmall.copyWith(
+                  color: themeColors.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: RythemTypography.bodySmall.copyWith(
+                  color: themeColors.textTertiary,
+                  fontSize: 10.5,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -531,6 +768,39 @@ class _OnboardingWizardScreenState extends State<OnboardingWizardScreen> {
             themeColors: themeColors,
             isDark: isDark,
             onSelect: () => setState(() => _selectedModelTier = ModelTier.balanced),
+          ),
+          const SizedBox(height: 14),
+
+          // Privacy Reassurance Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF14171F) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 15,
+                  color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF059669),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '100% On-Device AI • Runs locally on your hardware • Zero telemetry or cloud API keys',
+                    style: RythemTypography.caption.copyWith(
+                      color: themeColors.textSecondary,
+                      fontSize: 10.5,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 

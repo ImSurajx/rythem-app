@@ -134,7 +134,7 @@ void main() {
       expect(find.text('Linear Algebra & Tensors'), findsOneWidget);
       expect(find.text('ENGINEERING'), findsOneWidget);
       expect(find.text('MATHEMATICS'), findsOneWidget);
-      expect(find.text('1.0 of 3.5 pts'), findsOneWidget);
+      expect(find.text('1.0 of 3.5 beats'), findsOneWidget);
       expect(find.text(' • 1/3 topics'), findsOneWidget);
     });
 
@@ -265,7 +265,7 @@ void main() {
       // Header info
       expect(find.text('Distributed Systems Architecture'), findsWidgets);
       expect(find.text('ENGINEERING'), findsOneWidget);
-      expect(find.text('1.0 of 3.5 pts completed'), findsOneWidget);
+      expect(find.text('1.0 of 3.5 beats completed'), findsOneWidget);
       expect(find.text(' • 1/3 topics'), findsOneWidget);
       expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
 
@@ -339,8 +339,8 @@ void main() {
         ),
       );
 
-      // Verify card shows effort points (1.0 of 3.5 pts) and 28%
-      expect(find.text('1.0 of 3.5 pts'), findsOneWidget);
+      // Verify card shows beats (1.0 of 3.5 beats) and 28%
+      expect(find.text('1.0 of 3.5 beats'), findsOneWidget);
       expect(find.text(' • 1/3 topics'), findsOneWidget);
       expect(find.text('28%'), findsOneWidget);
 

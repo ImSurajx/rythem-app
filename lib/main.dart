@@ -423,7 +423,7 @@ class _DesignSystemShowcaseScreenState
         });
         showGlassToast(
           context,
-          '$category task added: "${newBeat.title}" (⚡ ${effortWeight.toStringAsFixed(1)} pts) 🎯',
+          '$category task added: "${newBeat.title}" (⚡ ${effortWeight.toStringAsFixed(1)} beats) 🎯',
           icon: Icons.add_task_rounded,
           accentColor: const Color(0xFFF59E0B),
         );
@@ -500,7 +500,7 @@ class _DesignSystemShowcaseScreenState
       if (earnedPoints > 0) {
         showGlassToast(
           context,
-          'Checkpoint saved: $clamped% (+${earnedPoints.toStringAsFixed(2)} pts)! 🎯',
+          'Checkpoint saved: $clamped% (+${earnedPoints.toStringAsFixed(2)} beats)! 🎯',
           icon: Icons.bookmark_added_rounded,
           accentColor: const Color(0xFF3B82F6),
         );

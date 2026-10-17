@@ -130,7 +130,7 @@ class MetricsScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'EFFORT POINTS EARNED',
+                      'BEATS EARNED',
                       style: RythemTypography.labelSmall.copyWith(
                         color: themeColors.textTertiary,
                         fontSize: 10,
@@ -139,7 +139,7 @@ class MetricsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'of ${totalEffort.toStringAsFixed(1)} pts ($completedBeats/$totalBeats topics)',
+                      'of ${totalEffort.toStringAsFixed(1)} beats ($completedBeats/$totalBeats topics)',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textSecondary,
                         fontSize: 11,
@@ -164,7 +164,7 @@ class MetricsScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '⚡ pts',
+                      '⚡ beats',
                       style: RythemTypography.labelSmall.copyWith(
                         color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
                         fontWeight: FontWeight.w700,
@@ -415,7 +415,7 @@ class _TrackOverviewCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      '${completedEffort.toStringAsFixed(1)} / ${totalEffort.toStringAsFixed(1)} pts (${(progress * 100).toInt()}%)',
+                      '${completedEffort.toStringAsFixed(1)} / ${totalEffort.toStringAsFixed(1)} beats (${(progress * 100).toInt()}%)',
                       style: RythemTypography.labelSmall.copyWith(
                         color: themeColors.textSecondary,
                         fontSize: 10.5,

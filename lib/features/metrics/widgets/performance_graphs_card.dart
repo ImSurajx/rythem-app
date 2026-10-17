@@ -100,8 +100,8 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
 
     switch (_mode) {
       case GraphMode.sevenDays:
-        headerTitle = '7-DAY EFFORT RHYTHM';
-        headerSubtitle = 'Daily effort points earned over the past week';
+        headerTitle = '7-DAY BEATS RHYTHM';
+        headerSubtitle = 'Daily beats earned over the past week';
         headerIcon = Icons.bar_chart_rounded;
         break;
       case GraphMode.monthly:
@@ -110,8 +110,8 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
         headerIcon = Icons.show_chart_rounded;
         break;
       case GraphMode.lifetime:
-        headerTitle = 'LIFETIME EFFORT';
-        headerSubtitle = 'Cumulative lifetime effort curve showcasing deep flow momentum';
+        headerTitle = 'LIFETIME BEATS';
+        headerSubtitle = 'Cumulative lifetime beats curve showcasing deep flow momentum';
         headerIcon = Icons.auto_graph_rounded;
         break;
     }
@@ -186,7 +186,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                       },
                     ),
                     _buildToggleItem(
-                      title: 'Lifetime Effort',
+                      title: 'Lifetime Beats',
                       isSelected: _mode == GraphMode.lifetime,
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -320,7 +320,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Tooltip(
                     message: day.count > 0
-                        ? '${day.effort.toStringAsFixed(1)} pts • ${day.count} topic${day.count == 1 ? '' : 's'}'
+                        ? '${day.effort.toStringAsFixed(1)} beats • ${day.count} topic${day.count == 1 ? '' : 's'}'
                         : 'No activity',
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -497,7 +497,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                     ),
                   ),
                   Text(
-                    '⚡ ${selectedDay.effort.toStringAsFixed(selectedDay.effort.truncateToDouble() == selectedDay.effort ? 0 : 1)} pts earned',
+                    '⚡ ${selectedDay.effort.toStringAsFixed(selectedDay.effort.truncateToDouble() == selectedDay.effort ? 0 : 1)} beats earned',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -614,7 +614,7 @@ class _PerformanceGraphsCardState extends State<PerformanceGraphsCard> {
                 ],
               ),
               Text(
-                '⚡ ${selectedPoint.cumulative.toStringAsFixed(selectedPoint.cumulative.truncateToDouble() == selectedPoint.cumulative ? 0 : 1)} lifetime pts',
+                '⚡ ${selectedPoint.cumulative.toStringAsFixed(selectedPoint.cumulative.truncateToDouble() == selectedPoint.cumulative ? 0 : 1)} lifetime beats',
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,

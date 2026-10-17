@@ -31,8 +31,14 @@ class PacingBudget {
     this.daysUntilStart = 0,
   });
 
-  /// Formatted readable effort string (e.g. "2.5 effort units").
+  /// Formatted readable beats string (e.g. "2.5 beats").
   String get formattedBudget => todayEffortShare.toStringAsFixed(1);
+
+  /// Remaining beats budget.
+  double get remainingBeats => remainingEffort;
+
+  /// Today's beats share.
+  double get todayBeatsShare => todayEffortShare;
 
   PacingBudget copyWith({
     String? roadmapId,

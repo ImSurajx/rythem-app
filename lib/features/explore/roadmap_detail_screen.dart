@@ -217,7 +217,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
       if (mounted) {
         showGlassToast(
           context,
-          'Synced: ${result.updatedTopicsCount} topics remapped (${result.totalEffortPoints.toStringAsFixed(1)} pts total)! ⚡',
+          'Synced: ${result.updatedTopicsCount} topics remapped (${result.totalEffortPoints.toStringAsFixed(1)} beats total)! ⚡',
           icon: Icons.check_circle_outline_rounded,
           accentColor: const Color(0xFF10B981),
         );
@@ -967,8 +967,8 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                   const SizedBox(width: 3),
                                   Text(
                                     _currentRoadmap.isOpenLab
-                                        ? '${completedEffort.toStringAsFixed(1)} pts'
-                                        : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts completed',
+                                        ? '${completedEffort.toStringAsFixed(1)} beats'
+                                        : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} beats completed',
                                     style: RythemTypography.bodySmall.copyWith(
                                       color: themeColors.textPrimary,
                                       fontWeight: FontWeight.w600,

@@ -30,7 +30,8 @@ class BackupSnapshotInfo {
   });
 
   String get displayTitle {
-    if (fileName == AutoBackupManager.latestBackupFileName) {
+    if (fileName == AutoBackupManager.latestBackupFileName ||
+        fileName == AutoBackupManager.masterBackupFileName) {
       return 'Latest Snapshot';
     }
     final match = RegExp(r'rythem_(?:auto)?backup_(\d{4}-\d{2}-\d{2}[^\.]*)\.json').firstMatch(fileName);
@@ -74,6 +75,7 @@ class BackupSnapshotInfo {
 /// 4. Disaster Recovery: Detects existing backups when app data is wiped or database is empty.
 class AutoBackupManager {
   static const String _prefLastAutoBackupDateKey = 'last_auto_backup_date';
+  static const String masterBackupFileName = 'rythem_backup.json';
   static const String latestBackupFileName = 'rythem_autobackup_latest.json';
   static const int maxRetainedDailySnapshots = 7;
 
@@ -241,16 +243,56 @@ class AutoBackupManager {
     } catch (_) {}
   }
 
-  /// Creates an explicit manual on-demand backup with a timestamped filename
-  /// in the resilient backup directory (e.g. Documents/Rythem/Backups),
-  /// and updates the rolling snapshot pointers.
+  /// Atomically writes content to [destination] by first writing to a `.tmp` file
+  /// and replacing the destination in-place, preventing partial file corruption.
+  Future<void> _atomicWriteFile(File destination, String content) async {
+    final parent = destination.parent;
+    if (!parent.existsSync()) {
+      await parent.create(recursive: true);
+    }
+    final tmpFile = File('${destination.path}.tmp');
+    try {
+      await tmpFile.writeAsString(content, flush: true);
+      if (destination.existsSync()) {
+        try {
+          await destination.delete();
+        } catch (_) {}
+      }
+      await tmpFile.rename(destination.path);
+    } catch (e) {
+      // Direct write fallback
+      await destination.writeAsString(content, flush: true);
+      if (tmpFile.existsSync()) {
+        try {
+          await tmpFile.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Removes older timestamped manual files (e.g. rythem_backup_2026-*.json)
+  /// so that the single in-place master backup file is retained.
+  Future<void> _cleanupOldTimestampedBackups(Directory dir) async {
+    try {
+      if (!dir.existsSync()) return;
+      final files = dir.listSync().whereType<File>().toList();
+      for (final f in files) {
+        final name = p.basename(f.path);
+        if (name != masterBackupFileName &&
+            name != latestBackupFileName &&
+            RegExp(r'^rythem_backup_\d{4}-\d{2}-\d{2}.*\.json$').hasMatch(name)) {
+          try {
+            await f.delete();
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Creates a manual on-demand backup, replacing the existing backup file
+  /// in the resilient backup directory (e.g. Documents/Rythem/Backups).
   Future<BackupSnapshotInfo?> createManualBackup() async {
     try {
-      final now = DateTime.now();
-      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final timeStr = '${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
-      final fileName = 'rythem_backup_${dateStr}_$timeStr.json';
-
       final jsonPayload = await _backupService.exportBackupJson();
       Directory backupDir;
       try {
@@ -267,37 +309,36 @@ class AutoBackupManager {
         }
       }
 
-      // 1. Write the explicit timestamped manual backup file (with safe fallback)
-      File manualFile = File('${backupDir.path}/$fileName');
+      // 1. Write the master backup file in-place, replacing existing
+      File masterFile = File('${backupDir.path}/$masterBackupFileName');
       try {
-        await manualFile.writeAsString(jsonPayload);
+        await _atomicWriteFile(masterFile, jsonPayload);
       } catch (writeErr) {
         debugPrint('AutoBackupManager: Primary backup write failed ($writeErr), falling back to safe local storage');
         backupDir = await _getSafeFallbackDirectory();
-        manualFile = File('${backupDir.path}/$fileName');
-        await manualFile.writeAsString(jsonPayload);
+        masterFile = File('${backupDir.path}/$masterBackupFileName');
+        await _atomicWriteFile(masterFile, jsonPayload);
       }
 
-      // 2. Also update latest pointer
-      try {
-        final latestFile = File('${backupDir.path}/$latestBackupFileName');
-        await latestFile.writeAsString(jsonPayload);
-      } catch (_) {}
+      // 2. Also keep latest pointer in sync
+      if (latestBackupFileName != masterBackupFileName) {
+        try {
+          final latestFile = File('${backupDir.path}/$latestBackupFileName');
+          await _atomicWriteFile(latestFile, jsonPayload);
+        } catch (_) {}
+      }
 
-      // 3. Update today's auto snapshot as well
-      try {
-        final todayStr = dateStr;
-        final snapshotName = 'rythem_autobackup_$todayStr.json';
-        final snapshotFile = File('${backupDir.path}/$snapshotName');
-        await snapshotFile.writeAsString(jsonPayload);
-      } catch (_) {}
+      // 3. Clean up legacy timestamped manual backup files
+      await _cleanupOldTimestampedBackups(backupDir);
 
       // 4. Update last backup date in settings
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       try {
         await _settingsRepo.setSetting(_prefLastAutoBackupDateKey, dateStr);
       } catch (_) {}
 
-      return await parseSnapshotFile(manualFile);
+      return await parseSnapshotFile(masterFile);
     } catch (e) {
       debugPrint('AutoBackupManager: Manual backup failed: $e');
       rethrow;
@@ -412,7 +453,7 @@ class AutoBackupManager {
           final files = dir.listSync().whereType<File>().toList();
           for (final file in files) {
             final name = p.basename(file.path);
-            if ((name.startsWith('rythem_autobackup_') || name.startsWith('rythem_backup_')) &&
+            if ((name.startsWith('rythem_autobackup') || name.startsWith('rythem_backup')) &&
                 name.endsWith('.json')) {
               if (seenNames.contains(name)) continue;
               final info = await parseSnapshotFile(file);

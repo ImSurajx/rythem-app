@@ -305,7 +305,7 @@ void main() {
       expect(response, contains('DSA with Python'));
       expect(response, contains('1 of 2 topics completed'));
       expect(response, contains('days'));
-      expect(response, contains('effort pts/day'));
+      expect(response, contains('beats/day'));
     });
   });
 }

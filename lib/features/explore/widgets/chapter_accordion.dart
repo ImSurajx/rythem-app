@@ -160,7 +160,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                             const SizedBox(width: 2),
                             if (isOpenLabChapter) ...[
                               Text(
-                                '${completedEffort.toStringAsFixed(1)} pts • $completedCount logged',
+                                '${completedEffort.toStringAsFixed(1)} beats • $completedCount logged',
                                 style: RythemTypography.bodySmall.copyWith(
                                   color: themeColors.textSecondary,
                                   fontSize: 11,
@@ -169,7 +169,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
                               ),
                             ] else ...[
                               Text(
-                                '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} pts',
+                                '${completedEffort.toStringAsFixed(1)}/${totalEffort.toStringAsFixed(1)} beats',
                                 style: RythemTypography.bodySmall.copyWith(
                                   color: themeColors.textSecondary,
                                   fontSize: 11,
@@ -519,7 +519,7 @@ class _ChapterAccordionState extends State<ChapterAccordion>
       sections.add(
         _TopicGroupSection(
           title: titleText,
-          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} pts • $completed/${beats.length}',
+          subtitle: '⚡ ${milestoneEffort.toStringAsFixed(1)} beats • $completed/${beats.length}',
           icon: milestone.isCustom ? Icons.auto_stories_rounded : Icons.menu_book_rounded,
           accentColor: milestone.isCustom
               ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))

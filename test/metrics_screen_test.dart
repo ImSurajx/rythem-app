@@ -81,10 +81,10 @@ void main() {
 
       expect(find.text('METRICS'), findsOneWidget);
       expect(find.text('Activity & Momentum'), findsOneWidget);
-      expect(find.text('EFFORT POINTS EARNED'), findsWidgets);
+      expect(find.text('BEATS EARNED'), findsWidgets);
       expect(find.text('STREAK'), findsOneWidget);
       expect(find.text('5 d'), findsOneWidget);
-      expect(find.text('7-DAY EFFORT RHYTHM'), findsOneWidget);
+      expect(find.text('7-DAY BEATS RHYTHM'), findsOneWidget);
       expect(find.text('7 Days'), findsOneWidget);
       expect(find.text('Neural Networks'), findsOneWidget);
     });

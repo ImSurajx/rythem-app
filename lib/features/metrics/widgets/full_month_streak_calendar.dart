@@ -251,7 +251,7 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '⚡ ${totalMonthEffort.toStringAsFixed(totalMonthEffort.truncateToDouble() == totalMonthEffort ? 0 : 1)} pts earned • $activeDaysCount active days',
+                '⚡ ${totalMonthEffort.toStringAsFixed(totalMonthEffort.truncateToDouble() == totalMonthEffort ? 0 : 1)} beats earned • $activeDaysCount active days',
                 style: RythemTypography.caption.copyWith(
                   color: widget.themeColors.textTertiary,
                   fontSize: 11,
@@ -386,8 +386,8 @@ class _FullMonthStreakCalendarState extends State<FullMonthStreakCalendar> {
                   const Spacer(),
                   Text(
                     selectedEffort > 0
-                        ? '⚡ ${selectedEffort.toStringAsFixed(selectedEffort.truncateToDouble() == selectedEffort ? 0 : 1)} effort pts logged'
-                        : 'No effort recorded',
+                        ? '⚡ ${selectedEffort.toStringAsFixed(selectedEffort.truncateToDouble() == selectedEffort ? 0 : 1)} beats logged'
+                        : 'No beats recorded',
                     style: RythemTypography.caption.copyWith(
                       color: selectedEffort > 0
                           ? (widget.isDark ? Colors.white : Colors.black)

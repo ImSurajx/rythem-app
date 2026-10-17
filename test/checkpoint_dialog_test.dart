@@ -61,14 +61,14 @@ void main() {
 
       // Check initial percentage
       expect(find.text('20%'), findsOneWidget);
-      expect(find.text('Topic Effort: 2.0 pts'), findsOneWidget);
+      expect(find.text('Topic Beats: 2.0 beats'), findsOneWidget);
 
       // Stepper: tap +10%
       await tester.tap(find.byIcon(Icons.add_rounded));
       await tester.pumpAndSettle();
       expect(find.text('30%'), findsOneWidget);
-      // Earned points: 2.0 * (30 - 20) / 100 = +0.20 pts
-      expect(find.text('+0.20 pts earned'), findsOneWidget);
+      // Earned points: 2.0 * (30 - 20) / 100 = +0.20 beats
+      expect(find.text('+0.20 beats earned'), findsOneWidget);
 
       // Enter notes
       await tester.enterText(
@@ -124,8 +124,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Complete Topic (100%)'), findsOneWidget);
-      // Earned points: 2.0 * (100 - 50) / 100 = +1.00 pts
-      expect(find.text('+1.00 pts earned'), findsOneWidget);
+      // Earned points: 2.0 * (100 - 50) / 100 = +1.00 beats
+      expect(find.text('+1.00 beats earned'), findsOneWidget);
 
       // Tap Complete Topic
       await tester.tap(find.text('Complete Topic (100%)'));

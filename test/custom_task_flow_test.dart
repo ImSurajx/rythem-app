@@ -337,7 +337,7 @@ void main() {
       // Select preset 30m (30 min / 10 = 3.0 effort points)
       await tester.tap(find.text('30m'));
       await tester.pump();
-      expect(find.text('30 min • ⚡ 3.0 pts'), findsOneWidget);
+      expect(find.text('30 min • ⚡ 3.0 beats'), findsOneWidget);
 
       // Enter task title
       await tester.enterText(find.byType(TextField).first, 'Revise Distributed Caching');
@@ -510,7 +510,7 @@ void main() {
       // Select preset 1h (1 hour -> 6 effort points)
       await tester.tap(find.text('1h'));
       await tester.pump();
-      expect(find.text('1 hr • ⚡ 6.0 pts'), findsOneWidget);
+      expect(find.text('1 hr • ⚡ 6.0 beats'), findsOneWidget);
 
       // Add a dynamic category: "Open Source"
       await tester.tap(find.text('+ Add Category'));

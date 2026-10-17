@@ -277,7 +277,7 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Topic Effort: ${widget.beat.effortWeight.toStringAsFixed(1)} pts',
+                              'Topic Beats: ${widget.beat.effortWeight.toStringAsFixed(1)} beats',
                               style: RythemTypography.bodySmall.copyWith(
                                 color: themeColors.textTertiary,
                                 fontSize: 10.5,
@@ -287,8 +287,8 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
                             Flexible(
                               child: Text(
                                 earnedPoints > 0
-                                    ? '+${earnedPoints.toStringAsFixed(2)} pts earned'
-                                    : '${totalProgressPoints.toStringAsFixed(2)} pts total',
+                                    ? '+${earnedPoints.toStringAsFixed(2)} beats earned'
+                                    : '${totalProgressPoints.toStringAsFixed(2)} beats total',
                                 style: RythemTypography.labelSmall.copyWith(
                                   color: earnedPoints > 0
                                       ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))

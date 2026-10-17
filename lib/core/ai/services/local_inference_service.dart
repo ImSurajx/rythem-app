@@ -215,7 +215,7 @@ $tierHeader📊 **Tracker Status & Timeline Analysis: ${roadmap.title}**
 • **Days Elapsed**: **$daysElapsed days** active on this track (started ${createdAt.year}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.day.toString().padLeft(2, '0')}).
 • **Topics Remaining**: **$pending topics** left to master.
 • **Target Completion Date**: **$targetDateFormatted** (${daysLeft != null ? (daysLeft > 0 ? '$daysLeft days remaining' : 'Target reached today') : 'Self-paced'}).
-• **Required Pacing**: Complete **~${dailyPace.toStringAsFixed(1)} effort pts/day** to finish right on schedule without cramming.
+• **Required Pacing**: Complete **~${dailyPace.toStringAsFixed(1)} beats/day** to finish right on schedule without cramming.
 • **Curriculum Health**: ${completed >= (total / 2) ? '🚀 Ahead of the halfway mark! Momentum is on your side.' : '🌱 Establishing foundational mastery. Keep up your daily micro-habits.'}
 ''';
   }

@@ -1179,8 +1179,8 @@ class _RoadmapExploreCard extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(
                       roadmap.isOpenLab
-                          ? '${completedEffort.toStringAsFixed(1)} pts'
-                          : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} pts',
+                          ? '${completedEffort.toStringAsFixed(1)} beats'
+                          : '${completedEffort.toStringAsFixed(1)} of ${totalEffort.toStringAsFixed(1)} beats',
                       style: RythemTypography.bodySmall.copyWith(
                         color: themeColors.textPrimary,
                         fontWeight: FontWeight.w600,

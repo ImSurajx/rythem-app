@@ -244,4 +244,43 @@ void main() {
     final recovery = await autoBackupManager.checkForDisasterRecovery();
     expect(recovery, isNull);
   });
+
+  test('createManualBackup replaces existing backup in-place instead of creating new duplicate files', () async {
+    // 1. First manual backup
+    final firstBackup = await autoBackupManager.createManualBackup();
+    expect(firstBackup, isNotNull);
+    expect(firstBackup!.fileName, AutoBackupManager.masterBackupFileName);
+
+    // 2. Insert new beat
+    final now = DateTime.now().toIso8601String();
+    await testDb.insert('beats', {
+      'id': 'beat_bs_advanced',
+      'chapter_id': 'ch_binary_search',
+      'roadmap_id': 'rm_algo',
+      'title': 'Binary Search Advanced',
+      'effort_weight': 2.0,
+      'sort_order': 1,
+      'is_completed': 0,
+      'created_at': now,
+      'updated_at': now,
+    });
+
+    // 3. Second manual backup
+    final secondBackup = await autoBackupManager.createManualBackup();
+    expect(secondBackup, isNotNull);
+    expect(secondBackup!.fileName, AutoBackupManager.masterBackupFileName);
+    expect(secondBackup.beatsCount, 2);
+
+    // 4. Verify in filesystem: only 1 master backup file exists (no duplicates with timestamps)
+    final files = tempDir.listSync().whereType<File>().toList();
+    final masterFiles = files.where((f) => f.path.endsWith(AutoBackupManager.masterBackupFileName)).toList();
+    expect(masterFiles.length, 1);
+
+    // Verify no timestamped rythem_backup_YYYY-MM-DD_HH-mm-ss.json files exist
+    final timestampedFiles = files.where((f) {
+      final name = f.path.split('/').last;
+      return RegExp(r'^rythem_backup_\d{4}-\d{2}-\d{2}.*\.json$').hasMatch(name);
+    }).toList();
+    expect(timestampedFiles, isEmpty);
+  });
 }

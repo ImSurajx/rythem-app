@@ -179,7 +179,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
         // All topics finished
         showGlassToast(
           context,
-          'All module topics complete! (⚡ ${_totalEffort.toStringAsFixed(1)} pts earned)',
+          'All module topics complete! (⚡ ${_totalEffort.toStringAsFixed(1)} beats earned)',
           icon: Icons.check_circle_outline_rounded,
         );
         Future.delayed(const Duration(milliseconds: 600), () {
@@ -268,7 +268,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              '${_completedEffort.toStringAsFixed(1)}/${_totalEffort.toStringAsFixed(1)} pts',
+                              '${_completedEffort.toStringAsFixed(1)}/${_totalEffort.toStringAsFixed(1)} beats',
                               style: RythemTypography.labelSmall.copyWith(
                                 color: themeColors.textPrimary,
                                 fontWeight: FontWeight.w600,

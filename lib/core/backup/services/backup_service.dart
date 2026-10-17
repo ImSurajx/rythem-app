@@ -63,8 +63,7 @@ class BackupService {
   /// If the user cancels the picker, returns null.
   Future<File?> exportToFile({String? customPath}) async {
     final jsonString = await exportBackupJson();
-    final dateStr = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
-    final fileName = 'rythem_backup_$dateStr.json';
+    const fileName = 'rythem_backup.json';
 
     if (customPath != null && customPath.isNotEmpty) {
       final target = customPath.endsWith('.json') ? customPath : '$customPath.json';
