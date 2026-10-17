@@ -30,9 +30,11 @@ class BackupSnapshotInfo {
   });
 
   String get displayTitle {
-    if (fileName == AutoBackupManager.latestBackupFileName ||
-        fileName == AutoBackupManager.masterBackupFileName) {
+    if (fileName == AutoBackupManager.latestBackupFileName) {
       return 'Latest Snapshot';
+    }
+    if (fileName == AutoBackupManager.masterBackupFileName) {
+      return 'Manual Backup';
     }
     final match = RegExp(r'rythem_(?:auto)?backup_(\d{4}-\d{2}-\d{2}[^\.]*)\.json').firstMatch(fileName);
     if (match != null) {
@@ -77,6 +79,8 @@ class AutoBackupManager {
   static const String _prefLastAutoBackupDateKey = 'last_auto_backup_date';
   static const String masterBackupFileName = 'rythem_backup.json';
   static const String latestBackupFileName = 'rythem_autobackup_latest.json';
+  static const String snapshotsDirName = 'snapshots';
+  static const String manualBackupDirName = 'manual';
   static const int maxRetainedDailySnapshots = 7;
 
   final BackupService _backupService;
@@ -90,6 +94,26 @@ class AutoBackupManager {
   })  : _backupService = backupService ?? BackupService(),
         _settingsRepo = settingsRepo ?? AppSettingsRepository(),
         _overrideDir = overrideDir;
+
+  /// Resolves the dedicated directory for automatic snapshots: `<backupDir>/snapshots`.
+  Future<Directory> getSnapshotsDirectory() async {
+    final baseDir = await getResilientBackupDirectory();
+    final snapshotsDir = Directory(p.join(baseDir.path, snapshotsDirName));
+    if (!snapshotsDir.existsSync()) {
+      await snapshotsDir.create(recursive: true);
+    }
+    return snapshotsDir;
+  }
+
+  /// Resolves the dedicated directory for manual user backups: `<backupDir>/manual`.
+  Future<Directory> getManualBackupDirectory() async {
+    final baseDir = await getResilientBackupDirectory();
+    final manualDir = Directory(p.join(baseDir.path, manualBackupDirName));
+    if (!manualDir.existsSync()) {
+      await manualDir.create(recursive: true);
+    }
+    return manualDir;
+  }
 
   /// Resolves the user-visible storage location label for UI display.
   Future<String> getStorageLocationDescription() async {
@@ -146,6 +170,7 @@ class AutoBackupManager {
       if (!_overrideDir.existsSync()) {
         await _overrideDir.create(recursive: true);
       }
+      _migrateExistingBackupsIfNeeded(_overrideDir);
       return _overrideDir;
     }
 
@@ -170,6 +195,7 @@ class AutoBackupManager {
         if (extDir != null) {
           final extBackup = Directory('${extDir.path}/Rythem/Backups');
           if (_canWriteTo(extBackup)) {
+            _migrateExistingBackupsIfNeeded(extBackup);
             return extBackup;
           }
         }
@@ -188,6 +214,7 @@ class AutoBackupManager {
     if (!backupDir.existsSync()) {
       await backupDir.create(recursive: true);
     }
+    _migrateExistingBackupsIfNeeded(backupDir);
     return backupDir;
   }
 
@@ -221,26 +248,93 @@ class AutoBackupManager {
     return dir;
   }
 
+  Future<Directory> _getSafeFallbackManualDirectory() async {
+    final base = await _getSafeFallbackDirectory();
+    final dir = Directory(p.join(base.path, manualBackupDirName));
+    if (!dir.existsSync()) {
+      try {
+        dir.createSync(recursive: true);
+      } catch (_) {}
+    }
+    return dir;
+  }
+
+  Future<Directory> _getSafeFallbackSnapshotsDirectory() async {
+    final base = await _getSafeFallbackDirectory();
+    final dir = Directory(p.join(base.path, snapshotsDirName));
+    if (!dir.existsSync()) {
+      try {
+        dir.createSync(recursive: true);
+      } catch (_) {}
+    }
+    return dir;
+  }
+
   void _migrateExistingBackupsIfNeeded(Directory targetDir) {
     try {
+      // 1. Move legacy root files in targetDir into manual/ and snapshots/ subdirectories
+      _migrateDirectoryFilesToSubfolders(targetDir);
+
+      // 2. Sync from other candidate directories if target subfolders are empty
       getCandidateBackupDirectories().then((dirs) {
         for (final dir in dirs) {
           if (dir.path == targetDir.path) continue;
           if (!dir.existsSync()) continue;
           try {
-            final files = dir.listSync().whereType<File>();
-            for (final f in files) {
-              final targetFile = File('${targetDir.path}/${p.basename(f.path)}');
-              if (!targetFile.existsSync()) {
-                try {
-                  f.copySync(targetFile.path);
-                } catch (_) {}
-              }
-            }
+            _migrateDirectoryFilesToSubfolders(dir, destinationBaseDir: targetDir);
           } catch (_) {}
         }
       }).catchError((_) {});
     } catch (_) {}
+  }
+
+  void _migrateDirectoryFilesToSubfolders(Directory sourceDir, {Directory? destinationBaseDir}) {
+    if (!sourceDir.existsSync()) return;
+    final destBase = destinationBaseDir ?? sourceDir;
+    final manualDir = Directory(p.join(destBase.path, manualBackupDirName));
+    final snapshotsDir = Directory(p.join(destBase.path, snapshotsDirName));
+
+    final entities = sourceDir.listSync();
+    for (final entity in entities) {
+      if (entity is! File) continue;
+      final name = p.basename(entity.path);
+
+      if (name.startsWith('rythem_autobackup') && name.endsWith('.json')) {
+        if (!snapshotsDir.existsSync()) {
+          snapshotsDir.createSync(recursive: true);
+        }
+        final targetFile = File(p.join(snapshotsDir.path, name));
+        if (!targetFile.existsSync()) {
+          try {
+            entity.copySync(targetFile.path);
+            if (destinationBaseDir == null) {
+              entity.deleteSync();
+            }
+          } catch (_) {}
+        } else if (destinationBaseDir == null) {
+          try {
+            entity.deleteSync();
+          } catch (_) {}
+        }
+      } else if (name.startsWith('rythem_backup') && name.endsWith('.json')) {
+        if (!manualDir.existsSync()) {
+          manualDir.createSync(recursive: true);
+        }
+        final targetFile = File(p.join(manualDir.path, name));
+        if (!targetFile.existsSync()) {
+          try {
+            entity.copySync(targetFile.path);
+            if (destinationBaseDir == null) {
+              entity.deleteSync();
+            }
+          } catch (_) {}
+        } else if (destinationBaseDir == null) {
+          try {
+            entity.deleteSync();
+          } catch (_) {}
+        }
+      }
+    }
   }
 
   /// Atomically writes content to [destination] by first writing to a `.tmp` file
@@ -271,7 +365,7 @@ class AutoBackupManager {
   }
 
   /// Removes older timestamped manual files (e.g. rythem_backup_2026-*.json)
-  /// so that the single in-place master backup file is retained.
+  /// in the manual directory so that the single in-place master backup file is retained.
   Future<void> _cleanupOldTimestampedBackups(Directory dir) async {
     try {
       if (!dir.existsSync()) return;
@@ -279,7 +373,6 @@ class AutoBackupManager {
       for (final f in files) {
         final name = p.basename(f.path);
         if (name != masterBackupFileName &&
-            name != latestBackupFileName &&
             RegExp(r'^rythem_backup_\d{4}-\d{2}-\d{2}.*\.json$').hasMatch(name)) {
           try {
             await f.delete();
@@ -290,48 +383,40 @@ class AutoBackupManager {
   }
 
   /// Creates a manual on-demand backup, replacing the existing backup file
-  /// in the resilient backup directory (e.g. Documents/Rythem/Backups).
+  /// in the dedicated `manual/` backup folder.
   Future<BackupSnapshotInfo?> createManualBackup() async {
     try {
       final jsonPayload = await _backupService.exportBackupJson();
-      Directory backupDir;
+      Directory manualDir;
       try {
-        backupDir = await getResilientBackupDirectory();
+        manualDir = await getManualBackupDirectory();
       } catch (_) {
-        backupDir = await _getSafeFallbackDirectory();
+        manualDir = await _getSafeFallbackManualDirectory();
       }
 
-      if (!backupDir.existsSync()) {
+      if (!manualDir.existsSync()) {
         try {
-          await backupDir.create(recursive: true);
+          await manualDir.create(recursive: true);
         } catch (_) {
-          backupDir = await _getSafeFallbackDirectory();
+          manualDir = await _getSafeFallbackManualDirectory();
         }
       }
 
-      // 1. Write the master backup file in-place, replacing existing
-      File masterFile = File('${backupDir.path}/$masterBackupFileName');
+      // 1. Write the master backup file in-place inside the manual directory
+      File masterFile = File(p.join(manualDir.path, masterBackupFileName));
       try {
         await _atomicWriteFile(masterFile, jsonPayload);
       } catch (writeErr) {
-        debugPrint('AutoBackupManager: Primary backup write failed ($writeErr), falling back to safe local storage');
-        backupDir = await _getSafeFallbackDirectory();
-        masterFile = File('${backupDir.path}/$masterBackupFileName');
+        debugPrint('AutoBackupManager: Primary manual backup write failed ($writeErr), falling back to safe local storage');
+        manualDir = await _getSafeFallbackManualDirectory();
+        masterFile = File(p.join(manualDir.path, masterBackupFileName));
         await _atomicWriteFile(masterFile, jsonPayload);
       }
 
-      // 2. Also keep latest pointer in sync
-      if (latestBackupFileName != masterBackupFileName) {
-        try {
-          final latestFile = File('${backupDir.path}/$latestBackupFileName');
-          await _atomicWriteFile(latestFile, jsonPayload);
-        } catch (_) {}
-      }
+      // 2. Clean up legacy timestamped manual backup files
+      await _cleanupOldTimestampedBackups(manualDir);
 
-      // 3. Clean up legacy timestamped manual backup files
-      await _cleanupOldTimestampedBackups(backupDir);
-
-      // 4. Update last backup date in settings
+      // 3. Update last backup date in settings
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       try {
@@ -346,7 +431,7 @@ class AutoBackupManager {
   }
 
   /// Checks if today's backup has already run. If not (or if [force] is true),
-  /// executes an atomic export, saves latest + daily snapshot, and prunes old files.
+  /// executes an atomic export, saves latest + daily snapshot into `snapshots/`, and prunes old files.
   Future<BackupSnapshotInfo?> checkAndPerformDailyBackup({
     bool force = false,
     DateTime? currentDate,
@@ -364,37 +449,37 @@ class AutoBackupManager {
 
     try {
       final jsonPayload = await _backupService.exportBackupJson();
-      Directory backupDir;
+      Directory snapshotsDir;
       try {
-        backupDir = await getResilientBackupDirectory();
+        snapshotsDir = await getSnapshotsDirectory();
       } catch (_) {
-        backupDir = await _getSafeFallbackDirectory();
+        snapshotsDir = await _getSafeFallbackSnapshotsDirectory();
       }
 
-      if (!backupDir.existsSync()) {
+      if (!snapshotsDir.existsSync()) {
         try {
-          await backupDir.create(recursive: true);
+          await snapshotsDir.create(recursive: true);
         } catch (_) {
-          backupDir = await _getSafeFallbackDirectory();
+          snapshotsDir = await _getSafeFallbackSnapshotsDirectory();
         }
       }
 
-      // 1. Write latest pointer backup (with safe fallback)
-      File latestFile = File('${backupDir.path}/$latestBackupFileName');
+      // 1. Write latest pointer backup inside snapshots folder (with safe fallback)
+      File latestFile = File(p.join(snapshotsDir.path, latestBackupFileName));
       try {
-        await latestFile.writeAsString(jsonPayload);
+        await _atomicWriteFile(latestFile, jsonPayload);
       } catch (writeErr) {
         debugPrint('AutoBackupManager: Daily backup primary write failed ($writeErr), falling back');
-        backupDir = await _getSafeFallbackDirectory();
-        latestFile = File('${backupDir.path}/$latestBackupFileName');
-        await latestFile.writeAsString(jsonPayload);
+        snapshotsDir = await _getSafeFallbackSnapshotsDirectory();
+        latestFile = File(p.join(snapshotsDir.path, latestBackupFileName));
+        await _atomicWriteFile(latestFile, jsonPayload);
       }
 
-      // 2. Write today's rolling snapshot
+      // 2. Write today's rolling snapshot inside snapshots folder
       try {
         final snapshotName = 'rythem_autobackup_$todayStr.json';
-        final snapshotFile = File('${backupDir.path}/$snapshotName');
-        await snapshotFile.writeAsString(jsonPayload);
+        final snapshotFile = File(p.join(snapshotsDir.path, snapshotName));
+        await _atomicWriteFile(snapshotFile, jsonPayload);
       } catch (_) {}
 
       // 3. Mark last backup date in settings
@@ -412,10 +497,11 @@ class AutoBackupManager {
     }
   }
 
-  /// Prunes daily snapshots older than [keepCount], preserving the latest file.
+  /// Prunes daily snapshots older than [keepCount] in the `snapshots/` folder, preserving the latest file.
   Future<void> pruneOldSnapshots({int keepCount = maxRetainedDailySnapshots}) async {
     try {
-      final dir = await getResilientBackupDirectory();
+      final dir = await getSnapshotsDirectory();
+      if (!dir.existsSync()) return;
       final files = dir.listSync().whereType<File>().toList();
 
       final dailySnapshots = files.where((f) {
@@ -441,30 +527,40 @@ class AutoBackupManager {
     }
   }
 
-  /// Lists all available local auto-backups and exports, sorted newest first.
+  /// Lists all available local auto-backups and exports from manual/, snapshots/, and legacy locations, sorted newest first.
   Future<List<BackupSnapshotInfo>> listAvailableBackups() async {
     final results = <BackupSnapshotInfo>[];
     final seenNames = <String>{};
     try {
       final dirs = await getCandidateBackupDirectories();
-      for (final dir in dirs) {
+      for (final baseDir in dirs) {
         try {
-          if (!dir.existsSync()) continue;
-          final files = dir.listSync().whereType<File>().toList();
-          for (final file in files) {
-            final name = p.basename(file.path);
-            if ((name.startsWith('rythem_autobackup') || name.startsWith('rythem_backup')) &&
-                name.endsWith('.json')) {
-              if (seenNames.contains(name)) continue;
-              final info = await parseSnapshotFile(file);
-              if (info != null) {
-                seenNames.add(name);
-                results.add(info);
+          if (!baseDir.existsSync()) continue;
+          final searchDirs = [
+            Directory(p.join(baseDir.path, snapshotsDirName)),
+            Directory(p.join(baseDir.path, 'snapshot')),
+            Directory(p.join(baseDir.path, manualBackupDirName)),
+            baseDir, // fallback for unmigrated root files
+          ];
+
+          for (final dir in searchDirs) {
+            if (!dir.existsSync()) continue;
+            final files = dir.listSync().whereType<File>().toList();
+            for (final file in files) {
+              final name = p.basename(file.path);
+              if ((name.startsWith('rythem_autobackup') || name.startsWith('rythem_backup')) &&
+                  name.endsWith('.json')) {
+                if (seenNames.contains(name)) continue;
+                final info = await parseSnapshotFile(file);
+                if (info != null) {
+                  seenNames.add(name);
+                  results.add(info);
+                }
               }
             }
           }
         } catch (dirError) {
-          debugPrint('AutoBackupManager: Skipping inaccessible candidate backup dir ${dir.path}: $dirError');
+          debugPrint('AutoBackupManager: Skipping inaccessible candidate backup dir ${baseDir.path}: $dirError');
         }
       }
 

@@ -146,8 +146,8 @@ void main() {
     expect(snapshot.beatsCount, 1);
     expect(snapshot.logsCount, 1);
 
-    final latestFile = File('${tempDir.path}/${AutoBackupManager.latestBackupFileName}');
-    final dailyFile = File('${tempDir.path}/rythem_autobackup_2026-09-19.json');
+    final latestFile = File('${tempDir.path}/snapshots/${AutoBackupManager.latestBackupFileName}');
+    final dailyFile = File('${tempDir.path}/snapshots/rythem_autobackup_2026-09-19.json');
 
     expect(latestFile.existsSync(), isTrue);
     expect(dailyFile.existsSync(), isTrue);
@@ -245,11 +245,12 @@ void main() {
     expect(recovery, isNull);
   });
 
-  test('createManualBackup replaces existing backup in-place instead of creating new duplicate files', () async {
+  test('createManualBackup saves to manual/ subfolder and replaces existing backup in-place', () async {
     // 1. First manual backup
     final firstBackup = await autoBackupManager.createManualBackup();
     expect(firstBackup, isNotNull);
     expect(firstBackup!.fileName, AutoBackupManager.masterBackupFileName);
+    expect(firstBackup.displayTitle, 'Manual Backup');
 
     // 2. Insert new beat
     final now = DateTime.now().toIso8601String();
@@ -271,16 +272,90 @@ void main() {
     expect(secondBackup!.fileName, AutoBackupManager.masterBackupFileName);
     expect(secondBackup.beatsCount, 2);
 
-    // 4. Verify in filesystem: only 1 master backup file exists (no duplicates with timestamps)
-    final files = tempDir.listSync().whereType<File>().toList();
-    final masterFiles = files.where((f) => f.path.endsWith(AutoBackupManager.masterBackupFileName)).toList();
+    // 4. Verify in filesystem: master backup file is in manual/ folder
+    final manualFile = File('${tempDir.path}/manual/${AutoBackupManager.masterBackupFileName}');
+    expect(manualFile.existsSync(), isTrue);
+
+    final allFiles = tempDir.listSync(recursive: true).whereType<File>().toList();
+    final masterFiles = allFiles.where((f) => f.path.endsWith(AutoBackupManager.masterBackupFileName)).toList();
     expect(masterFiles.length, 1);
+    expect(masterFiles.first.path, contains('/manual/'));
+
+    // Verify snapshots/ does NOT contain rythem_backup.json
+    final snapshotFiles = Directory('${tempDir.path}/snapshots').existsSync()
+        ? Directory('${tempDir.path}/snapshots').listSync().whereType<File>().toList()
+        : <File>[];
+    expect(snapshotFiles.any((f) => f.path.endsWith(AutoBackupManager.masterBackupFileName)), isFalse);
 
     // Verify no timestamped rythem_backup_YYYY-MM-DD_HH-mm-ss.json files exist
-    final timestampedFiles = files.where((f) {
+    final timestampedFiles = allFiles.where((f) {
       final name = f.path.split('/').last;
       return RegExp(r'^rythem_backup_\d{4}-\d{2}-\d{2}.*\.json$').hasMatch(name);
     }).toList();
     expect(timestampedFiles, isEmpty);
+  });
+
+  test('snapshots and manual backups are cleanly separated into distinct folders', () async {
+    // 1. Trigger daily snapshot
+    await autoBackupManager.checkAndPerformDailyBackup(currentDate: DateTime(2026, 9, 19));
+    // 2. Trigger manual backup
+    await autoBackupManager.createManualBackup();
+
+    final snapshotsDir = Directory('${tempDir.path}/snapshots');
+    final manualDir = Directory('${tempDir.path}/manual');
+
+    expect(snapshotsDir.existsSync(), isTrue);
+    expect(manualDir.existsSync(), isTrue);
+
+    final snapshotFiles = snapshotsDir.listSync().whereType<File>().map((f) => f.path.split('/').last).toList();
+    final manualFiles = manualDir.listSync().whereType<File>().map((f) => f.path.split('/').last).toList();
+
+    // Snapshots directory should contain latest snapshot and daily snapshot
+    expect(snapshotFiles.contains(AutoBackupManager.latestBackupFileName), isTrue);
+    expect(snapshotFiles.contains('rythem_autobackup_2026-09-19.json'), isTrue);
+    expect(snapshotFiles.contains(AutoBackupManager.masterBackupFileName), isFalse);
+
+    // Manual directory should only contain master backup file
+    expect(manualFiles.contains(AutoBackupManager.masterBackupFileName), isTrue);
+    expect(manualFiles.contains(AutoBackupManager.latestBackupFileName), isFalse);
+
+    // Root folder should have no loose JSON files
+    final rootFiles = tempDir.listSync().whereType<File>().where((f) => f.path.endsWith('.json')).toList();
+    expect(rootFiles, isEmpty);
+  });
+
+  test('migrates existing legacy root backups into separate subfolders automatically', () async {
+    final migrationDir = await Directory.systemTemp.createTemp('rythem_migration_test_');
+    try {
+      // Place legacy files directly in root
+      final legacyManual = File('${migrationDir.path}/${AutoBackupManager.masterBackupFileName}');
+      final legacyLatest = File('${migrationDir.path}/${AutoBackupManager.latestBackupFileName}');
+      final jsonPayload = await backupService.exportBackupJson();
+      await legacyManual.writeAsString(jsonPayload);
+      await legacyLatest.writeAsString(jsonPayload);
+
+      final manager = AutoBackupManager(
+        backupService: backupService,
+        settingsRepo: settingsRepo,
+        overrideDir: migrationDir,
+      );
+
+      // Accessing directory triggers migration
+      await manager.getResilientBackupDirectory();
+
+      final manualFile = File('${migrationDir.path}/manual/${AutoBackupManager.masterBackupFileName}');
+      final snapshotFile = File('${migrationDir.path}/snapshots/${AutoBackupManager.latestBackupFileName}');
+
+      expect(manualFile.existsSync(), isTrue);
+      expect(snapshotFile.existsSync(), isTrue);
+
+      // Legacy files at root should have been cleaned up
+      expect(File('${migrationDir.path}/${AutoBackupManager.masterBackupFileName}').existsSync(), isFalse);
+      expect(File('${migrationDir.path}/${AutoBackupManager.latestBackupFileName}').existsSync(), isFalse);
+    } finally {
+      if (migrationDir.existsSync()) {
+        await migrationDir.delete(recursive: true);
+      }
+    }
   });
 }
