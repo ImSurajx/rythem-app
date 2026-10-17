@@ -942,29 +942,108 @@ class _ExploreScreenState extends State<ExploreScreen> {
           const SizedBox(height: 12),
 
           // Row 4: Action Footer (Edit Note, Open in Track, Toggle Check)
+          // Row 4: Action Footer (Edit Note, Open in Track, Delete Note, and Toggle Check)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Edit Note / Flag Button
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  if (item.progress > 0) {
-                    CheckpointDialog.show(
-                      context,
-                      beat: item.beat,
-                      initialPercent: item.progress,
-                      initialNotes: item.notes,
-                      onSaveCheckpoint: (pct, notes) {
-                        widget.onSaveCheckpoint?.call(item.beat, pct, notes);
-                        if (mounted) setState(() {});
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // Edit Note / Flag Button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        if (item.progress > 0) {
+                          CheckpointDialog.show(
+                            context,
+                            beat: item.beat,
+                            initialPercent: item.progress,
+                            initialNotes: item.notes,
+                            onSaveCheckpoint: (pct, notes) {
+                              widget.onSaveCheckpoint?.call(item.beat, pct, notes);
+                              if (mounted) setState(() {});
+                            },
+                          );
+                        } else {
+                          ConfusingBeatDialog.show(
+                            context,
+                            beat: item.beat,
+                            initialNote: item.notes,
+                            onDelete: () {
+                              if (widget.onSaveFlag != null) {
+                                widget.onSaveFlag!(item.beat, '');
+                              } else {
+                                widget.onSaveCheckpoint?.call(item.beat, item.progress, '');
+                              }
+                              if (mounted) setState(() {});
+                            },
+                            onFlagSaved: (savedNote) {
+                              if (widget.onSaveFlag != null) {
+                                widget.onSaveFlag!(item.beat, savedNote);
+                              } else {
+                                widget.onSaveCheckpoint?.call(item.beat, item.progress, savedNote);
+                              }
+                              if (mounted) setState(() {});
+                            },
+                          );
+                        }
                       },
-                    );
-                  } else {
-                    ConfusingBeatDialog.show(
-                      context,
-                      beat: item.beat,
-                      initialNote: item.notes,
-                      onDelete: () {
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: themeColors.glassBorder, width: 0.7),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              item.progress > 0 ? Icons.tune_rounded : Icons.flag_outlined,
+                              size: 13,
+                              color: themeColors.textSecondary,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              item.progress > 0 ? 'Edit Checkpoint' : 'Edit Flag',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: themeColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Open in Track Button
+                    GestureDetector(
+                      onTap: () => _openRoadmapDetail(item.roadmap),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: themeColors.glassBorder, width: 0.7),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.launch_rounded, size: 13, color: themeColors.textSecondary),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Open Track',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: themeColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Delete Note / Flag Button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
                         if (widget.onSaveFlag != null) {
                           widget.onSaveFlag!(item.beat, '');
                         } else {
@@ -972,111 +1051,41 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         }
                         if (mounted) setState(() {});
                       },
-                      onFlagSaved: (savedNote) {
-                        if (widget.onSaveFlag != null) {
-                          widget.onSaveFlag!(item.beat, savedNote);
-                        } else {
-                          widget.onSaveCheckpoint?.call(item.beat, item.progress, savedNote);
-                        }
-                        if (mounted) setState(() {});
-                      },
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: themeColors.glassBorder, width: 0.7),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        item.progress > 0 ? Icons.tune_rounded : Icons.flag_outlined,
-                        size: 13,
-                        color: themeColors.textSecondary,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        item.progress > 0 ? 'Edit Checkpoint' : 'Edit Flag',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: themeColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Open in Track Button
-              GestureDetector(
-                onTap: () => _openRoadmapDetail(item.roadmap),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: themeColors.glassBorder, width: 0.7),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.launch_rounded, size: 13, color: themeColors.textSecondary),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Open Track',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: themeColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Delete Note / Flag Button
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  if (widget.onSaveFlag != null) {
-                    widget.onSaveFlag!(item.beat, '');
-                  } else {
-                    widget.onSaveCheckpoint?.call(item.beat, item.progress, '');
-                  }
-                  if (mounted) setState(() {});
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withOpacity(isDark ? 0.12 : 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFEF4444).withOpacity(0.35),
-                      width: 0.7,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.delete_outline_rounded,
-                        size: 13,
-                        color: Color(0xFFEF4444),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Delete Note',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withOpacity(isDark ? 0.12 : 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFFEF4444).withOpacity(0.35),
+                            width: 0.7,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 13,
+                              color: Color(0xFFEF4444),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Delete Note',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 10),
 
               // Quick Toggle Completion
               GestureDetector(
@@ -1086,7 +1095,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   if (mounted) setState(() {});
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: item.beat.isCompleted
