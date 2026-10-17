@@ -1074,7 +1074,7 @@ class _TrackTodoListCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '⚡ Log Task',
+                                      'Log Task',
                                       style: RythemTypography.button.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,

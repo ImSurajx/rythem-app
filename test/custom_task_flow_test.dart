@@ -497,14 +497,14 @@ void main() {
 
       // Verify "Pull Next Topic" is NOT present, only single button is present
       expect(find.text('Pull Next Topic'), findsNothing);
-      expect(find.text('⚡ Log Task'), findsOneWidget);
+      expect(find.text('Log Task'), findsOneWidget);
 
       // Tap button to open Open Lab dialog
-      await tester.tap(find.text('⚡ Log Task'));
+      await tester.tap(find.text('Log Task'));
       await tester.pumpAndSettle();
 
-      // Verify Open Lab dialog styling and title (title + button)
-      expect(find.text('Log Task'), findsNWidgets(2));
+      // Verify Open Lab dialog styling and title (card button + dialog title + dialog button)
+      expect(find.text('Log Task'), findsNWidgets(3));
       expect(find.text('Open Lab'), findsWidgets);
 
       // Select preset 1h (1 hour -> 6 effort points)
