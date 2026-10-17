@@ -22,6 +22,7 @@ import 'create_custom_task_dialog.dart';
 import 'session_detail_screen.dart';
 import '../explore/widgets/chapter_accordion.dart';
 import '../../core/ambient/ambient_weather_service.dart';
+import '../../core/ambient/daily_quote_service.dart';
 import '../../core/navigation/smooth_page_route.dart';
 import '../../core/theme/animation_config.dart';
 
@@ -97,11 +98,24 @@ class FlowScreen extends StatefulWidget {
 class _FlowScreenState extends State<FlowScreen> {
   String _selectedTrackFilter = 'all';
   AmbientWeather? _ambientWeather;
+  DailyQuote? _dailyQuote;
 
   @override
   void initState() {
     super.initState();
     _initAmbientWeather();
+    _initDailyQuote();
+  }
+
+  void _initDailyQuote({bool forceRefresh = false}) {
+    _dailyQuote = DailyQuoteService.instance.cachedQuote;
+    DailyQuoteService.instance.getDailyQuote(forceRefresh: forceRefresh).then((quote) {
+      if (mounted && quote != _dailyQuote) {
+        setState(() {
+          _dailyQuote = quote;
+        });
+      }
+    });
   }
 
   void _initAmbientWeather({bool requestPermission = true}) {
@@ -247,6 +261,60 @@ class _FlowScreenState extends State<FlowScreen> {
               ),
             ],
           ),
+
+          // Daily Inspirational Quote (Free ZenQuotes/DummyJSON with 0 signup & 0 keys)
+          if (_dailyQuote != null) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => _initDailyQuote(forceRefresh: true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.035) : Colors.black.withOpacity(0.025),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.format_quote_rounded,
+                      size: 16,
+                      color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '"${_dailyQuote!.quote}"',
+                            style: RythemTypography.bodySmall.copyWith(
+                              color: themeColors.textPrimary,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 11.5,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '— ${_dailyQuote!.author}',
+                            style: RythemTypography.caption.copyWith(
+                              color: themeColors.textTertiary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
 
           const SizedBox(height: 16),
 

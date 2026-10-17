@@ -61,6 +61,7 @@ class AmbientWeatherService {
   Future<AmbientWeather?> getWeather({
     bool forceRefresh = false,
     bool requestPermission = false,
+    LocationCoordinates? mockCoordinates,
     http.Client? client,
   }) async {
     final now = DateTime.now();
@@ -71,19 +72,87 @@ class AmbientWeatherService {
       }
     }
 
-    LocationCoordinates? coords;
-    try {
-      var hasPerm = await LocationPermissionService.hasLocationPermission();
-      if (!hasPerm && requestPermission) {
-        hasPerm = await LocationPermissionService.requestLocationPermission();
-      }
-      if (hasPerm) {
-        coords = await LocationPermissionService.getLocationCoordinates();
-      }
-    } catch (_) {}
+    LocationCoordinates? coords = mockCoordinates;
+    if (coords == null) {
+      try {
+        var hasPerm = await LocationPermissionService.hasLocationPermission();
+        if (!hasPerm && requestPermission) {
+          hasPerm = await LocationPermissionService.requestLocationPermission();
+        }
+        if (hasPerm) {
+          coords = await LocationPermissionService.getLocationCoordinates();
+        }
+      } catch (_) {}
+    }
 
     final httpClient = client ?? http.Client();
     try {
+      // 1. Primary Free Weather Engine: Open-Meteo (100% Free, No signup, No API keys)
+      if (coords != null) {
+        try {
+          final meteoUri = Uri.parse(
+            'https://api.open-meteo.com/v1/forecast?latitude=${coords.latitude}&longitude=${coords.longitude}&current=temperature_2m,weather_code,is_day',
+          );
+          final meteoRes = await httpClient
+              .get(meteoUri, headers: {'User-Agent': 'RythemApp/1.1'})
+              .timeout(const Duration(seconds: 4));
+
+          if (meteoRes.statusCode == 200) {
+            final meteoData = jsonDecode(meteoRes.body);
+            if (meteoData is Map<String, dynamic>) {
+              final current = meteoData['current'];
+              if (current is Map<String, dynamic>) {
+                final tempVal = current['temperature_2m'];
+                final tempC = (tempVal is num) ? tempVal.round() : 20;
+                final code = (current['weather_code'] is num)
+                    ? (current['weather_code'] as num).toInt()
+                    : 0;
+                final isDayVal = current['is_day'];
+                final isDay = isDayVal == 1;
+
+                // Reverse geocoding via BigDataCloud client API (Free, No signup, No API keys)
+                String? area;
+                try {
+                  final geoUri = Uri.parse(
+                    'https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.latitude}&longitude=${coords.longitude}&localityLanguage=en',
+                  );
+                  final geoRes = await httpClient
+                      .get(geoUri, headers: {'User-Agent': 'RythemApp/1.1'})
+                      .timeout(const Duration(seconds: 3));
+                  if (geoRes.statusCode == 200) {
+                    final geoData = jsonDecode(geoRes.body);
+                    if (geoData is Map<String, dynamic>) {
+                      final city = geoData['city'] as String?;
+                      final locality = geoData['locality'] as String?;
+                      final subdivision = geoData['principalSubdivision'] as String?;
+                      area = (city != null && city.isNotEmpty)
+                          ? city
+                          : (locality != null && locality.isNotEmpty)
+                              ? locality
+                              : subdivision;
+                    }
+                  }
+                } catch (_) {}
+
+                final weather = AmbientWeather(
+                  condition: _wmoCodeToCondition(code),
+                  temperatureC: tempC,
+                  location: area,
+                  isDay: isDay,
+                  fetchedAt: now,
+                  isLocationBased: true,
+                );
+                _cachedWeather = weather;
+                return weather;
+              }
+            }
+          }
+        } catch (_) {
+          // Fall through to wttr.in fallback
+        }
+      }
+
+      // 2. Secondary Free Fallback Engine: wttr.in (Free, No signup, No API keys)
       final uri = coords != null
           ? Uri.parse('https://wttr.in/${coords.latitude},${coords.longitude}?format=j1')
           : Uri.parse('https://wttr.in/?format=j1');
@@ -136,6 +205,52 @@ class AmbientWeatherService {
     }
 
     return _cachedWeather;
+  }
+
+  static String _wmoCodeToCondition(int code) {
+    switch (code) {
+      case 0:
+        return 'Clear';
+      case 1:
+        return 'Mainly Clear';
+      case 2:
+        return 'Partly Cloudy';
+      case 3:
+        return 'Cloudy';
+      case 45:
+      case 48:
+        return 'Mist';
+      case 51:
+      case 53:
+      case 55:
+      case 56:
+      case 57:
+        return 'Drizzle';
+      case 61:
+      case 63:
+      case 65:
+      case 66:
+      case 67:
+        return 'Rain';
+      case 71:
+      case 73:
+      case 75:
+      case 77:
+        return 'Snow';
+      case 80:
+      case 81:
+      case 82:
+        return 'Rain';
+      case 85:
+      case 86:
+        return 'Snow';
+      case 95:
+      case 96:
+      case 99:
+        return 'Thunderstorm';
+      default:
+        return 'Clear';
+    }
   }
 
   static String _cleanCondition(String raw) {

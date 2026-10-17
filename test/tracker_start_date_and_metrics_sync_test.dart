@@ -270,6 +270,8 @@ void main() {
       expect(find.text('Start Early'), findsOneWidget);
 
       // Tap "Start Early"
+      await tester.ensureVisible(find.text('Start Early'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Start Early'));
       await tester.pump();
       expect(startEarlyCalled, isTrue);
