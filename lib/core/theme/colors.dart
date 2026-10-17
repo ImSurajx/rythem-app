@@ -70,8 +70,8 @@ class RythemColors {
     stops: [0.0, 0.45, 1.0],
   );
 
-  static const LinearGradient electricCyanGradient = LinearGradient(
-    colors: [Color(0xFF00F2FE), Color(0xFF4FACFE)],
+  static const LinearGradient glassBlackGradient = LinearGradient(
+    colors: [Color(0xFF27272A), Color(0xFF09090B)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -213,11 +213,11 @@ class RythemThemeColors {
     required this.rowBorder,
   });
 
-  LinearGradient get electricCyanGradient => RythemColors.electricCyanGradient;
+  LinearGradient get glassBlackGradient => RythemColors.glassBlackGradient;
   LinearGradient get amberBeatGradient => RythemColors.amberBeatGradient;
   LinearGradient get emeraldSuccessGradient => RythemColors.emeraldSuccessGradient;
   LinearGradient get violetFocusGradient => RythemColors.violetFocusGradient;
-  Color get activeGlow => isDark ? const Color(0x3300F2FE) : const Color(0x2200F2FE);
+  Color get activeGlow => isDark ? const Color(0x33FFFFFF) : const Color(0x18000000);
   Color get amberGlow => isDark ? const Color(0x33F59E0B) : const Color(0x22F59E0B);
   Color get emeraldGlow => isDark ? const Color(0x3310B981) : const Color(0x2210B981);
 }

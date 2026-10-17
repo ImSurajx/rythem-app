@@ -134,29 +134,28 @@ class _DockButton extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.08))
+              ? (isDark ? Colors.white.withOpacity(0.14) : const Color(0x14000000))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(26),
           border: isSelected
               ? Border.all(
-                  color: isDark ? const Color(0x6638BDF8) : const Color(0x330284C7),
+                  color: isDark ? themeColors.glassBorderHighlight : const Color(0x28000000),
                   width: 1.0,
                 )
               : null,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: isDark
-                        ? const Color(0xFF38BDF8).withOpacity(0.16)
-                        : const Color(0xFF0284C7).withOpacity(0.10),
-                    blurRadius: 14,
+                    color: isDark ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
-                  BoxShadow(
-                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 1),
-                  ),
+                  if (isDark)
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
                 ]
               : null,
         ),
@@ -171,9 +170,7 @@ class _DockButton extends StatelessWidget {
                 child: Icon(
                   item.icon,
                   size: 20,
-                  color: isSelected
-                      ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7))
-                      : themeColors.textTertiary,
+                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
                 ),
               ),
               const SizedBox(height: 3),
@@ -183,9 +180,7 @@ class _DockButton extends StatelessWidget {
                 style: RythemTypography.labelSmall.copyWith(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                  color: isSelected
-                      ? (isDark ? const Color(0xFFE0F2FE) : const Color(0xFF0369A1))
-                      : themeColors.textTertiary,
+                  color: isSelected ? themeColors.textPrimary : themeColors.textTertiary,
                 ),
                 child: Text(item.label),
               ),

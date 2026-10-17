@@ -1000,7 +1000,7 @@ class BeatTile extends StatelessWidget {
                                 value: (progressPercent / 100.0).clamp(0.0, 1.0),
                                 backgroundColor: isDark ? Colors.white12 : Colors.black12,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                  themeColors.textPrimary,
                                 ),
                                 minHeight: 3,
                               ),
@@ -1010,7 +1010,7 @@ class BeatTile extends StatelessWidget {
                           Text(
                             '$progressPercent%',
                             style: RythemTypography.labelSmall.copyWith(
-                              color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                              color: themeColors.textPrimary,
                               fontSize: 9.5,
                               fontWeight: FontWeight.w700,
                             ),

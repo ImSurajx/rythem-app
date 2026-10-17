@@ -47,15 +47,15 @@ class GlassProgressBar extends StatelessWidget {
                 width: fillWidth,
                 height: height,
                 decoration: BoxDecoration(
-                  gradient: gradient ?? (fillColor == null ? themeColors.electricCyanGradient : null),
+                  gradient: gradient,
                   color: gradient == null ? (fillColor ?? themeColors.progressFill) : null,
                   borderRadius: effectiveRadius,
                   boxShadow: showGlow && clampedProgress > 0
                       ? [
                           BoxShadow(
                             color: isDark
-                                ? const Color(0xFF00F2FE).withOpacity(0.4)
-                                : const Color(0xFF0284C7).withOpacity(0.25),
+                                ? Colors.white.withOpacity(0.25)
+                                : Colors.black.withOpacity(0.15),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),

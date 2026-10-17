@@ -1265,12 +1265,19 @@ class _TrackTodoListCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0x1838BDF8) : const Color(0x100284C7),
+          color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? const Color(0x4038BDF8) : const Color(0x300284C7),
+            color: isDark ? themeColors.glassBorder : const Color(0x18000000),
             width: 0.8,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1280,22 +1287,22 @@ class _TrackTodoListCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withOpacity(isDark ? 0.3 : 0.15),
+                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: const Color(0xFF38BDF8).withOpacity(isDark ? 0.5 : 0.3),
+                      color: isDark ? themeColors.glassBorder : const Color(0x14000000),
                       width: 0.8,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 11, color: Color(0xFF38BDF8)),
+                      Icon(Icons.calendar_today_rounded, size: 11, color: themeColors.textSecondary),
                       const SizedBox(width: 4),
                       Text(
                         'KICKOFF $formattedDate'.toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF38BDF8),
+                        style: TextStyle(
+                          color: themeColors.textPrimary,
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,

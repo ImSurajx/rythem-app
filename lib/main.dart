@@ -502,7 +502,7 @@ class _DesignSystemShowcaseScreenState
           context,
           'Checkpoint saved: $clamped% (+${earnedPoints.toStringAsFixed(2)} beats)! 🎯',
           icon: Icons.bookmark_added_rounded,
-          accentColor: const Color(0xFF3B82F6),
+          accentColor: const Color(0xFF10B981),
         );
       } else if (clamped > 0) {
         _showToast('Checkpoint saved: $clamped%');

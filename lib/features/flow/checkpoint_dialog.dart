@@ -297,7 +297,7 @@ class _CheckpointDialogState extends State<CheckpointDialog> {
                                     : '${totalProgressPoints.toStringAsFixed(2)} beats total',
                                 style: RythemTypography.labelSmall.copyWith(
                                   color: earnedPoints > 0
-                                      ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+                                      ? themeColors.textPrimary
                                       : themeColors.textSecondary,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 11,
