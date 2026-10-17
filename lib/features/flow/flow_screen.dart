@@ -21,6 +21,7 @@ import 'checkpoint_dialog.dart';
 import 'create_custom_task_dialog.dart';
 import 'session_detail_screen.dart';
 import '../explore/widgets/chapter_accordion.dart';
+import '../../core/ambient/ambient_weather_service.dart';
 import '../../core/navigation/smooth_page_route.dart';
 import '../../core/theme/animation_config.dart';
 
@@ -95,6 +96,24 @@ class FlowScreen extends StatefulWidget {
 
 class _FlowScreenState extends State<FlowScreen> {
   String _selectedTrackFilter = 'all';
+  AmbientWeather? _ambientWeather;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAmbientWeather();
+  }
+
+  void _initAmbientWeather() {
+    _ambientWeather = AmbientWeatherService.instance.cachedWeather;
+    AmbientWeatherService.instance.getWeather().then((weather) {
+      if (mounted && weather != null && weather != _ambientWeather) {
+        setState(() {
+          _ambientWeather = weather;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,12 +184,10 @@ class _FlowScreenState extends State<FlowScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                () {
-                  final hour = DateTime.now().hour;
-                  if (hour < 12) return 'Good morning';
-                  if (hour < 17) return 'Good afternoon';
-                  return 'Good evening';
-                }(),
+                AmbientWeatherService.getGreeting(
+                  dateTime: now,
+                  weather: _ambientWeather,
+                ),
                 style: RythemTypography.headlineMedium.copyWith(
                   color: themeColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -180,11 +197,42 @@ class _FlowScreenState extends State<FlowScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
-              Text(
-                '${roadmaps.length} active track${roadmaps.length == 1 ? '' : 's'} • Daily Flow',
-                style: RythemTypography.bodySmall.copyWith(
-                  color: themeColors.textTertiary,
-                  fontSize: 11.5,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    Text(
+                      '${roadmaps.length} active track${roadmaps.length == 1 ? '' : 's'} • Daily Flow',
+                      style: RythemTypography.bodySmall.copyWith(
+                        color: themeColors.textTertiary,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    if (_ambientWeather != null) ...[
+                      Text(
+                        ' • ',
+                        style: RythemTypography.bodySmall.copyWith(
+                          color: themeColors.textTertiary,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                      Icon(
+                        AmbientWeatherService.getWeatherIcon(_ambientWeather!, hour: now.hour),
+                        size: 13,
+                        color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_ambientWeather!.temperatureC}°C ${_ambientWeather!.condition}',
+                        style: RythemTypography.bodySmall.copyWith(
+                          color: themeColors.textSecondary,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
