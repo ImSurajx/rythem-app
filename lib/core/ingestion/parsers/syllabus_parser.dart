@@ -207,7 +207,7 @@ class SyllabusParser {
     // 2. Check for trailing bracket/parenthesis:
     // e.g. "Topic [2.5]", "Topic (3 beats)", "Topic [effort: 2.0]"
     final trailingBracketRegex = RegExp(
-      r'[\s\-]+[\[\(]\s*(?:(?:effort|beats?|pts?|points?)\s*[:=]?\s*)?(\d+(?:\.\d+)?)\s*(?:beats?|pts?|points?|effort)?\s*[\]\)]\s*$',
+      r'[\s\-]*[\[\(]\s*(?:(?:effort|beats?|pts?|points?)\s*[:=]?\s*)?(\d+(?:\.\d+)?)\s*(?:beats?|pts?|points?|effort)?\s*[\]\)]\s*$',
       caseSensitive: false,
     );
     final trailingMatch = trailingBracketRegex.firstMatch(line);
@@ -231,7 +231,7 @@ class SyllabusParser {
     // 3. Check for trailing pipe/dash/colon separator:
     // e.g. "Topic | 2.5 beats", "Topic | 2.5", "Topic - 3 beats", "Topic: 2.5 beats"
     final separatorRegex = RegExp(
-      r'[\s]+(?:\||--?|:)\s*(?:(?:effort|beats?|pts?|points?)\s*[:=]?\s*)?(\d+(?:\.\d+)?)\s*(?:beats?|pts?|points?|effort)?\s*$',
+      r'(?:\s*\|\s*|\s*:\s*|\s+--?\s*)(?:(?:effort|beats?|pts?|points?)\s*[:=]?\s*)?(\d+(?:\.\d+)?)\s*(?:beats?|pts?|points?|effort)?\s*$',
       caseSensitive: false,
     );
     final sepMatch = separatorRegex.firstMatch(line);
@@ -242,7 +242,7 @@ class SyllabusParser {
           fullMatch.contains('pt') ||
           fullMatch.contains('point') ||
           fullMatch.contains('effort');
-      final isPipe = fullMatch.trimLeft().startsWith('|');
+      final isPipe = fullMatch.contains('|');
       if (numStr != null) {
         final val = double.tryParse(numStr);
         if (val != null && (hasKeyword || isPipe) && val >= EffortWeightCalculator.minWeight && val <= EffortWeightCalculator.maxWeight) {
