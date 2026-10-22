@@ -251,7 +251,8 @@ class CurriculumIngestionService {
 
       for (final topic in ch.topics) {
         final beatId = '${chId}_b_$globalSort';
-        totalEffort += 1.0;
+        final beatEffort = topic.effortPoints ?? 1.0;
+        totalEffort += beatEffort;
 
         beatEntities.add(BeatEntity(
           id: beatId,
@@ -260,7 +261,7 @@ class CurriculumIngestionService {
           title: topic.title,
           sourceUrl: null,
           timestampSeconds: null,
-          effortWeight: 1.0,
+          effortWeight: beatEffort,
           sortOrder: globalSort,
           isCompleted: false,
           isMentorExtra: false,
@@ -458,6 +459,9 @@ class CurriculumIngestionService {
     final remainingGapBeats = <BeatEntity>[];
     for (int g = 0; g < audit.uncoveredGaps.length; g++) {
       final gapTitle = audit.uncoveredGaps[g];
+      final matchingExisting = existingBeats.where((b) => b.title == gapTitle).firstOrNull;
+      final gapEffort = matchingExisting?.effortWeight ?? 1.0;
+
       remainingGapBeats.add(BeatEntity(
         id: '${chapterId}_gap_$g',
         chapterId: chapterId,
@@ -465,7 +469,7 @@ class CurriculumIngestionService {
         title: gapTitle,
         sourceUrl: null,
         timestampSeconds: null,
-        effortWeight: 1.0,
+        effortWeight: gapEffort,
         sortOrder: currentSortIndex++,
         isCompleted: false,
         isMentorExtra: false,
