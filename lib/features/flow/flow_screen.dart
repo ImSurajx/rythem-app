@@ -1538,7 +1538,7 @@ class _TrackTodoListCard extends StatelessWidget {
                     if (onStartEarly != null)
                       Expanded(
                         child: GlassButton(
-                          label: 'Start Today',
+                          label: 'Start Early',
                           icon: Icons.bolt_rounded,
                           height: 40,
                           fontSize: 12.5,
