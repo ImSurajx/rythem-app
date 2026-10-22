@@ -1415,166 +1415,159 @@ class _TrackTodoListCard extends StatelessWidget {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     final formattedDate = '${monthNames[startDate.month - 1]} ${startDate.day}, ${startDate.year}';
-    final daysText = daysUntil == 1 ? 'Starts tomorrow' : 'Starts in $daysUntil days';
+    final daysText = daysUntil <= 1 ? 'Starts tomorrow' : 'Starts in $daysUntil days';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0x18FFFFFF) : const Color(0x0A000000),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? themeColors.glassBorder : const Color(0x18000000),
-            width: 0.8,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isDark ? themeColors.glassBorder : const Color(0x14000000),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.calendar_today_rounded, size: 11, color: themeColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        'KICKOFF $formattedDate'.toUpperCase(),
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(isDark ? 0.2 : 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    daysText,
-                    style: const TextStyle(
-                      color: Colors.amber,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        Colors.white.withOpacity(0.06),
+                        Colors.white.withOpacity(0.02),
+                      ]
+                    : [
+                        Colors.black.withOpacity(0.035),
+                        Colors.black.withOpacity(0.015),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? themeColors.glassBorder : const Color(0x18000000),
+                width: 0.8,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              'Track Scheduled for $formattedDate',
-              style: RythemTypography.titleMedium.copyWith(
-                color: themeColors.textPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Starts on kickoff day',
-              style: RythemTypography.bodySmall.copyWith(
-                color: themeColors.textSecondary,
-                fontSize: 12,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (onStartEarly != null)
-                  GestureDetector(
-                    onTap: () => onStartEarly!(roadmap),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF10B981), Color(0xFF059669)],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF10B981).withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'Start Early',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                if (onOpenDetail != null)
-                  GestureDetector(
-                    onTap: onOpenDetail,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+                          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                          width: 0.8,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.menu_book_rounded, size: 14, color: themeColors.textSecondary),
+                          Icon(Icons.calendar_today_rounded, size: 11, color: themeColors.textTertiary),
+                          const SizedBox(width: 5),
+                          Text(
+                            'KICKOFF $formattedDate'.toUpperCase(),
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textPrimary,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? themeColors.glassBorder : const Color(0x14000000),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.schedule_rounded, size: 11, color: themeColors.textTertiary),
                           const SizedBox(width: 4),
                           Text(
-                            'View Syllabus',
-                            style: TextStyle(
-                              color: themeColors.textPrimary,
-                              fontSize: 11,
+                            daysText,
+                            style: RythemTypography.labelSmall.copyWith(
+                              color: themeColors.textSecondary,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Track Scheduled for $formattedDate',
+                  style: RythemTypography.titleMedium.copyWith(
+                    color: themeColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    letterSpacing: -0.2,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Kickoff is set for $formattedDate. You can wait for kickoff or start studying ahead today.',
+                  style: RythemTypography.bodySmall.copyWith(
+                    color: themeColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    if (onStartEarly != null)
+                      Expanded(
+                        child: GlassButton(
+                          label: 'Start Today',
+                          icon: Icons.bolt_rounded,
+                          height: 40,
+                          fontSize: 12.5,
+                          iconSize: 16,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          variant: GlassButtonVariant.primary,
+                          onPressed: () => onStartEarly!(roadmap),
+                        ),
+                      ),
+                    if (onStartEarly != null && onOpenDetail != null)
+                      const SizedBox(width: 10),
+                    if (onOpenDetail != null)
+                      Expanded(
+                        child: GlassButton(
+                          label: 'View Syllabus',
+                          icon: Icons.menu_book_rounded,
+                          height: 40,
+                          fontSize: 12.5,
+                          iconSize: 16,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          variant: GlassButtonVariant.secondary,
+                          onPressed: onOpenDetail,
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

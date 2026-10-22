@@ -19,6 +19,9 @@ class GlassButton extends StatefulWidget {
   final double height;
   final bool isLoading;
   final bool enableBlur;
+  final EdgeInsetsGeometry? padding;
+  final double? fontSize;
+  final double? iconSize;
 
   const GlassButton({
     super.key,
@@ -30,6 +33,9 @@ class GlassButton extends StatefulWidget {
     this.height = 52.0,
     this.isLoading = false,
     this.enableBlur = true,
+    this.padding,
+    this.fontSize,
+    this.iconSize,
   });
 
   @override
@@ -186,7 +192,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
               if (widget.icon != null) ...[
                 Icon(
                   widget.icon,
-                  size: 18,
+                  size: widget.iconSize ?? 18,
                   color: textColor,
                 ),
                 const SizedBox(width: 8),
@@ -198,6 +204,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
                   overflow: TextOverflow.ellipsis,
                   style: RythemTypography.button.copyWith(
                     color: textColor,
+                    fontSize: widget.fontSize ?? RythemTypography.button.fontSize,
                     fontWeight: widget.variant == GlassButtonVariant.primary
                         ? FontWeight.w600
                         : FontWeight.w500,
@@ -211,7 +218,7 @@ class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStat
 
     final innerContainer = Container(
       alignment: Alignment.center,
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      padding: widget.padding ?? EdgeInsets.symmetric(horizontal: horizontalPadding),
       decoration: BoxDecoration(
         color: backgroundColor,
         gradient: backgroundGradient,
