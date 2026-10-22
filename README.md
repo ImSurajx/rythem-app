@@ -1,247 +1,256 @@
 <div align="center">
 
 # 🎵 Rythem
-### The Local-First Learning Operating System & Milestone Pacing Tracker
+### The Ambient, User-Driven Learning Operating System & Curriculum Orchestrator
 
 [![Release](https://img.shields.io/github/v/release/ImSurajx/rythem-app?color=10B981&label=Release&logo=github)](https://github.com/ImSurajx/rythem-app/releases/latest)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)](https://dart.dev)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0)
-[![Offline First](https://img.shields.io/badge/Offline-100%25%20Local-10B981)](#-technical-architecture)
+[![Offline First](https://img.shields.io/badge/Offline-100%25%20Local-10B981)](#-architecture--privacy-first-engineering)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)](https://sqlite.org)
 
-**Beats over clocks. Milestones over stopwatches. Progress felt, not measured.**
+**Beats over clocks. User-driven momentum over rigid quotas. Progress felt, not measured.**
 
-[Key Features](#-key-features) •
-[App Walkthrough](#-how-to-operate-the-app) •
-[Format Syllabus with GPT](#-how-to-format--import-any-syllabus-using-gpt) •
-[Architecture](#-technical-architecture) •
-[Building Locally](#-building--running-locally) •
+[The Evolution](#-the-evolution-what-rythem-has-become) •
+[Core Pillars](#-the-four-core-pillars) •
+[Universal Beats & Ingestion](#-universal-beats--curriculum-ingestion-v200) •
+[Formatting Syllabi with AI](#-how-to-format--import-any-syllabus-using-ai) •
+[Architecture](#-architecture--privacy-first-engineering) •
+[Getting Started](#-getting-started--local-development) •
 [Contributing](#-contributing)
 
 </div>
 
 ---
 
-## 🌟 Why Rythem?
+## 🌊 The Evolution: What Rythem Has Become
 
-Traditional study trackers trap learners in anxiety: toxic countdown timers, overdue warning banners, arbitrary hour quotas, and rigid schedules that collapse the moment life happens.
+Traditional learning and study apps treat education like a factory floor: toxic countdown timers, arbitrary hour quotas, guilt-inducing overdue banners, and rigid daily quotas that collapse the moment unexpected real-world demands arise.
 
-**Rythem redesigns self-directed learning from first principles:**
+Early iterations of Rythem explored automated pacing math. But as the system matured through real daily usage, a deeper truth emerged: **forced algorithmic daily quotas still cause anxiety, whereas genuine mastery flourishes under user-driven momentum in a peaceful, ambient environment.**
 
-- ⏱️ **Zero Stopwatches**: No minute or hour counting anywhere in the UI. Work is measured in atomic **Beats** (lessons, exercises, topics).
-- 🌊 **Dynamic Pacing Dilution**: Missed a day or fell behind? Rythem never shames you. It mathematically redistributes remaining beats across your target completion date.
-- 🎯 **User-Driven Focus**: No forced daily grind. Pull topics into your focus queue on demand, conquer them in a distraction-free focus view, and unlock evening rest without guilt.
-- 🧪 **Open Lab Sandbox**: Need to log ad-hoc tasks, practice sessions, or spontaneous explorations outside rigid curricula? The built-in Open Lab lets you log custom beats effortlessly.
-- 🚩 **Friction Flags & Study Checkpoints**: Flag confusing concepts with reflective notes, log partial progress percentages, and revisit roadblocks systematically.
-- 🧠 **100% Private On-Device AI**: Powered by local Small Language Models (Qwen 2.5 GGUF) for offline concept breakdown, shortfall remediation, and active recall without sending data to the cloud.
-- 💎 **Obsidian Liquid Glass Aesthetics**: Standardized obsidian frosted glass design system engineered for 60/120 FPS fluid rendering.
+Today, **Rythem v2.0.0 is a complete, local-first learning operating system**:
 
----
-
-## ✨ Key Features
-
-| Feature | Description |
-| :--- | :--- |
-| **Milestone Pacing Engine** | Pure mathematical pacing that dynamically balances daily beat quotas based on your custom 7-day study rhythm (Rest, Light, Normal, Deep). |
-| **User-Driven Focus Mode** | On-demand topic pull queue with sequential "In Focus" flow, live beat counters, and one-tap Complete & Advance navigation. |
-| **Open Lab Tracker** | Flexible sandbox environment to track custom study tasks, spontaneous research, and rapid logs without mutating roadmap structures. |
-| **Friction & Checkpoint Logging** | Flag confusing beats, attach friction notes, track percentage progress, and delete or resolve flags across any screen. |
-| **YouTube Playlist Ingestion** | One-tap extraction of YouTube playlists (from 10 to 230+ videos) with automatic clustering into structured chapters and video timestamps. |
-| **Syllabus Outline Ingestion** | Ingest Markdown syllabi, academic curricula, or textbook tables of contents. Automatically aligns mentor resources with topics. |
-| **"Mentor's Flow is King"** | Non-syllabus bonus topics covered by creators are preserved in-place with `Mentor Extra` badges—never deleted or tossed into orphaned bins. |
-| **Full Month Habit Calendar** | Interactive emerald streak heat map tracking daily completed beats with honest streak calculations and month-by-month pagination. |
-| **Stock-Market Velocity Chart** | Financial-style momentum graphs displaying daily velocity fluctuations, peak performance days, and cumulative lifetime curves. |
-| **Segregated Backup Storage** | Separate dedicated directories for automated rolling snapshots (`Rythem/Backups/snapshots/`) and user-triggered manual exports (`Rythem/Backups/manual/`). |
-| **In-App GitHub Updater** | Clean glass-styled update checker directly verifying GitHub releases with release changelog viewing and download triggers. |
-| **Air-Gapped Data Safety** | Embedded SQLite architecture with transactional cascades, foreign-key safety, and full JSON state backup and restore. |
+```
+           Initial Stage                           Rythem Today (v2.0.0)
+ ──────────────────────────────────       ──────────────────────────────────────────────
+ ⏱️ Stopwatch & minute pressure          ➔  🎵 Universal "Beats" (atomic weight of work)
+ 🤖 Algorithmic daily quotas              ➔  🎯 User-Driven Focus (pull tasks when ready)
+ 📉 Stressful overdue penalties           ➔  🌙 Peaceful evening rest & ambient context
+ 🗂️ Flat checklists                       ➔  🏛️ Hierarchical Roadmap & Subject Orchestration
+ 🔒 Rigid, locked-in curricula            ➔  🧪 Pinned Open Lab for spontaneous exploration
+ ☁️ Cloud surveillance & subscriptions    ➔  🔒 100% Air-Gapped, Private On-Device SQLite
+```
 
 ---
 
-## 📱 How to Operate the App
+## 🌟 The Core Philosophy
 
-### 1. Onboarding & Self-Paced Setup
-Upon launching Rythem:
-- **Philosophy & Freedom**: Experience learning without stopwatch pressure, artificial deadlines, or rigid daily quotas.
-- **Select Offline AI Tier**: Choose between **Compact Mentor** (Qwen 2.5 0.5B, ~468MB for low RAM) or **Balanced Mentor** (Qwen 2.5 1.5B, ~1.04GB). Rythem downloads weights seamlessly in the background with automatic heuristic fallbacks.
+### 1. 🎵 Beats Over Clocks
+Time spent sitting in front of a screen is a deceptive metric. In Rythem, work is measured in **Beats** (atomic milestones, exercises, video chapters, or syllabus topics). A beat reflects substantive cognitive effort—never clocks, stopwatches, or minutes.
 
-### 2. Creating or Ingesting Learning Tracks
-Navigate to the **Explore** tab to create a track:
-- **Paste YouTube Playlist**: Enter any public YouTube playlist URL. Rythem extracts video titles and clusters them into 4–8 organized chapters.
-- **Import Syllabus Markdown**: Paste your course outline. Rythem parses chapters, topics, and milestones instantly.
-- **Resource Linking**: Tap any beat to attach documentation links, video URLs, or custom notes.
-- **Flag Friction / Confusing Beats**: Encountered an ambiguous or difficult concept? Tap the flag icon to store inline friction notes and mark topics for deeper review.
+### 2. 🎯 User-Driven Momentum (Pull-Next-Topic)
+You are the architect of your focus. When you sit down to learn, tap **Pull Next Topic** to draw the immediate sequential milestone into your active queue. No algorithm forces an arbitrary daily count; you advance as deeply as your focus carries you.
 
-### 3. Conquering Your Daily Flow
-Navigate to the **Flow** tab:
-- **Today's Focus Queue**: Pull the next topic into your active queue when you are ready to study.
-- **Focus Session View**: Tap any beat to enter a focused, distraction-free environment displaying the topic sequence, current beat counter, and a bottom floating action bar with **Complete & Advance**.
-- **Open Lab Sandbox**: Switch to Open Lab to log ad-hoc tasks, exercises, or side projects with `⚡ Log Task`.
-- **Celebratory Rest State**: Finishing all topics for the day transitions your focus card into a celebratory completion state with unlocked pull controls.
+### 3. 🌤️ Ambient Mastery Environment
+Real learning exists in harmony with the natural world. Rythem connects to zero-signup, key-free ambient providers to display your true **location weather and diurnal greetings** (e.g. night-time recognition at 1 AM), paired with **daily inspirational quotes** backed by an offline reserve.
 
-### 4. Analyzing Momentum & Velocity
-Navigate to the **Metrics** tab:
-- **Full Month Calendar**: Review your monthly emerald streak heat tiles. Tap any day to inspect completed beats and navigate through past months.
-- **7-Day Beat Rhythm**: Review bar charts showing daily completed beats over the past week.
-- **Monthly Stock Chart**: Track peaks and valleys in learning velocity.
-- **Lifetime Curve**: Watch your cumulative completed beats climb.
+### 4. 👑 "Mentor's Flow is King"
+When you attach a comprehensive YouTube playlist or video course to your curriculum, the instructor's original chronological sequence is preserved with 100% fidelity. Non-syllabus bonus videos are retained as `Mentor Extra` badges—never deleted, reordered, or discarded.
 
-### 5. Settings, Backups & Updates
-Navigate to the **Settings** tab:
-- **On-Device AI Engine**: Inspect offline models, toggle active tiers, or monitor background downloads.
-- **Isolated Backups**: Automated rolling snapshots run in the background (saved to `Rythem/Backups/snapshots/`), while manual user backups are archived in `Rythem/Backups/manual/`.
-- **App Updates**: Check for the latest release via the GitHub API, inspect interactive release notes, and install updates with frosted glass controls.
+### 5. 🧪 Pinned Open Lab Sandbox
+Not all learning fits into structured course syllabi. The **Open Lab** stays permanently pinned to the top of your workspace, allowing you to log ad-hoc research, practice problems, and spontaneous deep dives with custom beat weights.
 
 ---
 
-## 🤖 How to Format & Import Any Syllabus Using GPT
+## 🏛️ The Four Core Pillars
 
-You can convert any textbook table of contents, university course outline, certification guide, or curriculum into Rythem in seconds using ChatGPT, Claude, or any LLM.
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              RYTHEM INTERFACE SUITE                             │
+├───────────────────┬───────────────────┬───────────────────┬─────────────────────┤
+│      1. FLOW      │     2. EXPLORE    │    3. METRICS     │     4. SETTINGS     │
+│   (Daily Focus)   │  (Main Tracker)   │ (Habit Velocity)  │ (Local AI & Backups)│
+└───────────────────┴───────────────────┴───────────────────┴─────────────────────┘
+```
+
+### 1. ⚡ Flow: The Focused Daily Workspace
+- **Diurnal Ambient Header**: Displays live real-world weather conditions and dynamic greetings reflecting your current time of day.
+- **Daily Inspiration**: Curated daily quotes from ZenQuotes / DummyJSON backed by an offline 365-day reserve.
+- **Active Focus Card**: Shows your current in-focus topic with its roadmap badge, beat weight, and direct checkpoint actions.
+- **Pull Next Topic**: If no topic is active, one tap pulls the next incomplete milestone in chronological mentor order.
+- **Friction & Checkpoint Logger**: Log partial percentages, record reflections, or flag roadblocks for later review.
+
+### 2. 🗺️ Explore: The Main Tracker & Curriculum Catalog
+- **Pinned Open Lab Header**: Dedicated progress meter for ad-hoc study tasks and spontaneous practice sessions.
+- **Curriculum Cards**: At-a-glance status across all active tracks showing progress ratios (e.g. `12.5 of 45.0 beats`), category tags, and target dates.
+- **Deep Chapter Accordions**: Expandable modular chapters displaying sequential beats, video durations, `Mentor Extra` tags, and interactive checkpoints.
+- **Multi-Resource Ingestion**: Attach YouTube playlists, standalone videos, or articles to entire roadmaps, specific chapters, or individual topics.
+
+### 3. 📊 Metrics: Visual Momentum & Habit Velocity
+- **Full-Month Streak Calendar**: Emerald heat-map calendar displaying completed daily beats, honest streak continuity, and month-by-month pagination.
+- **7-Day Study Rhythm**: Clean bar visualizations showing daily beat completions across the active week.
+- **Momentum Velocity Chart**: Financial-style graph highlighting velocity acceleration, peak performance days, and trendlines.
+- **Cumulative Lifetime Curve**: Tracks your aggregate completed beats growing over the lifetime of your learning journey.
+
+### 4. ⚙️ Settings: Local Control & Data Sovereignty
+- **On-Device AI Mentorship**: Manage offline Small Language Models (Qwen 2.5 0.5B Compact or 1.5B Balanced) for offline curriculum audits.
+- **In-Place Atomic Backups**: One-tap master backup that updates cleanly in place without creating clutter or duplicates.
+- **Air-Gapped Import & Export**: Full JSON database backup and restore for 100% data portability.
+- **In-App GitHub Updater**: Built-in glass update checker verifying GitHub releases with interactive changelog viewing.
+
+---
+
+## 📥 Universal Beats & Curriculum Ingestion (v2.0.0)
+
+In Rythem **v2.0.0**, you can import custom curricula from Markdown or JSON with **first-class user beat point preservation**:
+
+```
+                                  Ingestion Lifecycle
+ ┌──────────────────────┐      ┌──────────────────────────┐      ┌──────────────────────────┐
+ │  Markdown Syllabus   │ ───► │   Roadmap (No Resource)  │ ───► │  Resource Attached Later │
+ │  - Arrays [2.5 beats]│      │   Beats retain user's    │      │  • Videos get duration   │
+ │  - Two Sum (1.5)     │      │   exact custom weights:  │      │  • Gaps keep user beats  │
+ │  - Graphs | 3.0 pts  │      │   2.5, 1.5, 3.0...       │      │  • Mentor extras kept    │
+ └──────────────────────┘      └──────────────────────────┘      └──────────────────────────┘
+```
+
+### Supported Markdown Beat Syntax
+Rythem's parser extracts custom beat weights while cleanly stripping annotations from the visible topic title:
+- **Bracket Notations**: `- Dynamic Programming [2.5]`, `- Trees [effort: 3.0]`, `- Heaps [2.5 beats]`
+- **Parenthetical Notations**: `- Binary Search (1.5)`, `- Two Pointers (3 beats)`, `- Math (effort: 2.0)`
+- **Delimiters & Pipes**: `- Graph Theory | 3.0 beats`, `- Bit Manipulation | 2.0`, `- Recursion: 2.5 beats`
+- **Prefix Styles**: `- [3.0 beats] System Design`, `- (2.0) Concurrency`
+- **JSON Schemas**: Supports `effort`, `effort_points`, `effort_weight`, `points`, and `beats` fields.
+
+---
+
+## 🤖 How to Format & Import Any Syllabus Using AI
+
+You can turn any textbook table of contents, syllabus PDF, or course curriculum into an active Rythem track using ChatGPT, Claude, Gemini, or any LLM:
 
 ### 📋 The Master Prompt
 
-Copy and paste the following prompt into ChatGPT or Claude, followed by your raw syllabus or course outline:
-
 ```markdown
-You are an expert curriculum formatter for the Rythem learning app. 
-Please convert the following course outline into clean, valid Markdown using this strict structure:
+You are an expert curriculum orchestrator for the Rythem learning app.
+Please convert the following syllabus or table of contents into clean Markdown:
 
 RULES:
-1. Each major module or chapter must start with a level-1 heading: `# Chapter Name`
-2. Each individual lesson, topic, or milestone must be an unordered list item: `- Topic Title`
-3. Optional: Add estimated effort weight in brackets `[Effort: X]` where X is 0.5 (quick review), 1.0 (standard lesson), 2.0 (in-depth lecture), or 3.0 (capstone / challenging exercise). Default is 1.0.
-4. Optional: If you have URLs, add them in parentheses: `- Topic Title [Effort: 1.0] (https://...)`
-5. Do not include introductory text, conversational pleasantries, or code wrappers—output pure Markdown only.
+1. Level-1 headers represent major chapters/modules: `# Chapter Name`
+2. Bullet points represent individual learning topics: `- Topic Name`
+3. Specify custom beat weights using brackets: `[X beats]` (e.g. 0.5 for a quick review, 1.0 for a standard lesson, 2.5 for deep architecture, 4.0 for capstones).
+4. Do not include pleasantries, introductory chatter, or backticks—output raw Markdown only.
 
-RAW SYLLABUS:
-[PASTE YOUR SYLLABUS, COURSE TOPICS, OR TABLE OF CONTENTS HERE]
+SYLLABUS CONTENT:
+[PASTE YOUR SYLLABUS, TABLE OF CONTENTS, OR TOPIC LIST HERE]
 ```
 
----
-
-### 💡 Example Output
+### 💡 Example Markdown Output
 
 ```markdown
-# 1. Mathematical Foundations & Vector Calculus
-- Linear Algebra: Vectors, Spaces & Transformations [Effort: 1.0]
-- Matrix Multiplication & Eigenvalues [Effort: 1.5]
-- Multivariate Derivatives & Gradients [Effort: 1.0]
-- The Chain Rule & Vectorized Backpropagation [Effort: 2.0]
+# Module 1: Foundations & Memory Architecture
+- Pointer Mechanics & Virtual Memory [1.5 beats]
+- Stack vs Heap Allocations [1.0 beat]
+- Cache Lines & Data Locality [2.0 beats]
 
-# 2. Deep Neural Architectures
-- Multilayer Perceptrons & Activation Functions [Effort: 1.0]
-- Loss Functions: Cross-Entropy vs MSE [Effort: 1.0]
-- Optimization Algorithms: Adam, RMSprop & SGD [Effort: 1.5]
-- Batch Normalization & Dropout Regularization [Effort: 1.5]
+# Module 2: Concurrency & Asynchronous Patterns
+- Threads, Mutexes & Atomic Operations [2.5 beats]
+- Lock-Free Queues & Memory Barriers [3.0 beats]
+- Event Loops & Non-Blocking I/O [2.0 beats]
 
-# 3. Convolutional Networks & Vision
-- 2D Convolutions, Kernels & Feature Maps [Effort: 1.0]
-- Pooling Layers & Translation Invariance [Effort: 0.5]
-- Classic Architectures: ResNet & EfficientNet [Effort: 2.0]
-
-# 4. Sequence Modeling & Attention
-- Recurrent Neural Networks & Vanishing Gradients [Effort: 1.5]
-- LSTM and GRU Gated Architectures [Effort: 1.5]
-- Scaled Dot-Product Attention Mechanisms [Effort: 2.0]
-- Multi-Head Attention & The Transformer Architecture [Effort: 3.0]
+# Module 3: Distributed Systems & Consensus
+- CAP Theorem & Partition Tolerance [1.5 beats]
+- Raft Consensus Protocol [3.5 beats]
+- Capstone: Building a Replicated Key-Value Store [4.5 beats]
 ```
-
-### 📥 Importing into Rythem:
-1. Copy the formatted Markdown output.
-2. Open Rythem and tap **Explore** -> **Add Track** -> **Import Syllabus Outline**.
-3. Enter a Track Title, set your Target Completion Date, paste the Markdown, and tap **Create Learning Track**.
 
 ---
 
-## 🏗️ Technical Architecture
+## 🏗️ Architecture & Privacy-First Engineering
 
-Rythem is engineered with clean layered architecture:
+Rythem is built on local-first, air-gapped foundations:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                       PRESENTATION LAYER                    │
-│   FlowScreen  │  ExploreScreen  │  MetricsScreen  │ Settings│
-│    (Obsidian Liquid Glass System · 12px Standardized Glass) │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                    IN-FLIGHT SYNC PIPELINE                  │
-│       Optimistic Toggle Registry · Debounced DB Reload       │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                        DOMAIN ENGINES                       │
-│    PacingService    │   RevisionService   │ IngestionEngine │
-│  (Beats Dilution)   │  (Forgetting Curve) │(YouTube/Markdown)│
-│                     │                     │  AutoBackupMgr  │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                     LOCAL INTELLIGENCE                      │
-│        LocalInferenceService (Qwen 2.5 0.5B / 1.5B GGUF)    │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                      PERSISTENCE LAYER                      │
-│           Embedded SQLite (Foreign Keys Cascade ON)         │
-│    RoadmapRepo · ChapterRepo · BeatRepo · BeatLogRepo       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            PRESENTATION LAYER                           │
+│   FlowScreen   │   ExploreScreen   │   MetricsScreen   │  SettingsTab   │
+│         (Apple-Inspired Frosted Liquid Glass System · 120 FPS)          │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                         IN-FLIGHT SYNC PIPELINE                         │
+│       Optimistic Toggle Registry  ·  Debounced Database Synchronization │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                              DOMAIN ENGINES                             │
+│     CurriculumIngestionEngine     │       AmbientWeatherService         │
+│     (YouTube / Markdown / JSON)   │       (Open-Meteo & BigDataCloud)   │
+│     DailyQuoteService (Offline)   │       AutoBackupManager (Atomic)    │
+└────────────────────────────────────┬────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────────┐
+│                            PERSISTENCE LAYER                            │
+│                 Embedded SQLite Database (Foreign Keys ON)              │
+│       RoadmapRepo  │  ChapterRepo  │  BeatRepo  │  BeatLogRepo          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Detailed architectural blueprints, reactive loops, and module specifications can be found in [.agents/ARCHITECTURE.md](.agents/ARCHITECTURE.md).
+For detailed architectural guidelines, review:
+- **[Architecture Blueprints](.agents/ARCHITECTURE.md)**
+- **[Codebase Map](.agents/CODEBASE_MAP.md)**
+- **[Developer & Testing Guide](.agents/DEVELOPER_GUIDE.md)**
 
 ---
 
-## 🛠️ Building & Running Locally
+## 🛠️ Getting Started & Local Development
 
 ### Prerequisites
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) (3.x stable)
-- Android Studio / Xcode (with command line tools)
-- Java 17 (recommended for Android Gradle builds)
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) (3.2.x+ stable)
+- Android Studio / Xcode command line tools
+- Java 17 (recommended for Gradle build toolchain)
 
-### Quickstart
+### Setup & Run Commands
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/ImSurajx/rythem-app.git
 cd rythem-app
 
-# 2. Fetch dependencies
+# 2. Switch to active release branch
+git checkout release/v2.0.0
+
+# 3. Install dependencies
 flutter pub get
 
-# 3. Verify static analysis
+# 4. Verify static analysis (0 warnings / 0 errors)
 flutter analyze
 
-# 4. Run automated test suites (160+ tests)
+# 5. Run full test suite (176+ unit and widget tests)
 flutter test
 
-# 5. Launch the app in debug mode
-flutter run
+# 6. Build release APK
+flutter build apk --release
 ```
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are warmly welcome! To maintain software quality and release reliability, please follow these guidelines:
-
-1. **Fork and Branch**: Work on branches following the `release/vX.Y.Z` or descriptive convention.
-2. **Follow Code Guidelines**:
-   - Adhere to the established obsidian glass design system, color tokens (`RythemColors`), and 12px rounded glass button standards.
-   - Run `flutter analyze` to ensure zero warnings or errors.
-   - Run `flutter test` to ensure all existing and new test suites pass.
-3. **Signed Commits**: Always sign off your git commits using `git commit -s`.
-4. **Update Changelog**: Document user-facing additions or fixes in [CHANGELOG.md](CHANGELOG.md).
-5. **Open a Pull Request**: Submit your PR with a clear summary of changes and verification evidence.
+We welcome contributions aligned with Rythem's design ethos:
+1. **Branching**: Always branch from `master` or current `release/v*`.
+2. **Commit Standards**: Sign off on all commits with Developer Certificate of Origin: `git commit -s`.
+3. **Design System**: Use `RythemColors`, `RythemTypography`, and standardized glass card surfaces.
+4. **Zero-Warning Guarantee**: Ensure all code passes `flutter analyze` and `flutter test`.
+5. **Changelog**: Add your contributions to [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
 ## 📄 License
 
-Distributed under the PolyForm Noncommercial License 1.0.0. See [LICENSE](LICENSE) for details.
-
----
+Distributed under the **PolyForm Noncommercial License 1.0.0**. See [LICENSE](LICENSE) for terms.
 
 <div align="center">
-Built with care for self-directed learners everywhere.
+<sub>Crafted with care for autonomous, lifelong learners.</sub>
 </div>
